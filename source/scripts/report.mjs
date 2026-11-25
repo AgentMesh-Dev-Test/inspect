@@ -21,6 +21,26 @@ import { SECTIONS, categoryOf, LIST_IDS } from "./lists.mjs";
 
 const trim = (s) => String(s ?? "").trim();
 const plural = (n, one, many = `${one}s`) => `${n} ${n === 1 ? one : many}`;
+
+// Titles a person reads (0.2.6): never a slug, a file name or a setting's name.
+/** A name with spaces for its dashes and underscores and no file extension: "brand-lint.mjs" as "Brand lint". */
+export function spaced(name) {
+  const t = String(name ?? "").replace(/\.[a-z0-9]{1,5}$/i, "").replace(/[-_]+/g, " ").replace(/\s+/g, " ").trim();
+  return t ? `${t[0].toUpperCase()}${t.slice(1)}` : String(name ?? "");
+}
+/** A skill's title: its own one-line description when the repository gives
+ *  one (its first sentence, when that is short), else its name with spaces. */
+export function skillTitle(name, description) {
+  const first = String(description ?? "").replace(/\s+/g, " ").trim().split(/(?<=[.!?])\s/)[0]?.replace(/[.!?]+$/, "") ?? "";
+  return first && first.length <= 110 ? `${first[0].toUpperCase()}${first.slice(1)}` : spaced(name);
+}
+/** A credential's title from the setting it is read from: "GEMINI_API_KEY" as "Gemini API key". */
+export function credentialTitle(env) {
+  const words = String(env ?? "").toLowerCase().split(/[_\s]+/).filter(Boolean).map((w) => (/^(api|url|id|ssh|aws|gcp|llm|mcp|oauth|jwt)$/.test(w) ? w.toUpperCase() : w));
+  if (!words.length) return String(env ?? "");
+  const t = words.join(" ");
+  return `${t[0].toUpperCase()}${t.slice(1)}`;
+}
 const day = (iso) => (trim(iso) ? trim(iso).slice(0, 10) : "not given"); // cut-ok: the date part of an ISO time, the whole time is in the fact
 
 /** A finding's evidence and source from the facts it cites: each file and
@@ -55,7 +75,7 @@ export function scriptFindings({ facts, ctx, owner, name, sha, repoUrl, osv = nu
   // Section 2: what was inspected.
   const pub = of("publisher")[0]; const act = of("activity")[0]; const com = of("commit")[0]; const rec = of("recent-commits")[0];
   if (pub) push(2, "repository", "The repository", `${owner}/${name} on GitHub, ${repoUrl}.`, [pub], { detail: { owner, name, url: repoUrl } });
-  if (com) push(2, "commit", "The commit", `Commit ${sha}, committed ${day(com.data?.date)}. ${com.data?.checked ? "The archive's own header names this commit." : "The archive's own header did not name this commit, so it is not marked as checked."}`, [com], { detail: { sha, date: com.data?.date ?? null, checked: com.data?.checked === true } });
+  if (com) push(2, "commit", "The commit", `Commit ${String(sha).slice(0, 7)}, committed ${day(com.data?.date)}. ${com.data?.checked ? "The archive's own header names this commit." : "The archive's own header did not name this commit, so it is not marked as checked."}`, [com], { detail: { sha, date: com.data?.date ?? null, checked: com.data?.checked === true } });
   if (pub) push(2, "publisher", "The publisher", `Published by ${pub.data?.login}, a GitHub ${String(pub.data?.type ?? "account").toLowerCase()}.`, [pub], { detail: pub.data });
   const licFiles = of("license").filter((f) => f.data?.file_kind === "license" && f.file && !f.file.includes("/"));
   const licManifest = of("license").filter((f) => f.data?.file_kind === "manifest");
@@ -85,19 +105,19 @@ export function scriptFindings({ facts, ctx, owner, name, sha, repoUrl, osv = nu
   const skills = of("skill");
   const own = skills.filter((s) => !s.data?.for_coding_assistants);
   const helpers = skills.filter((s) => s.data?.for_coding_assistants);
-  if (skills.length) push(3, "skill", "Its skills", `${plural(own.length, "skill")} of the agent's own${helpers.length ? `, and ${plural(helpers.length, "skill")} kept for coding assistants that work on the repository (${[...new Set(helpers.map((h) => h.data.folder.split("/")[0]))].join(", ")})` : ""}.`, skills, { detail: { own: own.length, for_coding_assistants: helpers.length } });
+  if (skills.length) push(3, "skill", "Skills", `${plural(own.length, "skill")} of the agent's own${helpers.length ? `, and ${plural(helpers.length, "skill")} kept for coding assistants that work on the repository (${[...new Set(helpers.map((h) => h.data.folder.split("/")[0]))].join(", ")})` : ""}.`, skills, { detail: { own: own.length, for_coding_assistants: helpers.length } });
   const parts = of("part");
   for (const s of [...own, ...helpers]) {
     const p = parts.find((x) => x.data?.part === "skill" && x.data?.folder === s.data?.folder);
     const keeps = p?.data?.keeps ?? [];
     const lift = !p ? "" : s.data.instructions_only ? "It holds instructions only, with no code of its own, so it can be lifted out as it is." : p.data.lift_out === "yes" ? `It can be lifted out on its own: its code imports nothing from outside its folder, reads no credential and loads no package at run time.${(p.data.settings ?? []).length ? ` It reads ${plural(p.data.settings.length, "setting")}: ${p.data.settings.map((x) => x.name).join(", ")}.` : ""}` : `It cannot be lifted out on its own: ${keeps.slice(0, 3).map((k) => `${k.file}:${k.line} ${k.why} (${k.spec})`).join("; ")}${keeps.length > 3 ? `, and ${keeps.length - 3} more in detail.keeps` : ""}.`;
-    push(3, "skill", s.data.name, `${s.data.description ? `${s.data.description} ` : ""}${s.data.for_coding_assistants ? "A skill for coding assistants that work on the repository. " : ""}${lift}`.trim(), [s, ...(p ? [p] : [])], { detail: { name: s.data.name, path: s.data.folder, scripts: s.data.scripts, instructions_only: s.data.instructions_only === true, for_coding_assistants: s.data.for_coding_assistants === true, lift_out: p?.data?.lift_out ?? "no", keeps } });
+    push(3, "skill", skillTitle(s.data.name, s.data.description), `${s.data.description ? `${s.data.description} ` : ""}${s.data.for_coding_assistants ? "A skill for coding assistants that work on the repository. " : ""}${lift}`.trim(), [s, ...(p ? [p] : [])], { detail: { name: s.data.name, path: s.data.folder, scripts: s.data.scripts, instructions_only: s.data.instructions_only === true, for_coding_assistants: s.data.for_coding_assistants === true, lift_out: p?.data?.lift_out ?? "no", keeps } });
   }
   const scriptParts = parts.filter((p) => p.data?.part === "script");
   for (const p of scriptParts.filter((x) => x.data.lift_out === "yes")) {
     const others = (p.data.files ?? []).filter((f) => f !== p.file);
     const sets = p.data.settings ?? [];
-    push(3, "part", p.data.name, `${p.file} runs as a command and can be lifted out on its own${others.length ? `, with ${others.join(", ")}, which it imports from its own folder` : ""}: its code imports only the language's own modules, reads no credential and loads no package at run time.${sets.length ? ` It reads ${plural(sets.length, "setting")}: ${sets.map((s) => `${s.name} (${s.file}:${s.line})`).join(", ")}.` : ""}`, [p], { detail: { name: p.data.name, path: p.file, files: p.data.files ?? [p.file], lift_out: "yes", keeps: [], settings: sets } });
+    push(3, "part", spaced(p.data.name), `${p.file} runs as a command and can be lifted out on its own${others.length ? `, with ${others.join(", ")}, which it imports from its own folder` : ""}: its code imports only the language's own modules, reads no credential and loads no package at run time.${sets.length ? ` It reads ${plural(sets.length, "setting")}: ${sets.map((s) => `${s.name} (${s.file}:${s.line})`).join(", ")}.` : ""}`, [p], { detail: { name: p.data.name, path: p.file, files: p.data.files ?? [p.file], lift_out: "yes", keeps: [], settings: sets } });
   }
   const tied = scriptParts.filter((x) => x.data.lift_out !== "yes");
   if (tied.length) push(3, "part", "Scripts that cannot be lifted out", `${plural(tied.length, "script")} that run as commands cannot be lifted out on their own: each imports a package or a file from outside its folder, reads a credential, or loads a package at run time. Each is in detail.parts with what keeps it.`, tied, { detail: { parts: tied.map((p) => ({ path: p.file, keeps: p.data.keeps })) } });
@@ -121,22 +141,34 @@ export function scriptFindings({ facts, ctx, owner, name, sha, repoUrl, osv = nu
     const says = run.length
       ? `It reads the credential ${n} from its environment, in ${plural(places(run), "place")} of ${plural(run.length, "file")}${run.length < at.length ? `, and its tests read it in ${plural(at.length - run.length, "more file")}` : ""}.`
       : `Only its tests read the credential ${n}, in ${plural(at.length, "file")}; no other code reads it.`;
-    push(5, "credential", n, says, at, { detail: { env: n, read_by_code: run.length > 0, files: at.map((c) => c.file) } });
+    push(5, "credential", credentialTitle(n), says, at, { detail: { env: n, read_by_code: run.length > 0, files: at.map((c) => c.file) } });
   }
 
   // Section 7: known vulnerabilities with OSV's level, and committed credentials.
+  // One finding per package at its version (0.2.6): its title says so in
+  // words, its level is the highest of its advisories, and each advisory, its
+  // summary, the version that fixes it and its id, is in detail.advisories.
+  const byPackage = new Map();
   for (const v of of("vulnerability").filter((x) => x.data?.level)) {
-    const d = v.data;
-    const cats = [categoryOf("LLM03:2025"), categoryOf("ASI04"), { list: LIST_IDS.cyclonedx, id: d.purl, name: `${d.name} ${d.version}` }, { list: LIST_IDS.osv, id: d.osv_id, name: d.osv_id }];
-    push(7, "risk", `${d.name} ${d.version}: ${d.osv_id}`, `${d.name} ${d.version} has a known vulnerability, ${d.osv_id}${d.aliases?.length ? ` (${d.aliases.join(", ")})` : ""}${d.summary ? `: ${d.summary}` : ""}.${d.fixed ? ` It is fixed in ${d.fixed}.` : " OSV names no version that fixes it."}`, [v], { level: d.level, level_by: "source", categories: cats, detail: d });
+    const key = v.data.purl || `${v.data.name}@${v.data.version}`;
+    byPackage.set(key, [...(byPackage.get(key) ?? []), v]);
+  }
+  for (const vs of byPackage.values()) {
+    const d = vs[0].data;
+    const advisories = vs.map((v) => ({ id: v.data.osv_id, aliases: v.data.aliases ?? [], summary: v.data.summary ?? null, level: v.data.level, fixed: v.data.fixed ?? null }));
+    const level = LEVEL_ORDER.find((l) => advisories.some((a) => a.level === l)) ?? advisories[0].level;
+    const cats = [categoryOf("LLM03:2025"), categoryOf("ASI04"), { list: LIST_IDS.cyclonedx, id: d.purl, name: `${d.name} ${d.version}` }, ...advisories.map((a) => ({ list: LIST_IDS.osv, id: a.id, name: a.id }))];
+    const sentence = (s) => { const t = String(s ?? "").trim().replace(/[.;:]+$/, ""); return t ? `${t[0].toUpperCase()}${t.slice(1)}.` : ""; };
+    const says = advisories.map((a) => `${sentence(a.summary) || "A known security flaw."}${a.fixed ? ` Fixed in ${a.fixed}.` : ""}`).join(" ");
+    push(7, "risk", `${d.name} ${d.version} has ${advisories.length === 1 ? "a known security flaw" : "known security flaws"}`, says, vs, { level, level_by: "source", categories: cats, detail: { name: d.name, version: d.version, purl: d.purl, advisories } });
   }
   // The rule: a credential in the code is high; one in a test file is medium,
   // since a test often holds a made-up key, and Inspect cannot tell which.
-  for (const c of of("credential-shape")) push(7, "risk", `A committed credential in ${c.file}`, `Line ${c.line} of ${c.file} looks like ${c.data.what}.${c.data.in_test ? " The file is a test, and Inspect cannot tell whether the key is live or made up for the test." : ""} Inspect keeps only where it is, never its characters.`, [c], { level: c.data.in_test ? "medium" : "high", level_by: "rule", categories: [categoryOf("LLM02:2025"), categoryOf("ASI03")], detail: { what: c.data.what, in_test: c.data.in_test === true } });
+  for (const c of of("credential-shape")) push(7, "risk", c.data.in_test ? "A committed credential in a test file" : "A committed credential in the code",`Line ${c.line} of ${c.file} looks like ${c.data.what}.${c.data.in_test ? " The file is a test, and Inspect cannot tell whether the key is live or made up for the test." : ""} Inspect keeps only where it is, never its characters.`, [c], { level: c.data.in_test ? "medium" : "high", level_by: "rule", categories: [categoryOf("LLM02:2025"), categoryOf("ASI03")], detail: { what: c.data.what, in_test: c.data.in_test === true } });
 
   // Section 8: its tests, and what Inspect could not read or ask.
   const tests = of("test-file"); const cmd = of("test-command")[0];
-  if (tests.length) push(8, "test", "Its tests", `${plural(tests.length, "test file")} with ${plural(tests.reduce((n, t) => n + (t.data.cases ?? 0), 0), "test case")} found by rule.${cmd?.data?.command ? ` Its test command is ${cmd.data.command}.` : ""} Inspect ran none of them.`, [...tests, ...(cmd?.file ? [cmd] : [])], { detail: { files: tests.length, cases: tests.reduce((n, t) => n + (t.data.cases ?? 0), 0) } });
+  if (tests.length) push(8, "test", "Tests",`${plural(tests.length, "test file")} with ${plural(tests.reduce((n, t) => n + (t.data.cases ?? 0), 0), "test case")} found by rule.${cmd?.data?.command ? ` Its test command is ${cmd.data.command}.` : ""} Inspect ran none of them.`, [...tests, ...(cmd?.file ? [cmd] : [])], { detail: { files: tests.length, cases: tests.reduce((n, t) => n + (t.data.cases ?? 0), 0) } });
   const archiveFact = of("commit")[0] ?? of("publisher")[0];
   if (!textFiles && archiveFact) push(8, "could-not-tell", "There was no code to read", "The archive held no file Inspect could read as text, so there was no code to inspect.", [archiveFact]);
   for (const g of bomGaps) {
@@ -270,13 +302,22 @@ export function lineAddress(repo, sha, file, line) {
   try { u = new URL(String(repo?.url ?? "")); } catch { return null; }
   if (u.protocol !== "https:" || u.hostname !== "github.com" || !/^[0-9a-f]{40}$/.test(String(sha ?? ""))) return null;
   const path = String(file ?? "").split("/").map((seg) => encodeURIComponent(seg).replace(/[!'()*]/g, (ch) => `%${ch.charCodeAt(0).toString(16).toUpperCase()}`)).join("/");
-  return `${u.origin}${u.pathname.replace(/\/+$/, "")}/blob/${sha}/${path}${Number(line) >= 1 ? `#L${Number(line)}` : ""}`;
+  return `${u.origin}${u.pathname.replace(/\/+$/, "")}/blob/${String(sha).slice(0, 7)}/${path}${Number(line) >= 1 ? `#L${Number(line)}` : ""}`;
 }
 const LEVEL_WORDS = { critical: "Critical", high: "High", medium: "Medium", low: "Low", none: "No risk" };
-/** A finding's level, category and place, as a person reads them. */
+/** A category as a person names it (0.2.6): an OWASP list's name in words
+ *  ("Supply chain"), a license by its name; a package's URL and an advisory's
+ *  id are said with the package's advisories instead. */
+function categoryWords(c) {
+  if (c.list === LIST_IDS.llm || c.list === LIST_IDS.agentic) { const w = String(c.name ?? "").replace(/\s*&\s*/g, " and ").trim(); return w ? `${w[0].toUpperCase()}${w.slice(1).toLowerCase()}` : null; }
+  if (c.list === LIST_IDS.spdx) return c.name || c.id;
+  return null;
+}
+/** A finding's level, category and place, as a person reads them, with no finding code. */
 function findingLine(f, report) {
   const level = f.level ? `**${LEVEL_WORDS[f.level] ?? mdText(f.level)}${f.level === "none" ? "" : " risk"}.** ` : "";
-  const cats = (f.categories ?? []).map((c) => mdText(c.id === c.name ? c.id : `${c.id} ${c.name}`)).join("; ");
+  const cats = [...new Set((f.categories ?? []).map(categoryWords).filter(Boolean))].map(mdText).join("; ");
+  const advisories = Array.isArray(f.detail?.advisories) && f.detail.advisories.length ? ` Advisories: ${f.detail.advisories.map((a) => `${mdText(a.id)}${a.fixed ? ` (fixed in ${mdText(a.fixed)})` : ""}`).join(", ")}.` : "";
   // A place is set as code, where nothing is read as Markdown, so a path
   // needs no escapes; a backquote in it, the one character that would end
   // the code, is shown as a quote.
@@ -285,9 +326,10 @@ function findingLine(f, report) {
     const addr = lineAddress(report.repository, report.commit.sha, e.file, e.line);
     return addr ? `[${at}](${addr})` : at;
   });
-  const more = (f.evidence?.length ?? 0) > 5 ? `, and ${f.evidence.length - 5} more in inspection.json` : "";
-  const from = !places.length && f.source?.length ? ` From ${mdText(f.source.map((s) => s.call).join("; "))}.` : "";
-  return `- ${level}**${mdText(f.title)}.** ${mdText(f.says)}${cats ? ` Category: ${cats}.` : ""}${places.length ? ` At ${places.join(", ")}${more}.` : ""}${from} (${f.id})`;
+  const more = (f.evidence?.length ?? 0) > 5 ? `, and ${f.evidence.length - 5} more` : "";
+  const systemWord = { "code-host": "GitHub's records", "vulnerability-database": "OSV, the vulnerability database", "text-reasoning": "the model" };
+  const from = !places.length && f.source?.length ? ` From ${mdText([...new Set(f.source.map((s) => systemWord[s.system] ?? s.system))].join(" and "))}.` : "";
+  return `- ${level}**${mdText(f.title)}.** ${mdText(f.says)}${advisories}${cats ? ` Category: ${cats}.` : ""}${places.length ? ` At ${places.join(", ")}${more}.` : ""}${from}`;
 }
 
 /** The whole report as Markdown: the same findings, in the same sections, with
@@ -299,27 +341,25 @@ export function markdownOf(report) {
   const lines = [
     `# Inspection of ${mdText(`${r.repository.owner}/${r.repository.name}`)}`,
     "",
-    `Commit ${sha}${r.commit.date ? `, committed ${day(r.commit.date)}` : ""}. Inspected ${day(r.inspected_at)} by Inspect ${mdText(r.inspector.version)}, which read the code without running any of it and gives no verdict on bringing the agent in.`,
+    // 0.2.6: the short commit, and no remarks on how the report was made.
+    `Commit ${String(sha ?? "").slice(0, 7)}${r.commit.date ? `, committed ${day(r.commit.date)}` : ""}. Inspected ${day(r.inspected_at)}.`,
     "",
     `Repository: ${r.repository.url}`,
     "",
     "## At a glance",
     "",
-    `Risks by level: ${lv.critical} critical, ${lv.high} high, ${lv.medium} medium and ${lv.low} low. ${plural(r.counts.findings, "finding")} in all.`,
+    `Risks by level: ${lv.critical} critical, ${lv.high} high, ${lv.medium} medium and ${lv.low} low.`,
     "",
   ];
   const glance = r.findings.filter((f) => f.section === 1);
   lines.push(...(glance.length ? glance.map((f) => findingLine(f, r)) : ["- Nothing was judged for this section."]), "");
   for (const s of SECTIONS.filter((x) => x.number > 1)) {
     const list = sorted(r.findings.filter((f) => f.section === s.number));
-    lines.push(`## ${s.number}. ${s.title}`, "", ...(list.length ? list.map((f) => findingLine(f, r)) : ["- Nothing was found for this section."]), "");
+    lines.push(`## ${s.title}`, "", ...(list.length ? list.map((f) => findingLine(f, r)) : ["- None found."]), "");
   }
   if (r.held_back?.length) {
-    lines.push("## Judgments held back", "", ...r.held_back.map((h) => `- Section ${h.section}, ${mdText(h.title)}: ${mdText(h.why)}`), "");
+    lines.push("## Held back", "", ...r.held_back.map((h) => `- ${mdText(h.title)}: ${mdText(h.why)}`), "");
   }
-  const u = r.usage ?? {};
-  const times = (n) => (Number(n) === 1 ? "once" : `${Number(n) || 0} times`);
-  lines.push(`The job asked GitHub ${times(u.code_host_calls)}, OSV ${times(u.vulnerability_database_calls)} and the model ${times(u.model_calls)}. The facts each finding rests on are in inspection.json, and the dependency list in sbom.cdx.json.`, "");
   return lines.join("\n");
 }
 

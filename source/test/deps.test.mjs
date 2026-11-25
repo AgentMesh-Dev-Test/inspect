@@ -36,14 +36,35 @@ test("[F3.A2] a known vulnerability is a finding of section 7 with its id, alias
     records: { "GHSA-aaaa-bbbb-cccc": { id: "GHSA-aaaa-bbbb-cccc", aliases: ["CVE-2026-0001"], summary: "a made-up hole", database_specific: { severity: "HIGH" }, affected: [{ package: { ecosystem: "PyPI", name: "httpx" }, ranges: [{ events: [{ introduced: "0" }, { fixed: "0.27.2" }] }] }] } },
   };
   const out = await go(smallAgent(), { osv });
-  const f = out.report.findings.find((x) => x.section === 7 && /GHSA-aaaa-bbbb-cccc/.test(x.title));
+  const f = out.report.findings.find((x) => x.section === 7 && x.detail?.advisories?.some((a) => a.id === "GHSA-aaaa-bbbb-cccc"));
   assert.ok(f, "the vulnerability is a finding of section 7");
-  for (const s of ["httpx", "0.27.0", "GHSA-aaaa-bbbb-cccc", "CVE-2026-0001", "0.27.2"]) assert.ok(f.says.includes(s), `it says ${s}`);
+  // 0.2.6: the title says it in words, and the advisory's id is in its detail, never in its title or words.
+  assert.equal(f.title, "httpx 0.27.0 has a known security flaw");
+  assert.equal(f.says, "A made-up hole. Fixed in 0.27.2.");
+  assert.deepEqual(f.detail.advisories, [{ id: "GHSA-aaaa-bbbb-cccc", aliases: ["CVE-2026-0001"], summary: "a made-up hole", level: "high", fixed: "0.27.2" }]);
+  assert.ok(!/GHSA|CVE/.test(`${f.title} ${f.says}`));
   assert.deepEqual(f.evidence.map((e) => `${e.file}:${e.line}`), ["uv.lock:9"]);
   assert.equal(f.level, "high");
   assert.equal(f.level_by, "source");
   const ids = f.categories.map((c) => c.id);
   assert.ok(ids.includes("LLM03:2025") && ids.includes("ASI04"));
+});
+
+test("[F3.A2] a package's advisories are one finding, at the highest of their levels, each advisory with its summary, fix and id", async () => {
+  const rec = (id, severity, summary, fixed) => ({ id, aliases: [], summary, database_specific: { severity }, affected: [{ package: { ecosystem: "PyPI", name: "httpx" }, ranges: [{ events: [{ introduced: "0" }, ...(fixed ? [{ fixed }] : [])] }] }] });
+  const osv = {
+    affects: { "PyPI:httpx@0.27.0": ["GHSA-1111-1111-1111", "GHSA-2222-2222-2222"] },
+    records: { "GHSA-1111-1111-1111": rec("GHSA-1111-1111-1111", "MODERATE", "open redirect in the client", "0.27.1"), "GHSA-2222-2222-2222": rec("GHSA-2222-2222-2222", "HIGH", "header injection", null) },
+  };
+  const out = await go(smallAgent(), { osv });
+  const list = out.report.findings.filter((x) => x.section === 7 && x.detail?.advisories);
+  assert.equal(list.length, 1, "one finding for the package");
+  const f = list[0];
+  assert.equal(f.title, "httpx 0.27.0 has known security flaws");
+  assert.equal(f.level, "high", "the highest of its advisories");
+  assert.deepEqual(f.detail.advisories.map((a) => [a.id, a.level, a.fixed]), [["GHSA-1111-1111-1111", "medium", "0.27.1"], ["GHSA-2222-2222-2222", "high", null]]);
+  assert.equal(f.says, "Open redirect in the client. Fixed in 0.27.1. Header injection.");
+  assert.deepEqual(f.categories.filter((c) => c.list === "osv").map((c) => c.id), ["GHSA-1111-1111-1111", "GHSA-2222-2222-2222"]);
 });
 
 test("[F3.A2] OSV is asked by query, at most 1000 components a query and 10 queries a job, and at most 60 vulnerabilities are read", async () => {

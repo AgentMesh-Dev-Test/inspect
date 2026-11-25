@@ -26,6 +26,35 @@ const trim = (s) => String(s ?? "").trim();
 /** Words that give a verdict on bringing the agent in, or judge its fit. */
 export const VERDICT = /\b(?:safe to (?:bring|use|install|adopt|deploy)|(?:do not|don't|should not|shouldn't|must not) (?:bring|use|install|adopt|deploy)(?: (?:it|this))? in|we recommend (?:bringing|using|adopting|installing|against)|(?:i|we) (?:would )?recommend (?:bringing|using|adopting|installing|against)|recommend(?:ed)? (?:bringing|adopting|against adopting)|bring (?:it|this agent|the agent) in\b|(?:is|is not|isn't) (?:a )?(?:good |poor |bad )?fit|fits? (?:the|your|our) (?:plan|roadmap|department)|catalog role|go\/no-go|not recommended for adoption|approve (?:it|this agent) for)\b/i;
 
+/**
+ * Words a manager would not write (0.2.6, judge.mjs PLAIN_RULE): code, files
+ * and Inspect's own internal word. Each is a reason to hold a judgment back;
+ * files and names as the code writes them belong only in its evidence.
+ */
+export const NOT_PLAIN = [
+  ["backquotes", /`/],
+  ["a file name", /\b[\w.-]+\.(?:py|mjs|cjs|js|jsx|ts|tsx|json|ya?ml|toml|md|sh|lock|txt|env|cfg|ini|html|css|go|rs|rb|java|ipynb)\b/i],
+  ["a path", /\b[\w.-]+\/[\w.-]+\/[\w./-]+/],
+  ["a line number", /\w:\d+\b/],
+  ["a name with an underscore", /\b\w+_\w+\b/],
+  ["a dotted name", /\b[a-z_][a-z0-9_]+\.[a-z_][a-z0-9_]+\b/],
+  ["a call with brackets", /\b\w+\(\)/],
+  ["a command line", /\b(?:npm|npx|pnpm|yarn|pip|pipx|uvx|curl|wget|sudo|kubectl|apt-get)\b|\bgh\b|\bgit (?:clone|pull|push|checkout)\b/i],
+  ["a version tag", /@(?:latest|next|\d)|(?:^|\s)@[\w-]+\//i],
+  ["an advisory id", /\b(?:GHSA|CVE)-/i],
+  ["a finding code", /\bS[1-8]-\d{3}\b/],
+  ["Inspect's own word", /\bthe facts?\b/i],
+];
+/** The first thing in `text` a manager would not write, as {what, match}, or null. */
+export function notPlain(text) {
+  for (const [what, re] of NOT_PLAIN) {
+    const m = re.exec(String(text ?? ""));
+    if (m) return { what, match: m[0].trim() };
+  }
+  return null;
+}
+const plainWhy = (p) => `it puts ${p.what} in its words ("${p.match}"), which belong only in its evidence`;
+
 /** A category the draft names, resolved against the lists and the facts: {list, id, name} or null. */
 export function resolveCategory(raw, { spdx = new Set(), purls = new Set(), osv = new Set() } = {}) {
   const s = trim(typeof raw === "string" ? raw : raw?.id).replace(/^(\S+)\s.*$/, "$1");
@@ -68,11 +97,13 @@ export function checkDrafts(drafts, { sections, byId, ctx, known = {} }) {
     if (!evidence.length && !source.length) { hold("none of the facts it cites has a file and line or a call"); continue; }
     const words = unquoted(`${title} ${says}`);
     if (PRECISE.has(section)) {
-      const j = JUDGING.exec(words); if (j) { hold(`it judges ("${j[0]}"), and section ${section} says only what the facts show`); continue; }
-      const i = INFERRING.exec(words); if (i) { hold(`it infers ("${i[0]}"), and section ${section} says only what the facts show`); continue; }
+      const j = JUDGING.exec(words); if (j) { hold(`it judges ("${j[0]}"), and section ${section} says only what the code shows`); continue; }
+      const i = INFERRING.exec(words); if (i) { hold(`it infers ("${i[0]}"), and section ${section} says only what the code shows`); continue; }
     }
     const v = VERDICT.exec(words);
     if (v) { hold(`it gives a verdict or judges fit ("${v[0]}"), which Inspect does not`); continue; }
+    const p = notPlain(`${title} ${says}`);
+    if (p) { hold(plainWhy(p)); continue; }
     const f = { section, kind: trim(d.kind), title, says, by: "model", based_on: ids, ...(evidence.length ? { evidence } : {}), ...(source.length ? { source } : {}) };
     if (d.detail && typeof d.detail === "object" && !Array.isArray(d.detail)) f.detail = d.detail;
     if (f.kind === "risk") {
@@ -102,6 +133,8 @@ export function checkGlance(drafts, findings, { most = 5 } = {}) {
     if (!says) { held.push({ section: 1, title: target.title, why: "it has no words" }); continue; }
     const v = VERDICT.exec(unquoted(says));
     if (v) { held.push({ section: 1, title: target.title, says, why: `it gives a verdict or judges fit ("${v[0]}"), which Inspect does not` }); continue; }
+    const p = notPlain(says);
+    if (p) { held.push({ section: 1, title: target.title, says, why: plainWhy(p) }); continue; }
     if (kept.some((k) => k.repeats === target.id)) continue;
     if (kept.length >= most) { held.push({ section: 1, title: target.title, says, why: `section 1 holds at most ${most} findings` }); continue; }
     kept.push({ section: 1, kind: "glance", title: target.title, says, by: "model", based_on: target.based_on, repeats: target.id, ...(target.evidence ? { evidence: target.evidence } : {}), ...(target.source ? { source: target.source } : {}), ...(target.level ? { level: target.level, level_by: target.level_by } : {}) });

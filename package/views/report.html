@@ -20,8 +20,14 @@
   Inspect (Inspect's own words, from the Descriptor the host hands it). A
   row shows its title, and on Risks its level; opening it shows the
   finding's words, where it is in the code, its category and Copy. While the
-  job runs, the counts fill in and one line under the tabs says what Inspect
-  is doing. Colors and fonts come from the host's --ca-* tokens, each with a
+  job runs, one line under the tabs says what Inspect is doing.
+
+  Since 0.2.6 a tab carries no count; a judgment's title on Overview is the
+  link to it; each section's lists sit under subheadings of their own
+  (Skills, Credentials, Tools), and a heading that repeats its tab's name is
+  left out; a package's known security flaws are one row, its advisories
+  only in the opened row; and older reports' slugs and setting names are
+  said in words. Colors and fonts come from the host's --ca-* tokens, each with a
   fallback for light and for dark. A level is always a word and a shape,
   never a color alone.
 -->
@@ -84,7 +90,6 @@ button { font: inherit; color: inherit; cursor: pointer; }
 .tab:focus-visible { outline: 2px solid var(--accent); outline-offset: -3px; border-radius: 4px; }
 .tab-name { font-size: 0.94em; font-weight: 600; white-space: nowrap; }
 .tab[aria-selected="true"] .tab-name { font-weight: 700; }
-.tab-n { font-size: 0.82em; font-variant-numeric: tabular-nums; color: var(--muted); }
 .tab .lv { font-size: 0.8em; }
 .now { margin-top: calc(var(--s) * 1); font-size: 0.9em; color: var(--muted); display: flex; gap: 0.55em; align-items: baseline; }
 .pulse { display: inline-block; width: 0.55em; height: 0.55em; border-radius: 50%; background: var(--accent); flex: none; transform: translateY(-0.05em); animation: pulse 1.6s ease-in-out infinite; }
@@ -96,7 +101,10 @@ button { font: inherit; color: inherit; cursor: pointer; }
 .panel:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; border-radius: 4px; }
 .panel > :first-child { margin-top: 0; }
 .panel h2 { font-size: 1.02em; font-weight: 650; margin: calc(var(--s) * 2.5) 0 calc(var(--s) * 0.75); }
-.panel > h2:first-child { margin-top: 0; }
+.panel > h2:first-child, .panel > h3:first-child { margin-top: 0; }
+.panel h3 { font-size: 0.86em; font-weight: 650; color: var(--muted); letter-spacing: 0.01em; margin: calc(var(--s) * 2) 0 calc(var(--s) * 0.5); }
+.advisories { margin: 0; padding: 0; list-style: none; display: grid; gap: calc(var(--s) * 0.5); }
+.advisories .mono { white-space: nowrap; }
 .quiet { color: var(--muted); font-size: 0.92em; padding: calc(var(--s) * 0.75) 0; }
 
 /* Overview: the risks by level, the top judgments, what was inspected */
@@ -112,7 +120,9 @@ button { font: inherit; color: inherit; cursor: pointer; }
 .matters li { display: grid; grid-template-columns: 6.4em minmax(0, 1fr); gap: calc(var(--s) * 1); }
 .matters .t { font-weight: 620; }
 .matters .says { margin-top: 0.15em; }
-.matters .see { margin-top: 0.3em; font-size: 0.88em; }
+.title-link { all: unset; box-sizing: border-box; cursor: pointer; font-weight: 620; color: var(--text); text-decoration: underline; text-decoration-color: var(--border); text-decoration-thickness: 1.5px; text-underline-offset: 3px; overflow-wrap: anywhere; }
+.title-link:hover { text-decoration-color: var(--accent); }
+.title-link:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 4px; }
 .facts { display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: calc(var(--s) * 0.5) calc(var(--s) * 2); margin: 0; font-size: 0.94em; }
 .facts dt { color: var(--muted); }
 .facts dd { margin: 0; min-width: 0; overflow-wrap: anywhere; }
@@ -445,14 +455,14 @@ button { font: inherit; color: inherit; cursor: pointer; }
     return el("div", { class: "tabs-wrap" },
       el("div", { class: "tabs", role: "tablist", "aria-label": "The report", onkeydown: onTabKey, onscroll: (e) => edges(e.currentTarget) },
         TABS.map((t) => {
+          // A tab is its name; Risks also names its highest level. No count
+          // (0.2.6): a number on a tab answers nothing a person asks.
           const on = state.tab === t.id;
-          const counted = t.sections.length > 0;
-          const s = counted ? tabStatus(d, t, pending) : null;
+          const s = t.sections.length ? tabStatus(d, t, pending) : null;
           const top = t.id === "risks" && s.n ? highestRisk(d) : null;
-          const said = !counted ? t.name : s.waiting ? `${t.name}, still to come` : `${t.name}, ${plural(s.n, "finding")}${s.filling ? " so far" : ""}${top ? `, the highest ${LEVEL_WORD[top]}` : ""}`;
+          const said = s?.waiting ? `${t.name}, still to come` : `${t.name}${top ? `, the highest ${LEVEL_WORD[top]}` : ""}`;
           return el("button", { class: "tab", type: "button", role: "tab", id: `tab-${t.id}`, "aria-selected": on ? "true" : "false", "aria-controls": `panel-${t.id}`, tabindex: on ? "0" : "-1", "aria-label": said, "data-k": `tab:${t.id}`, onclick: () => setTab(t.id, true) },
             el("span", { class: "tab-name", text: t.name }),
-            counted ? el("span", { class: "tab-n", "aria-hidden": "true", text: s.waiting ? "…" : String(s.n) }) : null,
             top ? el("span", { "aria-hidden": "true" }, badge({ level: top })) : null);
         })));
   }
@@ -513,11 +523,12 @@ button { font: inherit; color: inherit; cursor: pointer; }
     return el("ul", { class: "matters", "aria-label": "Top judgments" }, list.map((f) => {
       const target = d.findings.find((x) => x.id === (f.repeats || f.id) && x.section !== 1) ?? null;
       const rated = levelOf(f) ? f : target ?? f;
+      // The title is the link (0.2.6): it opens the finding in its tab.
       const tab = target ? tabOf(target.section) : null;
       return el("li", {}, el("div", {}, badge(rated)), el("div", {},
-        el("div", { class: "t" }, prose(f.title)),
-        f.says ? el("p", { class: "says" }, prose(f.says)) : null,
-        tab ? el("p", { class: "see" }, el("button", { class: "linkish", type: "button", "data-k": `see:${f.id}`, onclick: () => reveal(target.id), text: `See it in ${tab.name}` })) : null));
+        tab ? el("button", { class: "t title-link", type: "button", "data-k": `see:${f.id}`, "aria-label": `${f.title}, in ${tab.name}`, onclick: () => reveal(target.id) }, prose(displayTitle(f)))
+          : el("div", { class: "t" }, prose(displayTitle(f))),
+        f.says ? el("p", { class: "says" }, prose(f.says)) : null));
     }));
   }
   // What was inspected, as a short label and value list.
@@ -594,6 +605,23 @@ button { font: inherit; color: inherit; cursor: pointer; }
     clearTimeout(toastTimer); toastTimer = setTimeout(() => t.classList.remove("on"), 2200);
   }
 
+  // A title as a person reads it (0.2.6). Reports from 0.2.5 and before
+  // titled a skill by its slug, a credential by its setting's name and a
+  // known vulnerability by its advisory's id; each is said in words here.
+  function displayTitle(f) {
+    const t = one(f?.title);
+    const adv = /^(.+?) (\S+): (?:GHSA|CVE)-\S+$/.exec(t);
+    if (f?.section === RISKS && adv) return `${adv[1]} ${adv[2]} has a known security flaw`;
+    if ((f?.kind === "skill" || f?.kind === "part") && /^[a-z0-9]+(?:[-_][a-z0-9]+)+(?:\.[a-z0-9]{1,4})?$/.test(t)) {
+      const w = t.replace(/\.[a-z0-9]{1,4}$/, "").replace(/[-_]+/g, " ");
+      return `${w[0].toUpperCase()}${w.slice(1)}`;
+    }
+    if (f?.kind === "credential" && /^[A-Z][A-Z0-9]*(?:_[A-Z0-9]+)+$/.test(t)) {
+      const w = t.toLowerCase().split("_").map((x) => (/^(api|url|id|ssh|aws|gcp|llm|mcp|oauth|jwt)$/.test(x) ? x.toUpperCase() : x)).join(" ");
+      return `${w[0].toUpperCase()}${w.slice(1)}`;
+    }
+    return t;
+  }
   function drawRow(d, f, rated) {
     const open = state.open.has(f.id);
     const detailId = `d-${f.id}`;
@@ -601,47 +629,86 @@ button { font: inherit; color: inherit; cursor: pointer; }
       el("button", { class: "toggle", type: "button", "aria-expanded": open ? "true" : "false", "aria-controls": detailId, "data-k": `row:${f.id}`, onclick: () => { if (state.open.has(f.id)) state.open.delete(f.id); else state.open.add(f.id); draw(); resize(); } },
         el("span", { class: "chev", "aria-hidden": "true", text: open ? "▾" : "▸" }),
         rated ? badge(f) : null,
-        el("span", { class: "tt" }, prose(f.title))));
+        el("span", { class: "tt" }, prose(displayTitle(f)))));
     if (open) row.append(drawDetail(d, f, detailId));
     return row;
   }
+  // An open row: the finding's words, or for a package's known security
+  // flaws each advisory's summary, the version that fixes it and its id;
+  // then where it is in the code, the name the code gives it, its category
+  // and Copy. Ids, files and names as the code writes them are only here.
   function drawDetail(d, f, id) {
     const ev = Array.isArray(f.evidence) ? f.evidence : [];
+    const advisories = Array.isArray(f.detail?.advisories) ? f.detail.advisories : [];
     const dl = el("dl", {});
     const add = (k, v) => { if (v) dl.append(el("dt", { text: k }), el("dd", {}, v)); };
     if (ev.length) add("In the code", el("ul", {}, ev.map((e) => el("li", { class: "mono" }, breakable(`${e.file}:${e.line}`)))));
     else if (f.source?.length) add("From", f.source.map((s) => SYSTEM_WORD[s.system] ?? s.system).join(", "));
+    const name = typeof f.detail?.name === "string" ? f.detail.name : typeof f.detail?.env === "string" ? f.detail.env : null;
+    if (name && (f.kind === "skill" || f.kind === "part" || f.kind === "credential") && name !== f.title) add("Name in the code", el("span", { class: "mono" }, name));
+    else if (displayTitle(f) !== one(f.title)) { const adv = /(?:GHSA|CVE)-\S+$/.exec(one(f.title)); add(adv ? "Advisory" : "Name in the code", el("span", { class: "mono" }, adv ? adv[0] : one(f.title))); }
     add("Category", categoryWords(f));
+    const sentence = (s) => { const t = one(s).replace(/[.;:]+$/, ""); return t ? `${t[0].toUpperCase()}${t.slice(1)}.` : ""; };
+    const words = advisories.length
+      ? el("ul", { class: "advisories" }, advisories.map((a) => el("li", {},
+          el("span", {}, `${sentence(a.summary) || "A known security flaw."}${a.fixed ? ` Fixed in ${one(a.fixed)}.` : ""} `),
+          el("span", { class: "mono muted" }, one(a.id)))))
+      : f.says ? el("p", {}, prose(f.says)) : null;
     return el("div", { class: "detail", id },
-      f.says ? el("p", {}, prose(f.says)) : null,
+      words,
       dl.childNodes.length ? dl : null,
       el("button", { class: "copy", type: "button", "data-k": `copy:${f.id}`, onclick: () => doCopy(d, f), text: "Copy" }));
   }
   // A list of findings in the order drawn: the highest level first, else the
   // report's order.
-  // A section opens on the model's judgments before the scripts' lists: what
-  // the agent does, reaches or leaves unsaid, then the list of its parts.
-  const KIND_ORDER = ["job", "output", "input", "system", "spend", "autonomy", "how-it-runs", "human-step", "memory", "model", "could-not-tell", "question", "test-gap", "test", "tool", "credential", "skill", "part", "not-judged"];
-  const kindRank = (f) => { const i = KIND_ORDER.indexOf(f?.kind); return i < 0 ? KIND_ORDER.length : i; };
-  const ordered = (list) => list.map((f, i) => [f, i]).sort((a, b) => rank(a[0]) - rank(b[0]) || kindRank(a[0]) - kindRank(b[0]) || a[1] - b[1]).map(([f]) => f);
+  const ordered = (list) => list.map((f, i) => [f, i]).sort((a, b) => rank(a[0]) - rank(b[0]) || a[1] - b[1]).map(([f]) => f);
   function drawRows(d, list, rated) {
     return list.length ? el("ul", { class: rated ? "rows rated" : "rows" }, list.map((f) => drawRow(d, f, rated))) : el("p", { class: "quiet", text: "None found." });
   }
-  // A tab of whole sections: one plain heading each when it holds two, none
-  // when it holds one, which its tab already names.
+  // Each section's findings in groups (0.2.6): the model's judgments first,
+  // with no heading, then each list the scripts make under a subheading of
+  // its own ("Skills", "Credentials"). A finding that only sums up its group
+  // ("Skills: 36 of its own") is the group's heading, never a row.
+  const GROUPS = {
+    3: [{ kinds: ["job", "not-judged"] }, { heading: "What it takes", kinds: ["input"] }, { heading: "What it hands back", kinds: ["output"] }, { heading: "Skills", kinds: ["skill"] }, { heading: "Scripts", kinds: ["part"] }],
+    4: [{ kinds: ["how-it-runs", "model", "memory", "not-judged"] }, { heading: "Where a person steps in", kinds: ["human-step"] }],
+    5: [{ kinds: ["system", "spend", "not-judged"] }, { heading: "Credentials", kinds: ["credential"] }],
+    6: [{ kinds: ["autonomy", "not-judged"] }, { heading: "Tools", kinds: ["tool"] }],
+    8: [{ heading: "What Inspect couldn't tell", kinds: ["could-not-tell", "question", "not-judged"] }, { heading: "Gaps in the tests", kinds: ["test-gap"] }, { heading: "Tests", kinds: ["test"] }],
+  };
+  const sumsUp = (f, heading) => !!heading && (one(f.title).toLowerCase() === heading.toLowerCase() || /^its (?:skills|tests)$/i.test(one(f.title)));
+  function drawGroups(d, s, list) {
+    const groups = GROUPS[s] ?? [{ kinds: null }];
+    const placed = new Set();
+    const out = [];
+    groups.forEach((g, i) => {
+      const mine = list.filter((f) => !placed.has(f) && (g.kinds ? g.kinds.includes(f.kind) : true));
+      mine.forEach((f) => placed.add(f));
+      // Anything of a kind no group names joins the first group.
+      if (i === 0) for (const f of list) if (!groups.some((x) => x.kinds?.includes(f.kind)) && !placed.has(f)) { mine.push(f); placed.add(f); }
+      const rows = mine.filter((f) => !sumsUp(f, g.heading));
+      if (!rows.length) return;
+      if (g.heading) out.push(el("h3", { text: g.heading }));
+      out.push(drawRows(d, rows, rows.some((f) => levelOf(f))));
+    });
+    return out.length ? out : [el("p", { class: "quiet", text: "None found." })];
+  }
+  // A tab of whole sections: a plain heading for each, except one that
+  // repeats the tab's name, and none when the tab holds one section.
   function drawSections(d, t, pending) {
     const out = [];
     for (const s of t.sections) {
       const list = ordered(ofSection(d, s));
-      const rated = list.some((f) => levelOf(f));
-      if (t.sections.length > 1) out.push(el("h2", { text: titleOf(d, s) }));
-      out.push(!list.length && (pending.has(s) || sectionCount(d, s) > 0) ? el("p", { class: "quiet", text: "Nothing yet." }) : drawRows(d, list, rated));
+      const title = titleOf(d, s);
+      if (t.sections.length > 1 && title && title.toLowerCase() !== t.name.toLowerCase()) out.push(el("h2", { text: title }));
+      out.push(...(!list.length && (pending.has(s) || sectionCount(d, s) > 0) ? [el("p", { class: "quiet", text: "Nothing yet." })] : drawGroups(d, s, list)));
     }
     return out;
   }
   // Risks: the level filter, the risks highest first, then what it needs to
-  // run safely.
-  const keeps = (f, level) => level === "all" || levelOf(f) === level;
+  // run safely. The chips add up to the rows shown: a risk with no level has
+  // a chip of its own, Not rated.
+  const keeps = (f, level) => level === "all" || (level === "unrated" ? !levelOf(f) : levelOf(f) === level);
   function drawRisks(d, pending) {
     const all = ofSection(d, RISKS);
     const risks = ordered(all.filter((f) => !SAFELY.includes(f.kind) || levelOf(f)));
@@ -649,8 +716,7 @@ button { font: inherit; color: inherit; cursor: pointer; }
     if (!all.length) return [el("p", { class: "quiet", text: pending.has(RISKS) || sectionCount(d, RISKS) ? "Nothing yet." : "None found." })];
     const n = (l) => risks.filter((f) => keeps(f, l)).length;
     if (state.level !== "all" && !n(state.level)) state.level = "all";
-    // All carries no count: the tab already does, with what it needs to run safely.
-    const chips = [["all", "All", null], ...LEVELS.filter((l) => n(l)).map((l) => [l, LEVEL_WORD[l], n(l)])];
+    const chips = [["all", "All", null], ...LEVELS.filter((l) => n(l)).map((l) => [l, LEVEL_WORD[l], n(l)]), ...(n("unrated") ? [["unrated", NOT_RATED, n("unrated")]] : [])];
     const out = [];
     if (risks.length) {
       out.push(el("div", { class: "chips", role: "group", "aria-label": "Show risks of one level" },
@@ -666,10 +732,10 @@ button { font: inherit; color: inherit; cursor: pointer; }
     const out = drawSections(d, t, pending);
     const held = Array.isArray(d.held_back) ? d.held_back : [];
     if (held.length) {
-      out.push(el("h2", { text: "Held back" }), el("ul", { class: "rows" }, held.map((h, i) => {
+      out.push(el("h3", { text: "Held back" }), el("ul", { class: "rows" }, held.map((h, i) => {
         const key = `held:${i}`; const open = state.open.has(key);
         const li = el("li", { class: "row" }, el("button", { class: "toggle", type: "button", "aria-expanded": open ? "true" : "false", "data-k": `row:${key}`, onclick: () => { if (state.open.has(key)) state.open.delete(key); else state.open.add(key); draw(); resize(); } },
-          el("span", { class: "chev", "aria-hidden": "true", text: open ? "▾" : "▸" }), el("span", { class: "tt", text: one(h.title) || "A judgment" })));
+          el("span", { class: "chev", "aria-hidden": "true", text: open ? "▾" : "▸" }), el("span", { class: "tt" }, prose(one(h.title) || "A judgment"))));
         if (open && h.why) li.append(el("div", { class: "detail" }, el("p", { text: one(h.why) })));
         return li;
       })));

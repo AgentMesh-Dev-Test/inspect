@@ -15,8 +15,8 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { contextFor } from "../scripts/evidence.mjs";
-import { checkDrafts, checkGlance } from "../scripts/checks.mjs";
-import { judge, BUDGETS, CALL_TOKENS } from "../scripts/judge.mjs";
+import { checkDrafts, checkGlance, notPlain } from "../scripts/checks.mjs";
+import { judge, BUDGETS, CALL_TOKENS, PLAIN_RULE, firstPrompt, secondPrompt, glancePrompt } from "../scripts/judge.mjs";
 import { inspect } from "../scripts/inspect-a-repository.mjs";
 import { ENV, inTemp, world, model, modelFailure, smallAgent } from "./helpers.mjs";
 
@@ -86,6 +86,31 @@ test("[F4.A5] a judgment that says it is safe to bring this agent in is held bac
   const { kept, held } = checkDrafts([{ section: 7, kind: "least-access", title: "Verdict", says: "It is safe to bring this agent in.", based_on: ["F0007"] }], { sections: [6, 7, 8], byId, ctx });
   assert.equal(kept.length, 0);
   assert.match(held[0].why, /verdict/);
+});
+
+test("[F4.A5] a judgment with code, a file, a command, an advisory id or the word facts in its words is held back; the model is told so", () => {
+  const breaks = [
+    ["The list of tools in `interrupt_on` is empty.", "backquotes"],
+    ["It reads the key in src/tools.py.", "a file name"],
+    ["The approval list interrupt_on is empty.", "a name with an underscore"],
+    ["Skill scripts run npm install while working.", "a command line"],
+    ["It fetches pull requests through gh.", "a command line"],
+    ["The loader falls back to @latest.", "a version tag"],
+    ["It depends on a package with GHSA-jpvv-r467-5p4w.", "an advisory id"],
+    ["The facts do not show which calls need an OK.", "Inspect's own word"],
+    ["It repeats S7-010 in other words.", "a finding code"],
+  ];
+  for (const [says, what] of breaks) {
+    const { kept, held } = checkDrafts([risk({ says })], { sections: [6, 7, 8], byId, ctx });
+    assert.equal(kept.length, 0, `held back: ${says}`);
+    assert.match(held[0].why, new RegExp(`^it puts ${what.replace(/[.*+?^${}()|[\]\\']/g, "\\$&")} in its words`));
+  }
+  const plain = checkDrafts([risk({ title: "Outside content can reach shell actions", says: "Slack posts and fetched pages reach a model that can run commands in a sandbox without a person's OK." })], { sections: [6, 7, 8], byId, ctx });
+  assert.equal(plain.kept.length, 1, "plain words are kept");
+  assert.equal(notPlain("It posts to Slack, e.g. a summary of each run."), null, "ordinary words are plain");
+  assert.match(PLAIN_RULE, /for a manager, in plain words/);
+  assert.match(firstPrompt("", { repo: "x" }) + secondPrompt("", { repo: "x" }), /./);
+  assert.match(glancePrompt([]), /for a manager, in plain words/);
 });
 
 test("[F4.A6] section 1 comes last and holds five findings when the model picks seven, each naming the finding it repeats and carrying its evidence", () => {

@@ -209,7 +209,7 @@ const copyOf = (list, stage = "Asking the model.") => workingCopy({ about: ABOUT
 const levelOf = (badge) => ({ word: badge.querySelector(".word")?.textContent ?? "", shape: badge.querySelector("svg")?.markup ?? "" });
 const SHAPE_OF = Object.fromEntries([...script.matchAll(/\n    (critical|high|medium|low|none|unrated): '([^']+)'/g)].map((m) => [m[1], m[2]]));
 
-test("[F5.R9] the view is one row of six tabs with nothing above it, in the ARIA tabs pattern; the first five count their findings, Risks names its highest level as a word and a shape; it starts on Overview", () => {
+test("[F5.R9] the view is one row of six tabs with nothing above it, in the ARIA tabs pattern, with no count on any tab; Risks names its highest level as a word and a shape; it starts on Overview", () => {
   const r = report();
   const { app } = drawn(r);
   assert.equal(app.children[0].className, "tabs-wrap", "the tabs come first: no head, no title, no status line above them");
@@ -228,13 +228,11 @@ test("[F5.R9] the view is one row of six tabs with nothing above it, in the ARIA
     assert.equal(panel.getAttribute("aria-labelledby"), t.id);
     assert.equal(panel.getAttribute("hidden") === null, on);
     assert.equal(t.querySelector(".tab-key"), null, "no section codes on a tab");
-    if (!TAB_SECTIONS[i].length) { assert.equal(t.querySelector(".tab-n"), null, "About Inspect counts nothing"); continue; }
-    const n = TAB_SECTIONS[i].reduce((a, s) => a + r.findings.filter((f) => f.section === s).length, 0);
-    assert.equal(t.querySelector(".tab-n").textContent, String(n), `${TAB_NAMES[i]} counts its findings`);
-    assert.match(t.getAttribute("aria-label"), new RegExp(`^${TAB_NAMES[i]}, ${n} findings?`));
+    // 0.2.6: no count on any tab.
+    assert.ok(!/\d/.test(t.textContent), `${TAB_NAMES[i]} carries no count: "${t.textContent}"`);
+    if (TAB_NAMES[i] !== "Risks") assert.equal(t.getAttribute("aria-label"), TAB_NAMES[i]);
   }
-  const total = tabs.slice(0, 5).map((t) => Number(t.querySelector(".tab-n").textContent)).reduce((a, b) => a + b, 0);
-  assert.equal(total, r.findings.length, "the five counts add up to the report's total");
+  assert.ok(r.findings.length > 0);
   const risks = tabNamed(app, "Risks");
   assert.equal(levelOf(risks.querySelector(".lv")).word, "High");
   assert.equal(levelOf(risks.querySelector(".lv")).shape, SHAPE_OF.high);
@@ -249,7 +247,8 @@ test("[F5.R9] a row is closed by default and shows only its title, and on Risks 
   const toggle = row.querySelector(".toggle");
   assert.equal(toggle.getAttribute("aria-expanded"), "false", "closed by default");
   assert.deepEqual(toggle.children.map((c) => c.className), ["chev", "lv medium", "tt"], "the level, then the title");
-  assert.equal(row.textContent, "▸Medium@hono/node-server 2.1.5: GHSA-jpvv-r467-5p4w", "nothing else on the closed row");
+  // A 0.2.5 report's advisory title is said in words; its id is only in the opened row.
+  assert.equal(row.textContent, "▸Medium@hono/node-server 2.1.5 has a known security flaw", "nothing else on the closed row");
   for (const r of app.querySelectorAll("li.row")) {
     assert.equal(r.querySelector(".detail"), null, "every row starts closed");
     assert.ok(!/\.(py|mjs|json|md|toml):\d/.test(r.textContent), "no file and line on a closed row");
@@ -264,10 +263,11 @@ test("[F5.R9] a row is closed by default and shows only its title, and on Risks 
   assert.equal(detail.querySelector("p").textContent, "A known vulnerability.", "the finding's words");
   const dts = detail.querySelectorAll("dt").map((x) => x.textContent);
   const dds = detail.querySelectorAll("dd").map((x) => x.textContent);
-  assert.deepEqual(dts, ["In the code", "Category"]);
+  assert.deepEqual(dts, ["In the code", "Advisory", "Category"]);
   assert.equal(dds[0], "sandbox/render/package-lock.json:449", "the file and line");
-  assert.equal(dds[1], "Supply chain, Agentic supply chain vulnerabilities", "the category by its plain name, never its code");
-  assert.ok(!/LLM0|ASI0|pkg:|GHSA/.test(dds[1]));
+  assert.equal(dds[1], "GHSA-jpvv-r467-5p4w", "the advisory's id, in the opened row only");
+  assert.equal(dds[2], "Supply chain, Agentic supply chain vulnerabilities", "the category by its plain name, never its code");
+  assert.ok(!/LLM0|ASI0|pkg:|GHSA/.test(dds[2]));
   const copy = detail.querySelector("button.copy");
   assert.equal(copy.textContent, "Copy");
   copy.click();
@@ -279,7 +279,7 @@ test("[F5.R9] a row is closed by default and shows only its title, and on Risks 
   assert.deepEqual(rowOf(app, "S3-001").querySelector(".toggle").children.map((c) => c.className), ["chev", "tt"]);
 });
 
-test("[F5.R9] Overview: the risk tiles, the top judgments each with a level and a See it in link, what was inspected as a label and value list, and a plain save button", async () => {
+test("[F5.R9] Overview: the risk tiles, the top judgments each with a level and its title as the link, what was inspected as a label and value list, and a plain save button", async () => {
   const { app, sent } = drawn(report());
   const overview = shownPanel(app);
   const tiles = overview.querySelectorAll("button.tile");
@@ -287,9 +287,11 @@ test("[F5.R9] Overview: the risk tiles, the top judgments each with a level and 
   for (const t of tiles) assert.ok(t.querySelector("svg"), "each tile has its shape");
   const items = overview.querySelectorAll("ul.matters li");
   assert.equal(items.length, 4);
-  const got = items.map((li) => ({ title: li.querySelector(".t").textContent, ...levelOf(li.querySelector(".lv")), see: li.querySelector(".see button")?.textContent }));
+  const got = items.map((li) => ({ title: li.querySelector(".t").textContent, ...levelOf(li.querySelector(".lv")), link: li.querySelector("button.title-link")?.getAttribute("aria-label") }));
   for (const g of got) assert.ok(WORDS.includes(g.word) && g.shape, `${g.title} shows its level in words and a shape`);
-  assert.deepEqual(got.map((g) => g.see), ["See it in Risks", "See it in What it reaches", "See it in Risks", "See it in Risks"]);
+  // 0.2.6: the title is the link; no "See it in" line under it.
+  assert.deepEqual(got.map((g) => g.link), [`${LONG}, in Risks`, "Which tools run without an OK, in What it reaches", "Sandbox build fetches are pinned, in Risks", "Gemini key sent in a URL, in Risks"]);
+  assert.ok(!/See it in/.test(overview.textContent));
   const of = Object.fromEntries(got.map((g) => [g.title, g]));
   assert.equal(of["Which tools run without an OK"].word, "Not rated");
   assert.equal(of["Which tools run without an OK"].shape, SHAPE_OF.unrated);
@@ -317,9 +319,9 @@ test("[F5.R9] Overview: the risk tiles, the top judgments each with a level and 
   assert.equal(app.querySelector('button.chip[aria-pressed="true"]').textContent, "High1");
 });
 
-test("[F5.R9] See it in Risks opens the tab that holds the finding, lets go of a filter that hides it, opens the finding, brings it into sight and gives it focus", async () => {
+test("[F5.R9] a judgment's title opens the tab that holds the finding, lets go of a filter that hides it, opens the finding, brings it into sight and gives it focus", async () => {
   const { app, sent } = drawn(report());
-  const see = (title) => shownPanel(app).querySelectorAll("ul.matters li").find((li) => li.querySelector(".t").textContent === title).querySelector(".see button");
+  const see = (title) => shownPanel(app).querySelectorAll("ul.matters li").find((li) => li.querySelector(".t").textContent === title).querySelector("button.title-link");
   tabNamed(app, "Risks").click();
   app.querySelectorAll("button.chip").find((b) => b.textContent.startsWith("Low")).click();
   tabNamed(app, "Overview").click();
@@ -385,10 +387,61 @@ test("[F5.R9] a section opens on the model's judgments before the scripts' lists
   assert.equal(p.querySelector("span.mono").textContent, "interrupt_on");
 });
 
+test("[F5.R9] lists sit under subheadings of their own, a finding that sums up its group is never a row, and slugs and setting names are said in words", () => {
+  const extra = [
+    { id: "S3-200", section: 3, kind: "skill", title: "Skills", says: "36 skills of the agent's own.", by: "script", evidence: ev("skills/brand-lint/SKILL.md", 1) },
+    { id: "S3-201", section: 3, kind: "skill", title: "data-viz", says: "Charts.", by: "script", evidence: ev("skills/data-viz/SKILL.md", 1), detail: { name: "data-viz" } },
+    { id: "S3-202", section: 3, kind: "skill", title: "Draws on-brand charts from a table", says: "Charts.", by: "script", evidence: ev("skills/charts/SKILL.md", 1), detail: { name: "charts" } },
+    { id: "S5-030", section: 5, kind: "credential", title: "GEMINI_API_KEY", says: "It reads the credential GEMINI_API_KEY.", by: "script", evidence: ev("src/settings.py", 3), detail: { env: "GEMINI_API_KEY" } },
+    { id: "S8-010", section: 8, kind: "test", title: "Its tests", says: "12 test files.", by: "script", evidence: ev("tests/test_a.py", 1) },
+    { id: "S8-011", section: 8, kind: "test-gap", title: "No test of the approvals", says: "None.", by: "model", evidence: ev("tests/test_a.py", 1) },
+  ];
+  const { app } = drawn(report([...findings(), ...extra]));
+  const panelOf = (name) => { tabNamed(app, name).click(); return shownPanel(app); };
+  let p = panelOf("What it does");
+  assert.deepEqual(p.querySelectorAll("h3").map((h) => h.textContent), ["Skills"]);
+  assert.equal(rowOf(app, "S3-200"), undefined, "the summing-up finding is the heading, not a row");
+  assert.equal(rowOf(app, "S3-201").querySelector(".tt").textContent, "Data viz", "a slug said in words");
+  assert.equal(rowOf(app, "S3-202").querySelector(".tt").textContent, "Draws on-brand charts from a table");
+  rowOf(app, "S3-201").querySelector(".toggle").click();
+  const dd = (id, dt) => { const r = rowOf(app, id); const i = r.querySelectorAll("dt").findIndex((x) => x.textContent === dt); return i < 0 ? null : r.querySelectorAll("dd")[i].textContent; };
+  assert.equal(dd("S3-201", "Name in the code"), "data-viz", "the slug is in the opened row");
+  p = panelOf("What it reaches");
+  assert.deepEqual(p.querySelectorAll("h3").map((h) => h.textContent), ["Credentials"]);
+  assert.equal(rowOf(app, "S5-030").querySelector(".tt").textContent, "Gemini API key");
+  p = panelOf("Tests and gaps");
+  assert.deepEqual(p.querySelectorAll("h3").map((h) => h.textContent), ["What Inspect couldn't tell", "Gaps in the tests"]);
+  assert.equal(rowOf(app, "S8-010"), undefined, "Its tests sums up its group");
+  for (const name of TAB_NAMES) {
+    const panel = panelOf(name);
+    for (const h of [...panel.querySelectorAll("h2"), ...panel.querySelectorAll("h3")]) assert.notEqual(h.textContent.toLowerCase(), name.toLowerCase(), `no heading repeats the tab ${name}`);
+    for (const t of panel.querySelectorAll(".row .tt")) assert.ok(!/^[a-z0-9]+(?:-[a-z0-9]+)+$/.test(t.textContent), `no slug as a title: ${t.textContent}`);
+  }
+});
+
+test("[F5.R9] a package's known security flaws are one row at their highest level, each advisory's summary, fix and id only in the opened row; a risk with no level has a Not rated chip", () => {
+  const pkg = { id: "S7-050", section: 7, kind: "risk", title: "hono 4.13.13 has known security flaws", says: "Open redirect in serve-static. Fixed in 4.13.14. Header injection.", by: "script", level: "high", level_by: "source", categories: [cat("LLM03:2025", "Supply Chain", "owasp-top-10-llm-2025"), cat("pkg:npm/hono@4.13.13", "hono 4.13.13", "cyclonedx-1.5"), cat("GHSA-1111-1111-1111", "GHSA-1111-1111-1111", "osv"), cat("GHSA-2222-2222-2222", "GHSA-2222-2222-2222", "osv")], evidence: ev("package-lock.json", 900), detail: { name: "hono", version: "4.13.13", advisories: [{ id: "GHSA-1111-1111-1111", summary: "open redirect in serve-static", level: "medium", fixed: "4.13.14" }, { id: "GHSA-2222-2222-2222", summary: "header injection", level: "high", fixed: null }] } };
+  const unrated = { id: "S7-051", section: 7, kind: "risk", title: "A license obligation", says: "It must keep the notice.", by: "model", categories: [cat("Apache-2.0", "Apache-2.0", "spdx-license-list")], evidence: ev("LICENSE", 1) };
+  const { app } = drawn(report([...findings(), pkg, unrated]));
+  tabNamed(app, "Risks").click();
+  const row = rowOf(app, "S7-050");
+  assert.equal(row.textContent, "▸Highhono 4.13.13 has known security flaws");
+  assert.ok(!/GHSA|CVE/.test(shownPanel(app).querySelectorAll("li.row").map((r) => r.querySelector(".toggle").textContent).join(" ")), "no advisory id on a closed row");
+  row.querySelector(".toggle").click();
+  const items = rowOf(app, "S7-050").querySelectorAll(".advisories li").map((li) => li.textContent);
+  assert.deepEqual(items, ["Open redirect in serve-static. Fixed in 4.13.14. GHSA-1111-1111-1111", "Header injection. GHSA-2222-2222-2222"]);
+  assert.equal(rowOf(app, "S7-050").querySelector(".detail").children.filter((c) => c.tagName === "P").length, 0, "the advisories say it once; the words are not repeated");
+  const chips = shownPanel(app).querySelectorAll("button.chip").map((b) => b.textContent);
+  assert.deepEqual(chips, ["All", "High2", "Medium1", "Low1", "No risk1", "Not rated1"]);
+  const shownRows = shownPanel(app).querySelector("ul.rows.rated").children.length;
+  assert.equal(chips.slice(1).reduce((a, c) => a + Number(c.replace(/\D+/g, "")), 0), shownRows, "the chips add up to the rows shown");
+});
+
 test("[F5.R9] a tab of two sections has two plain headings, with no number and no count; a tab of one has none", () => {
   const { app } = drawn(report());
   const heads = (name) => { tabNamed(app, name).click(); return shownPanel(app).querySelectorAll("h2").map((h) => h.textContent); };
-  assert.deepEqual(heads("What it does"), ["What it does", "How it works"]);
+  // 0.2.6: a heading that repeats its tab's name is left out.
+  assert.deepEqual(heads("What it does"), ["How it works"]);
   assert.deepEqual(heads("What it reaches"), ["What it connects to", "What it can do on its own"]);
   assert.deepEqual(heads("Tests and gaps"), []);
 });
@@ -410,7 +463,7 @@ test("[F5.R9] About Inspect says what Inspect does, how it works and what it doe
   assert.equal(shownPanel(bare).querySelectorAll("p")[0].textContent, d.summary);
 });
 
-test("[F5.R9] while the job runs the counts fill in, one line under the tabs says what Inspect is doing in plain words, and the line is gone once the report is done", () => {
+test("[F5.R9] while the job runs, one line under the tabs says what Inspect is doing in plain words, tabs fill in with no count, and the line is gone once the report is done", () => {
   const scripts = findings().filter((f) => f.by === "script");
   const p = drawn(copyOf(scripts, "Asking the model for the judgments of sections 3, 4 and 5: what it does, how it works and what it connects to."), { job_state: "working", lifecycle: null });
   const { app } = p;
@@ -418,19 +471,21 @@ test("[F5.R9] while the job runs the counts fill in, one line under the tabs say
   assert.equal(app.children[1], now(), "the line sits straight under the tabs");
   assert.equal(now().textContent, "Judging what it does, how it works and what it connects to");
   const label = (name) => tabNamed(app, name);
-  assert.equal(label("What it reaches").querySelector(".tab-n").textContent, "…", "a tab with nothing yet");
+  assert.equal(label("What it reaches").textContent, "What it reaches", "no count, and no mark standing for one");
   assert.match(label("What it reaches").getAttribute("aria-label"), /still to come$/);
   label("Tests and gaps").click();
   assert.equal(shownPanel(app).textContent, "Nothing yet.");
-  const counts = () => TAB_NAMES.slice(0, 5).map((n) => label(n).querySelector(".tab-n").textContent);
-  const climbs = [counts()];
+  label("What it does").click();
+  const rows = () => shownPanel(app).querySelectorAll("li.row").length;
+  const climbs = [rows()];
   p.data(copyOf(findings().filter((f) => f.by === "script" || [3, 4, 5].includes(f.section)), "Asking the model for the judgments of sections 6, 7 and 8: what it can do on its own, its risks, and its tests."));
-  climbs.push(counts());
+  climbs.push(rows());
   assert.equal(now().textContent, "Judging what it can do on its own, its risks and its tests");
   p.data(copyOf(findings().filter((f) => f.section !== 1), "Writing section 1, at a glance, from the checked findings."));
-  climbs.push(counts());
+  climbs.push(rows());
   assert.equal(now().textContent, "Writing the overview");
-  assert.deepEqual(climbs, [["6", "1", "…", "1", "…"], ["6", "2", "1", "1", "…"], ["6", "2", "2", "5", "1"]]);
+  assert.deepEqual(climbs, [1, 2, 2], "the tab fills in under the person");
+  for (const t of tabsOf(app)) assert.ok(!/\d/.test(t.textContent), "no count while running either");
   p.data(report(), { job_state: "completed", lifecycle: "draft" });
   assert.equal(now(), null, "the line is gone once the report is done");
   assert.equal(app.children[0].className, "tabs-wrap");

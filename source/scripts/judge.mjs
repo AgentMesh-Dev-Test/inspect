@@ -40,10 +40,15 @@ export const KINDS_FOR = {
   second: ["tool", "capability", "human-step", "command", "address", "handed-address", "setting", "sdk", "credential-shape", "install-script", "link", "refused-path", "vulnerability", "test-file", "test-command", "memory", "license", "repository-license", "model", "skill"],
 };
 
+/** How a title and its words are written (0.2.6): for a manager, never with
+ *  code in them. checks.mjs notPlain holds back a judgment that breaks it. */
+export const PLAIN_RULE = "Write every title and every sentence for a manager, in plain words. Never put in them a file or folder name, a path or a line number; a setting, variable or function name as the code writes it (anything with an underscore, a dot between words or brackets); a command line or a command-line tool's name; a package name with a version tag such as @latest; an advisory id (GHSA or CVE); backquotes; or the word facts. Name each thing as a person would: the Slack connection, the Gemini key, its list of tools that need an OK. Files, lines and names as the code writes them belong only in based_on.";
+
 const SYSTEM = [
   "You are Inspect. You read the facts scripts found in an outside agent's code at one commit, and write judgments about what the agent does and how safe it is, for the person in charge of a department's agents.",
   "Every judgment is a finding that cites, in based_on, the ids of the facts it rests on. A finding that cites no fact, or a fact not in the list, is thrown away. Never invent a file, a line or a fact.",
-  "Say what the facts show in plain words. In sections 3, 4 and 5 say only what the facts show: no guesses, and no word that judges the code (wrong, should, bug) or infers beyond it (probably, likely, seems).",
+  "Say in plain words what the code shows. In sections 3, 4 and 5 say only what it shows: no guesses, and no word that judges the code (wrong, should, bug) or infers beyond it (probably, likely, seems).",
+  PLAIN_RULE,
   "Give no verdict on whether to bring the agent in, and say nothing about how it fits anyone's plan or which catalog role it matches.",
   "Answer with JSON only.",
 ].join(" ");
@@ -58,7 +63,7 @@ export function firstPrompt(factText, { repo }) {
     "",
     "Write the findings of these sections. The scripts already list each skill and part, each model name, each credential and section 2; do not repeat a fact on its own, judge across them.",
     `Section 3 "What it does": kind job (each job a caller can give it, in plain words; detail {name, does}), kind input (what you give it; detail {name, kind}), kind output (what it hands back; detail {name, kind}).`,
-    `Section 4 "How it works": kind model (which models it calls and whether you can change them without changing the code; detail {models: [..], changeable: "yes" | "no" | "partly", how}), kind how-it-runs (how it runs: a server, a command, a container, a hosted graph), kind memory (what it remembers between jobs and where), kind human-step (each step where a person must step in; detail {where, what}). Say when the facts show no memory or no human step, citing what you looked at.`,
+    `Section 4 "How it works": kind model (which models it calls and whether you can change them without changing the code; detail {models: [..], changeable: "yes" | "no" | "partly", how}), kind how-it-runs (how it runs: a server, a command, a container, a hosted graph), kind memory (what it remembers between jobs and where), kind human-step (each step where a person must step in; detail {where, what}). Say when the code shows no memory or no human step, citing what you looked at.`,
     `Section 5 "What it connects to": kind system (each system it reaches; detail {system, product, access: "read" | "write" | "read-write" | "unknown", credentials: ["ENV_NAME"]}), kind spend (what it spends per run: model calls, paid services; detail {what, per}).`,
     "",
     "Write at most 40 findings in all, the most telling first, each in at most three sentences.",
@@ -90,6 +95,7 @@ export function glancePrompt(findings) {
     ...lines,
     "",
     'Section 1 "At a glance" holds the few findings that matter most to the person deciding whether to bring the agent in, most important first, at most 5. For each, name the finding it repeats and say it again in one plain sentence. Give no verdict.',
+    PLAIN_RULE,
     'Answer: {"glance": [{"repeats": "S7-001", "says": "<one sentence>"}]}',
   ].join("\n");
 }

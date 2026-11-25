@@ -22,7 +22,7 @@ import { markdownOf, workingCopy, WORKING_COPY_CHARS } from "../scripts/report.m
 import { checkDelivered } from "./delivered-formats.test.mjs";
 import { ENV, SHA, descriptor, inTemp, world, model, smallAgent, reportSchema, schemaProblems } from "./helpers.mjs";
 
-const glanceOf = (ids) => (prompt) => ({ text: JSON.stringify({ glance: ids.filter((id) => prompt.includes(id)).map((id) => ({ repeats: id, says: `Finding ${id} matters.` })) }) });
+const glanceOf = (ids) => (prompt) => ({ text: JSON.stringify({ glance: ids.filter((id) => prompt.includes(id)).map((id) => ({ repeats: id, says: `This one matters most, number ${id.slice(3)}.` })) }) });
 const run = (text, { files = smallAgent(), answers = [], onFinding, ...w } = {}) => inTemp(async (at) => ({ at, ...(await inspect({ text, workDir: at, env: ENV, fetchImpl: world({ files, ...w }).fetchImpl, ask: model(answers).ask, onFinding })) }));
 
 test("[F5.A1] the report fits the inspection-report-v1 schema, runs from section 1 to 8, and each finding has evidence or, in no file, a source", async () => {
@@ -133,8 +133,15 @@ test("[F5.R8] inspection.md is the report as Markdown: its headings, each level 
   const text = markdownOf(out.report);
   assert.match(text, /^# Inspection of acme\/helper$/m);
   assert.match(text, /^## At a glance$/m);
-  for (const n of [2, 3, 4, 5, 6, 7, 8]) assert.match(text, new RegExp(`^## ${n}\\. `, "m"));
-  assert.match(text, /\[`LICENSE:1`\]\(https:\/\/github\.com\/acme\/helper\/blob\/86d8f667796890eb6d3612dbd1b9e941782fe03f\/LICENSE#L1\)/);
+  // 0.2.6: plain headings, no finding codes, category names in words, the short commit only.
+  for (const t of ["What was inspected", "What it does", "How it works", "What it connects to", "What it can do on its own", "Risks, and what it needs to run safely", "Tests, and what Inspect couldn't tell"]) assert.match(text, new RegExp(`^## ${t.replace(/[,.]/g, "\\$&")}$`, "m"));
+  assert.ok(!/^## \d/m.test(text), "no section numbers");
+  for (const re of [/\bS\d-\d{3}\b/, /LLM0/, /ASI0/, /\b[0-9a-f]{40}\b/, /inspection\.json/, /\bthe facts\b/i, /without running any of it/]) assert.ok(!re.test(text), `the Markdown holds nothing like ${re}`);
+  assert.match(text, /\[`LICENSE:1`\]\(https:\/\/github\.com\/acme\/helper\/blob\/86d8f66\/LICENSE#L1\)/);
+  assert.match(text, /^Commit 86d8f66, committed /m);
+  const risky = markdownOf({ ...out.report, findings: [{ id: "S7-001", section: 7, kind: "risk", title: "httpx 0.27.0 has a known security flaw", says: "A made-up hole. Fixed in 0.27.2.", by: "script", based_on: ["F0001"], level: "high", level_by: "source", categories: [{ list: "owasp-top-10-llm-2025", id: "LLM03:2025", name: "Supply Chain" }, { list: "owasp-top-10-agentic", id: "ASI04", name: "Agentic Supply Chain Vulnerabilities" }, { list: "osv", id: "GHSA-aaaa-bbbb-cccc", name: "GHSA-aaaa-bbbb-cccc" }], evidence: [{ file: "uv.lock", line: 9 }], detail: { advisories: [{ id: "GHSA-aaaa-bbbb-cccc", fixed: "0.27.2" }] } }] });
+  assert.match(risky, /\*\*httpx 0\.27\.0 has a known security flaw\.\*\* A made-up hole\. Fixed in 0\.27\.2\. Advisories: GHSA-aaaa-bbbb-cccc \(fixed in 0\.27\.2\)\. Category: Supply chain; Agentic supply chain vulnerabilities\./);
+  assert.ok(!/LLM0|ASI0|S7-001/.test(risky));
   const evil = { ...out.report, findings: [{ id: "S7-001", section: 7, kind: "risk", title: "![x](https://evil.test/p.png) <img src=x>", says: "[click](https://evil.test) `code`", by: "model", based_on: ["F0001"], level: "high", level_by: "model", evidence: [{ file: "a(b).py", line: 2 }] }] };
   const e = markdownOf(evil);
   assert.match(e, /\*\*High risk\.\*\*/);
@@ -185,7 +192,7 @@ test("[F5.A4] the reply opens with its header, gives section 1's findings one to
   assert.deepEqual(lines.slice(0, 4).map((l) => l.split(":")[0]), ["repository", "commit", "findings", "held_back"]);
   const at = lines.indexOf("## At a glance");
   assert.ok(at > 0);
-  assert.deepEqual(lines.slice(at + 1, at + 4), ["- Finding S2-004 matters. (S2-004)", "- Finding S2-005 matters. (S2-005)", "- Finding S2-006 matters. (S2-006)"]);
+  assert.deepEqual(lines.slice(at + 1, at + 4), ["- This one matters most, number 004. (S2-004)", "- This one matters most, number 005. (S2-005)", "- This one matters most, number 006. (S2-006)"]);
   assert.ok(lines.includes("## Sections"));
   assert.ok(lines.some((l) => /^7\. Risks, and what it needs to run safely: \d+ findings?$/.test(l)));
   assert.match(out.reply, /\d+ judgments? held back/);

@@ -135,7 +135,8 @@ test("[F2.A5] a committed key is a place and a kind, and its characters are in n
     const out = await inspect({ text: "repository: acme/helper\ncommit: 86d8f66", workDir: at, env: ENV, fetchImpl: world({ files }).fetchImpl, ask: model().ask });
     assert.ok(!JSON.stringify(out.report).includes(key), "the report does not repeat the key");
     assert.ok(!out.reply.includes(key));
-    assert.ok(out.report.findings.some((x) => x.section === 7 && /config\/dev\.env/.test(x.title)));
+    // 0.2.6: the file is in its evidence, not in its title.
+    assert.ok(out.report.findings.some((x) => x.section === 7 && x.title === "A committed credential in the code" && x.evidence?.some((e) => e.file === "config/dev.env")));
   });
 });
 
