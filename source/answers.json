@@ -1,0 +1,20 @@
+{
+  "name": "inspect",
+  "price": "free",
+  "systems": {
+    "answer": "code-host (GitHub) and vulnerability-database (OSV, osv.dev), both read only; it writes to nothing",
+    "said": "GitHub, read only (public repos at a commit);\n   - OSV (osv.dev), read only, for known holes in dependencies;"
+  },
+  "egress-1": {
+    "answer": "yes",
+    "said": "GitHub, read only (public repos at a commit);"
+  },
+  "egress-2": {
+    "answer": "yes",
+    "said": "OSV (osv.dev), read only, for known holes in dependencies;"
+  },
+  "limit-cost": {
+    "answer": "none set by the package: the package sets no spending limit, and whoever installs and runs it sets one for that install",
+    "said": "building the software is different than setting limits on running it!"
+  }
+}

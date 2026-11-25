@@ -1,0 +1,1524 @@
+{
+  "format": "spec-v1",
+  "product": {
+    "name": "inspect",
+    "version": "0.1.0",
+    "kind": "agent"
+  },
+  "purpose": "Inspect takes a public GitHub repository address and a commit, reads the agent's code at that commit without running any of it, and hands back an inspection report on what the agent does and how safe it is. The report is a list of findings in eight sections, each finding standing on its own and citing a file and line at the commit. Its reader is the person in charge of a department's agents, deciding whether to bring in an outside agent before anything is installed or given a credential. It judges no fit with anyone's plan, matches the agent to no catalog role and gives no bring-it-in-or-not verdict.",
+  "users": [
+    {
+      "who": "The person in charge of a department's agents",
+      "wants": "To know what an outside agent does and how safe it is before anything is installed or given a credential."
+    },
+    {
+      "who": "A later agent, such as the future Roadmap agent",
+      "wants": "Sections 3, 4 and 5 of the report as precise, structured findings it can read without guessing."
+    }
+  ],
+  "source": {
+    "kind": "account"
+  },
+  "job_seconds": 900,
+  "features": [
+    {
+      "id": "F1",
+      "name": "Fetch the repository at the commit",
+      "offering": "inspect-a-repository",
+      "does": "Reads GitHub's record of the repository and of the commit, and the archive of the repository at that commit, with read-only calls, and unpacks the archive into the job's own folder without following any link in it.",
+      "inputs": [
+        {
+          "name": "repository",
+          "kind": "url",
+          "about": "The public GitHub repository, as https://github.com/<owner>/<name> or <owner>/<name>, on a line of the message (repository: ...) or anywhere in it.",
+          "required": true,
+          "given_by": "either"
+        },
+        {
+          "name": "commit",
+          "kind": "identifier",
+          "about": "The commit's digest, 7 to 40 hexadecimal characters, on a line of the message (commit: ...), or as the last part of a https://github.com/<owner>/<name>/commit/<digest> or /tree/<digest> address that names the repository too.",
+          "required": true,
+          "given_by": "either"
+        }
+      ],
+      "requirements": [
+        {
+          "id": "F1.R1",
+          "kind": "input",
+          "priority": "must",
+          "verify": "test",
+          "shall": "The agent shall take the repository as a https://github.com/<owner>/<name> address or as <owner>/<name>, and the commit as 7 to 40 hexadecimal characters, from repository: and commit: lines of the message or from one https://github.com/<owner>/<name>/commit/<digest> or /tree/<digest> address that names both.",
+          "source": {
+            "said": "Inspect takes a GitHub repository address and a commit"
+          }
+        },
+        {
+          "id": "F1.R2",
+          "kind": "behavior",
+          "priority": "must",
+          "verify": "test",
+          "shall": "The agent shall read from GitHub only with GET requests: the repository's record, the commit's record, the commits of the last 90 days, and the archive of the repository at the named commit.",
+          "source": {
+            "said": "GitHub, read only (public repos at a commit)"
+          }
+        },
+        {
+          "id": "F1.R3",
+          "kind": "limit",
+          "priority": "must",
+          "verify": "test",
+          "shall": "The agent shall make at most 6 calls to GitHub in one job, and shall stop with words saying so when GitHub says its allowance for anonymous reads has run out.",
+          "source": {
+            "said": "GitHub, read only (public repos at a commit)"
+          }
+        },
+        {
+          "id": "F1.R4",
+          "kind": "behavior",
+          "priority": "must",
+          "verify": "test",
+          "shall": "The agent shall take the commit's full 40-character digest from GitHub's record of the commit, and shall mark the commit as checked only when the archive's own header names that same digest.",
+          "source": {
+            "said": "Every finding cites a file and line at the commit."
+          }
+        },
+        {
+          "id": "F1.R5",
+          "kind": "refusal",
+          "priority": "must",
+          "verify": "test",
+          "shall": "The agent shall refuse, and inspect nothing, when GitHub has no public repository at the address, saying: There is no public repository at <owner>/<name> on GitHub, so nothing was inspected.",
+          "source": {
+            "said": "public repos at a commit"
+          }
+        },
+        {
+          "id": "F1.R6",
+          "kind": "refusal",
+          "priority": "must",
+          "verify": "test",
+          "shall": "The agent shall refuse, and inspect nothing, when the commit is not a commit of the repository, saying: <commit> is not a commit of <owner>/<name>, so nothing was inspected.",
+          "source": {
+            "said": "Inspect takes a GitHub repository address and a commit"
+          }
+        },
+        {
+          "id": "F1.R7",
+          "kind": "refusal",
+          "priority": "must",
+          "verify": "test",
+          "shall": "The agent shall refuse, and inspect nothing, when the repository or the commit is missing, naming each one that is missing, and when the commit is given as a branch or tag name rather than a digest, saying that Inspect reads one commit and a branch or a tag can move.",
+          "source": {
+            "said": "Inspect takes a GitHub repository address and a commit"
+          }
+        },
+        {
+          "id": "F1.R8",
+          "kind": "limit",
+          "priority": "must",
+          "verify": "test",
+          "shall": "The agent shall refuse, and inspect nothing, an archive larger than 50 MB or holding more than 20000 files, saying how large it is and the limit it is over.",
+          "source": {
+            "said": "reads the agent's code"
+          }
+        },
+        {
+          "id": "F1.R9",
+          "kind": "security",
+          "priority": "must",
+          "verify": "test",
+          "shall": "The agent shall unpack the archive only inside the job's own folder, shall write no file whose path leaves that folder, shall write no link and follow no link, and shall record each link the archive holds, with its path and where it points, as a fact.",
+          "source": {
+            "said": "Read only: it never runs the repo's code."
+          }
+        },
+        {
+          "id": "F1.R10",
+          "kind": "error",
+          "priority": "must",
+          "verify": "test",
+          "shall": "The agent shall, when GitHub does not answer or answers with an error, deliver no report and say which call failed and what GitHub answered, so the person can try again later.",
+          "source": {
+            "said": "GitHub, read only (public repos at a commit)"
+          }
+        }
+      ],
+      "acceptance": [
+        {
+          "id": "F1.A1",
+          "gherkin": "Scenario: The repository and commit are read from the message\n  Given a message with the lines repository: https://github.com/acme/helper and commit: 86d8f66\n  When Inspect reads the message\n  Then it asks GitHub for acme/helper at 86d8f66 with GET requests only\n  And it makes no more than 6 calls to GitHub",
+          "checks": [
+            "F1.R1",
+            "F1.R2",
+            "F1.R3"
+          ]
+        },
+        {
+          "id": "F1.A2",
+          "gherkin": "Scenario: A commit address names both\n  Given a message holding https://github.com/acme/helper/commit/86d8f667796890eb6d3612dbd1b9e941782fe03f\n  When Inspect reads the message\n  Then the repository is acme/helper and the commit is 86d8f667796890eb6d3612dbd1b9e941782fe03f",
+          "checks": [
+            "F1.R1"
+          ]
+        },
+        {
+          "id": "F1.A3",
+          "gherkin": "Scenario: The archive is the named commit\n  Given GitHub's record of commit 86d8f66 gives the full digest 86d8f667796890eb6d3612dbd1b9e941782fe03f\n  And the archive's header names the same digest\n  When Inspect fetches the archive\n  Then the report's commit is the full digest and it is marked as checked",
+          "checks": [
+            "F1.R4"
+          ]
+        },
+        {
+          "id": "F1.A4",
+          "gherkin": "Scenario: No such public repository\n  Given GitHub answers 404 for acme/nothing-here\n  When Inspect is asked to inspect acme/nothing-here at 86d8f66\n  Then it replies There is no public repository at acme/nothing-here on GitHub, so nothing was inspected.\n  And it delivers no report",
+          "checks": [
+            "F1.R5"
+          ]
+        },
+        {
+          "id": "F1.A5",
+          "gherkin": "Scenario: The commit is not in the repository\n  Given GitHub answers 422 for the commit deadbee of acme/helper\n  When Inspect is asked to inspect acme/helper at deadbee\n  Then it replies deadbee is not a commit of acme/helper, so nothing was inspected.\n  And it delivers no report",
+          "checks": [
+            "F1.R6"
+          ]
+        },
+        {
+          "id": "F1.A6",
+          "gherkin": "Scenario: A branch name instead of a commit\n  Given a message with the lines repository: acme/helper and commit: main\n  When Inspect reads the message\n  Then it replies that Inspect reads one commit and a branch or a tag can move\n  And it makes no call to GitHub",
+          "checks": [
+            "F1.R7"
+          ]
+        },
+        {
+          "id": "F1.A7",
+          "gherkin": "Scenario: Nothing to say which repository\n  Given a message that names no repository and no commit\n  When Inspect reads the message\n  Then it replies naming the repository and the commit as missing\n  And it makes no call to GitHub",
+          "checks": [
+            "F1.R7"
+          ]
+        },
+        {
+          "id": "F1.A8",
+          "gherkin": "Scenario: The archive is too large\n  Given GitHub says the archive of the commit is 61 MB\n  When Inspect fetches it\n  Then it replies that the archive is 61 MB and over the limit of 50 MB\n  And it delivers no report",
+          "checks": [
+            "F1.R8"
+          ]
+        },
+        {
+          "id": "F1.A9",
+          "gherkin": "Scenario: A link and a path that leaves the folder\n  Given an archive holding a link .claude/skills pointing to ../skills and a file whose path climbs out with ../\n  When Inspect unpacks it\n  Then no file is written outside the job's folder and no link is written\n  And the link is recorded as a fact with its path and where it points",
+          "checks": [
+            "F1.R9"
+          ]
+        },
+        {
+          "id": "F1.A10",
+          "gherkin": "Scenario: GitHub fails\n  Given GitHub answers 503 to the archive\n  When Inspect fetches it\n  Then it delivers no report\n  And it replies naming the archive call and GitHub's answer 503",
+          "checks": [
+            "F1.R10"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "F2",
+      "name": "Read the facts by rule",
+      "offering": "inspect-a-repository",
+      "does": "Reads the codebase at the commit with the reverse engineer's read-the-codebase scripts and the security reviewer's program trace and credential scan, adds the agent's own parts found by fixed patterns, and gives every fact an id, a file and a line, with no model.",
+      "requirements": [
+        {
+          "id": "F2.R1",
+          "kind": "behavior",
+          "priority": "must",
+          "verify": "test",
+          "shall": "The agent shall read the codebase with the reverse engineer's read-the-codebase scripts as carried, keeping as facts the environment variables the code reads (by name, never by value, marked as credentials by their names), its entry points and how it starts, its test files and their cases, its test command and the schemas it carries, each with its file and line.",
+          "source": {
+            "said": "Inspect reuses the reverse engineer's fact-gathering skills: read-the-codebase, list-the-dependencies (including the CycloneDX SBOM), check-the-evidence, and the scripts those skills run."
+          }
+        },
+        {
+          "id": "F2.R2",
+          "kind": "behavior",
+          "priority": "must",
+          "verify": "test",
+          "shall": "The agent shall read each program with the security reviewer's program trace as carried, keeping as facts each network address a program calls or writes down, each call to an address it is handed, each command it starts and each browser it drives, each with its file and line.",
+          "source": {
+            "said": "The security reviewer has the reach / spend / never-do shape; borrow its vocabulary for section 7."
+          }
+        },
+        {
+          "id": "F2.R3",
+          "kind": "behavior",
+          "priority": "must",
+          "verify": "test",
+          "shall": "The agent shall keep as facts, by fixed patterns, each skill (a folder holding SKILL.md, with the name and description its front matter gives), each model the code names and the setting or line that chooses it, each tool the code hands a model, each place the code stops for a person, each place it keeps memory between jobs, each script that runs at install, and each license file, with its file and line.",
+          "source": {
+            "said": "Scripts collect the facts; the model writes only the judgments"
+          }
+        },
+        {
+          "id": "F2.R4",
+          "kind": "behavior",
+          "priority": "must",
+          "verify": "test",
+          "shall": "The agent shall decide by rule, for each skill folder and for each script that runs as a command together with the files it imports from its own folder, whether it can be lifted out on its own: it can when every import in its code resolves inside its own folder or to the language's own modules, it reads no credential from its environment, and it loads or installs no package at run time; the fact names each import, credential or run-time package that keeps it from standing alone, and each other setting it reads.",
+          "source": {
+            "said": "its skills as separate parts, and whether each can be lifted out on its own"
+          }
+        },
+        {
+          "id": "F2.R5",
+          "kind": "security",
+          "priority": "must",
+          "verify": "test",
+          "shall": "The agent shall find committed credentials with the security reviewer's credential scan as carried, and shall keep for each only its file, its line and what kind of credential it looks like, never the matched characters.",
+          "source": {
+            "said": "committed secrets"
+          }
+        },
+        {
+          "id": "F2.R6",
+          "kind": "output",
+          "priority": "must",
+          "verify": "test",
+          "shall": "The agent shall give each fact an id of the form F followed by four or more digits, its kind, its file and line at the commit when it has one, and the text of that line exactly as written when the line is at most 400 characters long, and shall say a longer line's length instead of cutting its text.",
+          "source": {
+            "said": "Every finding cites a file and line at the commit."
+          }
+        },
+        {
+          "id": "F2.R7",
+          "kind": "behavior",
+          "priority": "must",
+          "verify": "test",
+          "shall": "The agent shall, when the archive holds no file it can read as text, still write the report with sections 2 and 8, and section 8 shall say that there was no code to read.",
+          "source": {
+            "said": "reads the agent's code"
+          }
+        }
+      ],
+      "acceptance": [
+        {
+          "id": "F2.A1",
+          "gherkin": "Scenario: Settings and credentials by name\n  Given a codebase whose src/app.py reads os.environ[\"ANTHROPIC_API_KEY\"] on line 12\n  When Inspect reads the facts\n  Then a fact names ANTHROPIC_API_KEY as a credential at src/app.py line 12\n  And no fact holds the value of any variable",
+          "checks": [
+            "F2.R1",
+            "F2.R6"
+          ]
+        },
+        {
+          "id": "F2.A2",
+          "gherkin": "Scenario: What a program reaches\n  Given a program that calls https://slack.com/api/chat.postMessage and starts the command git\n  When Inspect reads the facts\n  Then one fact names the address slack.com with its file and line\n  And one fact names the command git with its file and line",
+          "checks": [
+            "F2.R2"
+          ]
+        },
+        {
+          "id": "F2.A3",
+          "gherkin": "Scenario: The agent's own parts\n  Given a codebase with skills/stills/SKILL.md whose front matter names stills, a line that chooses a model by a setting, a tool handed to the model, a line that stops for a person's approval, a checkpointer and a postinstall script\n  When Inspect reads the facts\n  Then each of these is a fact of its own kind with its file and line",
+          "checks": [
+            "F2.R3"
+          ]
+        },
+        {
+          "id": "F2.A4",
+          "gherkin": "Scenario: Which parts can be lifted out\n  Given tools/lint.mjs that imports node:fs and ./helpers.mjs, and tools/helpers.mjs that reads the setting LINT_DIR with a default\n  And skills/render/scripts/render.mjs that imports ../../../src/shared.mjs\n  And tools/report.mjs that reads the credential REPORT_API_KEY\n  And tools/load.mjs that loads a package whose name it works out at run time\n  When Inspect reads the facts\n  Then tools/lint.mjs can be lifted out on its own with tools/helpers.mjs, and its fact names the setting LINT_DIR\n  And skills/render cannot, and its fact names the import ../../../src/shared.mjs\n  And tools/report.mjs cannot, and its fact names REPORT_API_KEY\n  And tools/load.mjs cannot, and its fact names the package it loads at run time",
+          "checks": [
+            "F2.R4"
+          ]
+        },
+        {
+          "id": "F2.A5",
+          "gherkin": "Scenario: A committed key is never repeated\n  Given a file config/dev.env whose line 3 holds an AWS access key\n  When Inspect reads the facts\n  Then a fact says config/dev.env line 3 looks like an AWS access key\n  And neither the facts nor the report hold the key's characters",
+          "checks": [
+            "F2.R5"
+          ]
+        },
+        {
+          "id": "F2.A6",
+          "gherkin": "Scenario: A long line is not cut\n  Given a fact whose line is 900 characters long\n  When Inspect writes the fact\n  Then the fact gives the line's length as 900 and no part of its text",
+          "checks": [
+            "F2.R6"
+          ]
+        },
+        {
+          "id": "F2.A7",
+          "gherkin": "Scenario: Nothing to read\n  Given an archive whose only file is a picture\n  When Inspect writes the report\n  Then the report holds sections 2 and 8\n  And section 8 says there was no code to read",
+          "checks": [
+            "F2.R7"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "F3",
+      "name": "List the dependencies and check them against OSV",
+      "offering": "inspect-a-repository",
+      "does": "Makes a CycloneDX 1.5 dependency list by rule with the reverse engineer's list-the-dependencies script, adds the packages of a uv.lock, and asks OSV which of the exactly versioned packages have known vulnerabilities.",
+      "outputs": [
+        {
+          "name": "sbom",
+          "kind": "application/vnd.cyclonedx+json",
+          "about": "The dependency list as a CycloneDX 1.5 bill of materials, made by rule and never by the model: every component with its version, its package URL and where it was read."
+        }
+      ],
+      "requirements": [
+        {
+          "id": "F3.R1",
+          "kind": "behavior",
+          "priority": "must",
+          "verify": "test",
+          "shall": "The agent shall make the dependency list as a CycloneDX 1.5 bill of materials with the reverse engineer's list-the-dependencies script as carried, and shall add each package a uv.lock names, with its version and package URL, to the same list.",
+          "source": {
+            "said": "list-the-dependencies (including the CycloneDX SBOM)"
+          }
+        },
+        {
+          "id": "F3.R2",
+          "kind": "behavior",
+          "priority": "must",
+          "verify": "test",
+          "shall": "The agent shall ask OSV about every component with an exact version in the npm, PyPI, Go or crates.io ecosystems, by queries that read and write nothing, at most 1000 components a query and at most 10 queries a job, and shall then read each vulnerability found, at most 60 a job.",
+          "source": {
+            "said": "OSV (osv.dev), read only, for known holes in dependencies"
+          }
+        },
+        {
+          "id": "F3.R3",
+          "kind": "output",
+          "priority": "must",
+          "verify": "test",
+          "shall": "The agent shall write each known vulnerability as a finding of section 7 naming the package, its version, the OSV id and its aliases, the version that fixes it when OSV gives one, the line of the manifest or lockfile the package was read from, the level OSV's record gives, and the categories LLM03:2025 Supply Chain and ASI04 Agentic Supply Chain Vulnerabilities.",
+          "source": {
+            "said": "known holes in dependencies"
+          }
+        },
+        {
+          "id": "F3.R4",
+          "kind": "behavior",
+          "priority": "must",
+          "verify": "test",
+          "shall": "The agent shall list as findings of section 8 the components it could not ask OSV about (a version range rather than a version, an ecosystem OSV is not asked for, a lockfile neither reader reads) and the vulnerabilities over the limit of 60 by id alone.",
+          "source": {
+            "said": "what Inspect could not settle without running it"
+          }
+        },
+        {
+          "id": "F3.R5",
+          "kind": "error",
+          "priority": "must",
+          "verify": "test",
+          "shall": "The agent shall, when OSV does not answer or answers with an error, still deliver the report, with a finding of section 8 saying the dependencies were not checked against OSV and what OSV answered.",
+          "source": {
+            "said": "OSV (osv.dev), read only, for known holes in dependencies"
+          }
+        }
+      ],
+      "acceptance": [
+        {
+          "id": "F3.A1",
+          "gherkin": "Scenario: The dependency list\n  Given a codebase with a package-lock.json naming left-pad 1.3.0 and a uv.lock naming httpx 0.27.0\n  When Inspect lists the dependencies\n  Then sbom.cdx.json is a CycloneDX 1.5 bill of materials holding pkg:npm/left-pad@1.3.0 and pkg:pypi/httpx@0.27.0",
+          "checks": [
+            "F3.R1"
+          ]
+        },
+        {
+          "id": "F3.A2",
+          "gherkin": "Scenario: A known vulnerability\n  Given OSV says GHSA-aaaa-bbbb-cccc affects httpx 0.27.0, with the alias CVE-2026-0001, severity HIGH and a fix in 0.27.2\n  When Inspect checks the dependencies\n  Then section 7 holds a finding naming httpx 0.27.0, GHSA-aaaa-bbbb-cccc, CVE-2026-0001, the fix 0.27.2 and the uv.lock line\n  And its level is high and its categories are LLM03:2025 and ASI04",
+          "checks": [
+            "F3.R2",
+            "F3.R3"
+          ]
+        },
+        {
+          "id": "F3.A3",
+          "gherkin": "Scenario: What could not be asked\n  Given a package.json with no lockfile asking for express ^4.0.0\n  When Inspect checks the dependencies\n  Then section 8 says express was not checked because only a range is given",
+          "checks": [
+            "F3.R4"
+          ]
+        },
+        {
+          "id": "F3.A4",
+          "gherkin": "Scenario: OSV fails\n  Given OSV answers 500\n  When Inspect checks the dependencies\n  Then the report is still delivered\n  And section 8 says the dependencies were not checked against OSV and that OSV answered 500",
+          "checks": [
+            "F3.R5"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "F4",
+      "name": "Write the judgments",
+      "offering": "inspect-a-repository",
+      "does": "Gives a model the facts and asks it for the judgments of sections 3 to 8 and then section 1, in up to three model calls a job, each citing the facts it rests on, and keeps only the judgments the reverse engineer's check-the-evidence scripts and the published lists let through.",
+      "requirements": [
+        {
+          "id": "F4.R1",
+          "kind": "behavior",
+          "priority": "must",
+          "verify": "test",
+          "shall": "The agent shall give the model the facts the scripts found, whole, and in parts when they are more than one call can take, and shall ask it only for judgments, each citing by id one or more of those facts.",
+          "source": {
+            "said": "the model writes only the judgments, and each judgment cites a fact the scripts found"
+          }
+        },
+        {
+          "id": "F4.R2",
+          "kind": "behavior",
+          "priority": "must",
+          "verify": "test",
+          "shall": "The agent shall hold back a judgment that cites no fact, or cites a fact the scripts did not find, or whose evidence does not check against the commit with the reverse engineer's evidence check, and shall list each one held back with the reason.",
+          "source": {
+            "said": "check-the-evidence"
+          }
+        },
+        {
+          "id": "F4.R3",
+          "kind": "behavior",
+          "priority": "must",
+          "verify": "test",
+          "shall": "The agent shall hold back a judgment of section 3, 4 or 5 whose words judge the code or infer beyond what the facts show, by the reverse engineer's lists of such words.",
+          "source": {
+            "said": "Sections 3, 4 and 5 must be precise, because the future Roadmap agent reads them."
+          }
+        },
+        {
+          "id": "F4.R4",
+          "kind": "behavior",
+          "priority": "must",
+          "verify": "test",
+          "shall": "The agent shall give every risk a level from the CVSS v4.0 qualitative severity rating scale (none, low, medium, high, critical) and a category from the OWASP Top 10 for LLM Applications 2025 (LLM01:2025 to LLM10:2025) or the OWASP Top 10 for Agentic Applications (ASI01 to ASI10), and shall hold back a risk without both or with a category from no list.",
+          "source": {
+            "said": "Each risk carries a level and a category from a published list: the OWASP Top 10 for LLM Applications and OWASP's agentic AI threats list, SPDX license names, and a CycloneDX dependency list."
+          }
+        },
+        {
+          "id": "F4.R5",
+          "kind": "behavior",
+          "priority": "must",
+          "verify": "test",
+          "shall": "The agent shall hold back any judgment that gives a verdict on whether to bring the agent in, or that judges its fit with a plan or matches it to a catalog role.",
+          "source": {
+            "said": "No recommendation: it gives no bring-it-in-or-not verdict."
+          }
+        },
+        {
+          "id": "F4.R6",
+          "kind": "order",
+          "priority": "must",
+          "verify": "test",
+          "shall": "The agent shall write section 1 last, from the findings of sections 2 to 8: at most 5 findings, each naming the finding it repeats and carrying that finding's evidence.",
+          "source": {
+            "said": "At a glance | The few findings that matter most, written last"
+          }
+        },
+        {
+          "id": "F4.R7",
+          "kind": "limit",
+          "priority": "must",
+          "verify": "test",
+          "shall": "The agent shall set an output budget on every model call and read why the answer ended, and shall treat an answer that stopped at its budget as a failure that says so, never as a whole answer.",
+          "source": {
+            "said": "a model for the judgments, through the shared model caller (Common Agent 12.4.1, system of kind model)"
+          }
+        },
+        {
+          "id": "F4.R8",
+          "kind": "error",
+          "priority": "must",
+          "verify": "test",
+          "shall": "The agent shall, when the model fails or stops at its budget, still deliver the report with the scripts' findings, and each section the model would have judged shall hold a finding saying the judgment was not made and why.",
+          "source": {
+            "said": "Scripts collect the facts; the model writes only the judgments"
+          }
+        }
+      ],
+      "acceptance": [
+        {
+          "id": "F4.A1",
+          "gherkin": "Scenario: A judgment that cites a fact\n  Given the facts F0007 (a shell tool at src/tools.py line 40) and F0012 (a web page reader at src/tools.py line 61)\n  And the model's judgment of section 7 cites F0007 and F0012, level high, category LLM01:2025\n  When Inspect checks the judgments\n  Then the finding is delivered with the evidence src/tools.py lines 40 and 61",
+          "checks": [
+            "F4.R1",
+            "F4.R2",
+            "F4.R4"
+          ]
+        },
+        {
+          "id": "F4.A2",
+          "gherkin": "Scenario: A judgment with nothing behind it\n  Given the model's judgment cites F9999, which the scripts did not find\n  When Inspect checks the judgments\n  Then the judgment is not a finding\n  And it is listed as held back with the reason",
+          "checks": [
+            "F4.R2"
+          ]
+        },
+        {
+          "id": "F4.A3",
+          "gherkin": "Scenario: A guess in a precise section\n  Given the model's judgment of section 4 says the agent probably keeps memory between jobs\n  When Inspect checks the judgments\n  Then it is held back because it infers",
+          "checks": [
+            "F4.R3"
+          ]
+        },
+        {
+          "id": "F4.A4",
+          "gherkin": "Scenario: A risk with no category from a list\n  Given the model's risk of section 7 has the level high and the category Bad Vibes\n  When Inspect checks the judgments\n  Then the risk is held back",
+          "checks": [
+            "F4.R4"
+          ]
+        },
+        {
+          "id": "F4.A5",
+          "gherkin": "Scenario: No verdict\n  Given the model's judgment says it is safe to bring this agent in\n  When Inspect checks the judgments\n  Then it is held back",
+          "checks": [
+            "F4.R5"
+          ]
+        },
+        {
+          "id": "F4.A6",
+          "gherkin": "Scenario: At a glance comes last\n  Given the findings of sections 2 to 8 are checked\n  And the model picks seven findings for section 1\n  When Inspect writes section 1\n  Then section 1 holds five findings, each naming the finding it repeats and carrying its evidence",
+          "checks": [
+            "F4.R6"
+          ]
+        },
+        {
+          "id": "F4.A7",
+          "gherkin": "Scenario: The model stops at its budget\n  Given the model's answer for sections 6 and 7 ends because it reached its output budget\n  When Inspect writes the report\n  Then the report is delivered with the scripts' findings\n  And sections 6 and 7 each say the judgment was not made because the model's answer was cut off at its budget",
+          "checks": [
+            "F4.R7",
+            "F4.R8"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "F5",
+      "name": "Write the report",
+      "offering": "inspect-a-repository",
+      "does": "Writes the inspection report as a list of findings grouped in the eight sections, each standing on its own, through one place that emits a finding, with the dependency list beside it and a short reply.",
+      "outputs": [
+        {
+          "name": "inspection",
+          "kind": "application/vnd.agentmesh.inspection-report+json",
+          "about": "The inspection report in the inspection-report-v1 format: the repository and commit, the eight sections, the findings in section order, the judgments held back with why, the facts the findings cite, and what the job used.",
+          "schema": {
+            "$schema": "https://json-schema.org/draft/2020-12/schema",
+            "title": "The inspection report (inspection-report-v1)",
+            "type": "object",
+            "required": [
+              "format",
+              "repository",
+              "commit",
+              "inspected_at",
+              "inspector",
+              "sections",
+              "findings",
+              "held_back",
+              "facts",
+              "counts"
+            ],
+            "additionalProperties": false,
+            "properties": {
+              "format": {
+                "const": "inspection-report-v1"
+              },
+              "repository": {
+                "type": "object",
+                "required": [
+                  "owner",
+                  "name",
+                  "url"
+                ],
+                "additionalProperties": false,
+                "properties": {
+                  "owner": {
+                    "type": "string"
+                  },
+                  "name": {
+                    "type": "string"
+                  },
+                  "url": {
+                    "type": "string"
+                  }
+                }
+              },
+              "commit": {
+                "type": "object",
+                "required": [
+                  "sha",
+                  "checked"
+                ],
+                "additionalProperties": false,
+                "properties": {
+                  "sha": {
+                    "type": "string",
+                    "pattern": "^[0-9a-f]{40}$"
+                  },
+                  "checked": {
+                    "type": "boolean",
+                    "description": "true when the archive's own header named this digest"
+                  },
+                  "date": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  }
+                }
+              },
+              "inspected_at": {
+                "type": "string",
+                "format": "date-time"
+              },
+              "inspector": {
+                "type": "object",
+                "required": [
+                  "name",
+                  "version"
+                ],
+                "properties": {
+                  "name": {
+                    "const": "inspect"
+                  },
+                  "version": {
+                    "type": "string"
+                  }
+                }
+              },
+              "sections": {
+                "type": "array",
+                "minItems": 8,
+                "maxItems": 8,
+                "items": {
+                  "type": "object",
+                  "required": [
+                    "number",
+                    "key",
+                    "title"
+                  ],
+                  "properties": {
+                    "number": {
+                      "type": "integer",
+                      "minimum": 1,
+                      "maximum": 8
+                    },
+                    "key": {
+                      "enum": [
+                        "at-a-glance",
+                        "what-was-inspected",
+                        "what-it-does",
+                        "how-it-works",
+                        "what-it-connects-to",
+                        "what-it-can-do-on-its-own",
+                        "risks",
+                        "tests-and-what-inspect-could-not-tell"
+                      ]
+                    },
+                    "title": {
+                      "type": "string"
+                    }
+                  }
+                }
+              },
+              "findings": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/$defs/Finding"
+                }
+              },
+              "held_back": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "required": [
+                    "section",
+                    "title",
+                    "why"
+                  ],
+                  "properties": {
+                    "section": {
+                      "type": "integer",
+                      "minimum": 1,
+                      "maximum": 8
+                    },
+                    "title": {
+                      "type": "string"
+                    },
+                    "says": {
+                      "type": "string"
+                    },
+                    "why": {
+                      "type": "string"
+                    }
+                  }
+                }
+              },
+              "facts": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/$defs/Fact"
+                }
+              },
+              "dependencies": {
+                "type": "object",
+                "properties": {
+                  "bom": {
+                    "const": "sbom.cdx.json"
+                  },
+                  "components": {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "checked": {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "not_checked": {
+                    "type": "integer",
+                    "minimum": 0
+                  }
+                }
+              },
+              "counts": {
+                "type": "object",
+                "required": [
+                  "findings",
+                  "by_section",
+                  "held_back",
+                  "facts"
+                ],
+                "properties": {
+                  "findings": {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "by_section": {
+                    "type": "object",
+                    "additionalProperties": {
+                      "type": "integer",
+                      "minimum": 0
+                    }
+                  },
+                  "held_back": {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "facts": {
+                    "type": "integer",
+                    "minimum": 0
+                  }
+                }
+              },
+              "usage": {
+                "type": "object",
+                "properties": {
+                  "code_host_calls": {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "vulnerability_database_calls": {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "model_calls": {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "tokens_in": {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "tokens_out": {
+                    "type": "integer",
+                    "minimum": 0
+                  }
+                }
+              }
+            },
+            "$defs": {
+              "Evidence": {
+                "type": "object",
+                "required": [
+                  "file",
+                  "line"
+                ],
+                "additionalProperties": false,
+                "properties": {
+                  "file": {
+                    "type": "string"
+                  },
+                  "line": {
+                    "type": "integer",
+                    "minimum": 1
+                  },
+                  "end_line": {
+                    "type": "integer",
+                    "minimum": 1
+                  },
+                  "text": {
+                    "type": "string",
+                    "description": "the line exactly as written at the commit, when it is at most 400 characters"
+                  },
+                  "long_line": {
+                    "type": "integer",
+                    "description": "the line's length, given instead of its text when it is longer than 400 characters"
+                  }
+                }
+              },
+              "Source": {
+                "type": "object",
+                "required": [
+                  "system",
+                  "call"
+                ],
+                "additionalProperties": false,
+                "properties": {
+                  "system": {
+                    "enum": [
+                      "code-host",
+                      "vulnerability-database",
+                      "text-reasoning"
+                    ]
+                  },
+                  "call": {
+                    "type": "string",
+                    "description": "the read-only call the fact came from, such as GET /repos/{owner}/{name}"
+                  },
+                  "field": {
+                    "type": "string"
+                  }
+                }
+              },
+              "Category": {
+                "type": "object",
+                "required": [
+                  "list",
+                  "id",
+                  "name"
+                ],
+                "additionalProperties": false,
+                "properties": {
+                  "list": {
+                    "enum": [
+                      "owasp-top-10-llm-2025",
+                      "owasp-top-10-agentic",
+                      "spdx-license-list",
+                      "cyclonedx-1.5",
+                      "osv"
+                    ]
+                  },
+                  "id": {
+                    "type": "string"
+                  },
+                  "name": {
+                    "type": "string"
+                  }
+                }
+              },
+              "Finding": {
+                "type": "object",
+                "required": [
+                  "id",
+                  "section",
+                  "kind",
+                  "title",
+                  "says",
+                  "by",
+                  "based_on"
+                ],
+                "additionalProperties": false,
+                "properties": {
+                  "id": {
+                    "type": "string",
+                    "pattern": "^S[1-8]-[0-9]{3,}$"
+                  },
+                  "section": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 8
+                  },
+                  "kind": {
+                    "enum": [
+                      "glance",
+                      "repository",
+                      "commit",
+                      "publisher",
+                      "license",
+                      "built-on",
+                      "activity",
+                      "job",
+                      "skill",
+                      "part",
+                      "input",
+                      "output",
+                      "model",
+                      "how-it-runs",
+                      "memory",
+                      "human-step",
+                      "system",
+                      "credential",
+                      "spend",
+                      "tool",
+                      "autonomy",
+                      "risk",
+                      "least-access",
+                      "approval",
+                      "test",
+                      "test-gap",
+                      "could-not-tell",
+                      "question",
+                      "not-judged"
+                    ]
+                  },
+                  "title": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "says": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "evidence": {
+                    "type": "array",
+                    "items": {
+                      "$ref": "#/$defs/Evidence"
+                    }
+                  },
+                  "source": {
+                    "type": "array",
+                    "items": {
+                      "$ref": "#/$defs/Source"
+                    }
+                  },
+                  "by": {
+                    "enum": [
+                      "script",
+                      "model"
+                    ]
+                  },
+                  "based_on": {
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "pattern": "^F[0-9]{4,}$"
+                    }
+                  },
+                  "level": {
+                    "enum": [
+                      "none",
+                      "low",
+                      "medium",
+                      "high",
+                      "critical"
+                    ]
+                  },
+                  "level_by": {
+                    "enum": [
+                      "source",
+                      "rule",
+                      "model"
+                    ],
+                    "description": "who set the level: the record it came from (OSV), a fixed rule of Inspect's (a committed credential is high), or the model"
+                  },
+                  "categories": {
+                    "type": "array",
+                    "items": {
+                      "$ref": "#/$defs/Category"
+                    }
+                  },
+                  "repeats": {
+                    "type": "string",
+                    "pattern": "^S[2-8]-[0-9]{3,}$"
+                  },
+                  "detail": {
+                    "type": "object",
+                    "description": "fields of the finding's kind: a skill's name, path, scripts and lift_out (yes or no) with the imports that keep it from standing alone; a model's name, where it is chosen and whether a setting changes it; a system's name, host, access (read, write, read-write or unknown) and the credentials it expects; a tool's name, what it does and whether it runs without a person's OK; a vulnerability's package, version, OSV id, aliases and fixed version"
+                  }
+                },
+                "anyOf": [
+                  {
+                    "required": [
+                      "evidence"
+                    ],
+                    "properties": {
+                      "evidence": {
+                        "minItems": 1
+                      }
+                    }
+                  },
+                  {
+                    "required": [
+                      "source"
+                    ],
+                    "properties": {
+                      "source": {
+                        "minItems": 1
+                      }
+                    }
+                  }
+                ]
+              },
+              "Fact": {
+                "type": "object",
+                "required": [
+                  "id",
+                  "kind"
+                ],
+                "properties": {
+                  "id": {
+                    "type": "string",
+                    "pattern": "^F[0-9]{4,}$"
+                  },
+                  "kind": {
+                    "type": "string"
+                  },
+                  "file": {
+                    "type": "string"
+                  },
+                  "line": {
+                    "type": "integer",
+                    "minimum": 1
+                  },
+                  "text": {
+                    "type": "string"
+                  },
+                  "long_line": {
+                    "type": "integer"
+                  },
+                  "source": {
+                    "$ref": "#/$defs/Source"
+                  },
+                  "data": {
+                    "type": "object"
+                  }
+                }
+              }
+            }
+          }
+        }
+      ],
+      "requirements": [
+        {
+          "id": "F5.R1",
+          "kind": "output",
+          "priority": "must",
+          "verify": "test",
+          "shall": "The agent shall hand back the report as inspection.json in the inspection-report-v1 format, its findings grouped by section in the order 1 to 8, each standing on its own with its title, its words, its evidence, who wrote it (the scripts or the model) and the facts it rests on.",
+          "source": {
+            "said": "The report is a list of findings, each standing on its own, grouped by section."
+          }
+        },
+        {
+          "id": "F5.R2",
+          "kind": "output",
+          "priority": "must",
+          "verify": "test",
+          "shall": "The agent shall make every finding cite at least one file and line at the commit, except a finding whose fact is in no file at the commit (GitHub's record of the repository and the commit, a link in the archive, OSV's answer, or a judgment the model did not make), which shall cite the call and the field it came from instead.",
+          "source": {
+            "said": "Every finding cites a file and line at the commit."
+          }
+        },
+        {
+          "id": "F5.R3",
+          "kind": "output",
+          "priority": "must",
+          "verify": "test",
+          "shall": "The agent shall write section 2 by script alone: the repository, the commit and its date, the publisher, the license by its SPDX identifier, what it is built on (its languages by the number of files and the frameworks its dependencies name), and how actively it is kept up (its last push, its commits in the last 90 days, its open issues, whether it is archived).",
+          "source": {
+            "said": "Repo, commit, date, publisher, license, what it is built on (language, framework), how actively it is kept up"
+          }
+        },
+        {
+          "id": "F5.R4",
+          "kind": "interface",
+          "priority": "must",
+          "verify": "test",
+          "shall": "The agent shall pass every finding, from the scripts and from the model, through one function that emits a finding, in the order it is found and with the id it has in the report, so that posting each finding to the running job as it is found is a change to that one function.",
+          "source": {
+            "said": "Shape its code so that posting each finding as it is found is a small later change (one place that emits a finding)."
+          }
+        },
+        {
+          "id": "F5.R5",
+          "kind": "output",
+          "priority": "must",
+          "verify": "test",
+          "shall": "The agent shall reply with a header naming the repository, the commit, the number of findings and the number of judgments held back, then the findings of section 1, one to a line, then how many findings each section holds, and shall attach inspection.json and sbom.cdx.json.",
+          "source": {
+            "said": "Until that adapter is released, Inspect delivers the whole report at the end."
+          }
+        },
+        {
+          "id": "F5.R6",
+          "kind": "refusal",
+          "priority": "must",
+          "verify": "test",
+          "shall": "The agent shall refuse a request to run, install, build or test the repository's code, saying that Inspect only reads the code, and shall do the inspection without running anything.",
+          "source": {
+            "said": "Read only: it never runs the repo's code."
+          }
+        },
+        {
+          "id": "F5.R7",
+          "kind": "refusal",
+          "priority": "must",
+          "verify": "test",
+          "shall": "The agent shall, when asked whether to bring the agent in or how it fits a plan or a catalog role, say in its reply that Inspect gives no verdict and judges no fit, and still deliver the report.",
+          "source": {
+            "said": "it does NOT judge fit with anyone's plan or match the agent to catalog roles"
+          }
+        }
+      ],
+      "acceptance": [
+        {
+          "id": "F5.A1",
+          "gherkin": "Scenario: The report's shape\n  Given an inspection of acme/helper at a checked commit\n  When Inspect writes the report\n  Then inspection.json is valid against the inspection-report-v1 schema\n  And its findings run from section 1 to section 8 in order\n  And each finding has evidence, or a source where its fact is in no file at the commit",
+          "checks": [
+            "F5.R1",
+            "F5.R2"
+          ]
+        },
+        {
+          "id": "F5.A2",
+          "gherkin": "Scenario: What was inspected\n  Given GitHub's record says the owner langchain-ai is an organization, the license is Apache-2.0 and the last push was 2026-11-23\n  And the codebase holds a LICENSE file and a pyproject.toml naming langgraph\n  When Inspect writes section 2\n  Then section 2 holds the publisher, the license Apache-2.0 citing LICENSE line 1, the language Python, the framework langgraph and the last push, each written by the scripts",
+          "checks": [
+            "F5.R2",
+            "F5.R3"
+          ]
+        },
+        {
+          "id": "F5.A3",
+          "gherkin": "Scenario: One place emits a finding\n  Given a listener on the one function that emits a finding\n  When Inspect writes a report\n  Then the listener hears every finding of the report once, with the id it has in the report, in the order the findings were found",
+          "checks": [
+            "F5.R4"
+          ]
+        },
+        {
+          "id": "F5.A4",
+          "gherkin": "Scenario: The reply\n  Given a report whose section 1 holds three findings\n  When Inspect replies\n  Then the reply opens with a header naming the repository, the commit and the counts\n  And then gives those three findings, one to a line\n  And it gives the number of findings in each section and the number held back\n  And inspection.json and sbom.cdx.json are attached",
+          "checks": [
+            "F5.R5"
+          ]
+        },
+        {
+          "id": "F5.A5",
+          "gherkin": "Scenario: Asked to run the code\n  Given a message asking Inspect to install acme/helper at 86d8f66 and run its tests\n  When Inspect reads the message\n  Then it replies that Inspect only reads the code\n  And it runs nothing from the repository",
+          "checks": [
+            "F5.R6"
+          ]
+        },
+        {
+          "id": "F5.A6",
+          "gherkin": "Scenario: Asked for a verdict\n  Given a message asking whether to bring acme/helper at 86d8f66 into the department\n  When Inspect replies\n  Then the reply says Inspect gives no verdict and judges no fit\n  And inspection.json is attached",
+          "checks": [
+            "F5.R7"
+          ]
+        }
+      ]
+    }
+  ],
+  "interfaces": [
+    {
+      "id": "I1",
+      "kind": "file",
+      "name": "inspection.json",
+      "keep": false,
+      "about": "The inspection report, in the inspection-report-v1 format given as F5's output schema."
+    },
+    {
+      "id": "I2",
+      "kind": "file",
+      "name": "sbom.cdx.json",
+      "keep": false,
+      "about": "The dependency list, a CycloneDX 1.5 bill of materials."
+    },
+    {
+      "id": "I3",
+      "kind": "function",
+      "name": "emitFinding",
+      "module": "scripts/emit.mjs",
+      "signature": "emitFinding(finding): the one place a finding is emitted; synchronous",
+      "keep": false,
+      "about": "Every finding passes here in the order found; posting a finding to the running job as it is found is a change to this function alone."
+    },
+    {
+      "id": "I4",
+      "kind": "function",
+      "name": "readRequest",
+      "module": "scripts/request.mjs",
+      "keep": false,
+      "about": "Reads the request.",
+      "signature": "readRequest(text): the repository and commit, or a refusal; synchronous"
+    },
+    {
+      "id": "I5",
+      "kind": "function",
+      "name": "githubReader",
+      "module": "scripts/github.mjs",
+      "keep": false,
+      "about": "Reads GitHub, GET only.",
+      "signature": "githubReader({owner, name, env, fetchImpl}): a reader with repository(), commit(sha), recentCommits(since) and archive(sha), each one counted GET"
+    },
+    {
+      "id": "I6",
+      "kind": "function",
+      "name": "untar",
+      "module": "scripts/untar.mjs",
+      "keep": false,
+      "about": "Unpacks the archive.",
+      "signature": "untar(gz, dir, {maxFiles}): unpacks the archive inside dir, writing no link; synchronous"
+    },
+    {
+      "id": "I7",
+      "kind": "function",
+      "name": "collectFacts",
+      "module": "scripts/collect.mjs",
+      "keep": false,
+      "about": "Numbers every fact.",
+      "signature": "collectFacts({files, read, bytesOf, archive, github, owner, name, sha}): the numbered facts; synchronous"
+    },
+    {
+      "id": "I8",
+      "kind": "function",
+      "name": "agentFacts",
+      "module": "scripts/agent-facts.mjs",
+      "keep": false,
+      "about": "Reads the agent own parts by pattern.",
+      "signature": "agentFacts(files, read, {entries}): the agent part facts and the lift-out rule; synchronous"
+    },
+    {
+      "id": "I9",
+      "kind": "function",
+      "name": "checkWithOsv",
+      "module": "scripts/deps.mjs",
+      "keep": false,
+      "about": "Asks OSV, and reads uv.lock into the list.",
+      "signature": "checkWithOsv(components, {env, fetchImpl}): the known vulnerabilities; async"
+    },
+    {
+      "id": "I10",
+      "kind": "function",
+      "name": "judge",
+      "module": "scripts/judge.mjs",
+      "keep": false,
+      "about": "Asks the model for the judgments.",
+      "signature": "judge({facts, repo, ask}): the model calls; async"
+    },
+    {
+      "id": "I11",
+      "kind": "function",
+      "name": "checkDrafts",
+      "module": "scripts/checks.mjs",
+      "keep": false,
+      "about": "Checks the judgments.",
+      "signature": "checkDrafts(drafts, {sections, byId, ctx, known}): the findings kept and held back; synchronous"
+    },
+    {
+      "id": "I12",
+      "kind": "function",
+      "name": "scriptFindings",
+      "module": "scripts/report.mjs",
+      "keep": false,
+      "about": "Writes the report.",
+      "signature": "scriptFindings({...}): the findings the scripts write; synchronous"
+    },
+    {
+      "id": "I13",
+      "kind": "constant",
+      "name": "LEVELS",
+      "module": "scripts/lists.mjs",
+      "keep": false,
+      "about": "The published lists a finding is held to."
+    },
+    {
+      "id": "I14",
+      "kind": "function",
+      "name": "readFacts",
+      "module": "scripts/facts.mjs",
+      "keep": false,
+      "about": "Carried from the reverse engineer.",
+      "signature": "readFacts(files, read, {keep}): the reverse engineer read-the-codebase facts; synchronous"
+    },
+    {
+      "id": "I15",
+      "kind": "function",
+      "name": "walk",
+      "module": "scripts/codebase.mjs",
+      "keep": false,
+      "about": "Carried from the reverse engineer.",
+      "signature": "walk(dir): every file under dir; synchronous"
+    },
+    {
+      "id": "I16",
+      "kind": "function",
+      "name": "readSurface",
+      "module": "scripts/surface.mjs",
+      "keep": false,
+      "about": "Carried from the reverse engineer.",
+      "signature": "readSurface(files, read, options): the JavaScript surface; synchronous"
+    },
+    {
+      "id": "I17",
+      "kind": "function",
+      "name": "scan",
+      "module": "scripts/js-source.mjs",
+      "keep": false,
+      "about": "Carried from the reverse engineer.",
+      "signature": "scan(text): a JavaScript lexer; synchronous"
+    },
+    {
+      "id": "I18",
+      "kind": "function",
+      "name": "readDeclarations",
+      "module": "scripts/declarations.mjs",
+      "keep": false,
+      "about": "Carried from the reverse engineer.",
+      "signature": "readDeclarations(files, read): what an Agent Package declares; synchronous"
+    },
+    {
+      "id": "I19",
+      "kind": "function",
+      "name": "flagsOf",
+      "module": "scripts/flags.mjs",
+      "keep": false,
+      "about": "Carried from the reverse engineer.",
+      "signature": "flagsOf(surface): each command flags; synchronous"
+    },
+    {
+      "id": "I20",
+      "kind": "function",
+      "name": "makeSbom",
+      "module": "scripts/sbom.mjs",
+      "keep": false,
+      "about": "Carried from the reverse engineer list-the-dependencies.",
+      "signature": "makeSbom({files, read, repository, commit, tool}): the CycloneDX 1.5 bill of materials; synchronous"
+    },
+    {
+      "id": "I21",
+      "kind": "function",
+      "name": "checkEvidence",
+      "module": "scripts/evidence.mjs",
+      "keep": false,
+      "about": "Carried from the reverse engineer check-the-evidence.",
+      "signature": "checkEvidence(list, ctx): the evidence that checks against the commit; synchronous"
+    },
+    {
+      "id": "I22",
+      "kind": "function",
+      "name": "credentialsIn",
+      "module": "scripts/secrets.mjs",
+      "keep": false,
+      "about": "Carried from the security reviewer.",
+      "signature": "credentialsIn(files): each credential-shaped line, never its bytes; synchronous"
+    },
+    {
+      "id": "I23",
+      "kind": "function",
+      "name": "traceOne",
+      "module": "scripts/trace-programs.mjs",
+      "keep": false,
+      "about": "Carried from the security reviewer.",
+      "signature": "traceOne(path, text): what one program reaches and starts; synchronous"
+    },
+    {
+      "id": "I24",
+      "kind": "function",
+      "name": "callModel",
+      "module": "scripts/model-caller.mjs",
+      "keep": false,
+      "about": "The shared model caller, carried byte for byte.",
+      "signature": "callModel(prompt, options): one model call through the four settings; async"
+    },
+    {
+      "id": "I25",
+      "kind": "declaration",
+      "name": "job_seconds",
+      "value": 900,
+      "declared_in": "agent-runtime-requirements.json job_seconds",
+      "keep": true,
+      "about": "The longest one inspection may take: one archive, a few OSV queries and up to three model calls over many facts."
+    }
+  ],
+  "constraints": [
+    {
+      "id": "C1",
+      "kind": "security",
+      "priority": "must",
+      "verify": "test",
+      "shall": "The agent shall never run, install, build or test the repository's code, shall call no write action on any system, and shall write files only inside the job's own folders.",
+      "source": {
+        "said": "Read only: it never runs the repo's code. Inspect calls no write action anywhere."
+      }
+    },
+    {
+      "id": "C2",
+      "kind": "security",
+      "priority": "must",
+      "verify": "test",
+      "shall": "The agent shall take out anything that looks like a credential from everything it hands the model, writes in the report or says in its reply, with the security reviewer's scrub as carried.",
+      "source": {
+        "said": "committed secrets"
+      }
+    },
+    {
+      "id": "C3",
+      "kind": "interface",
+      "priority": "must",
+      "verify": "test",
+      "shall": "The agent shall carry the reverse engineer's and the security reviewer's scripts and the shared model caller byte for byte, each named in reused.json with its repository, its commit and the sha256 of its bytes, and a test shall fail when a carried script no longer matches its pin.",
+      "source": {
+        "said": "The owner wants these shared, pinned to a version, not forked."
+      }
+    },
+    {
+      "id": "C4",
+      "kind": "runtime",
+      "priority": "must",
+      "verify": "inspection",
+      "shall": "The agent shall run on Node 22 or later with nothing outside Node, and shall reach its model only through the shared model caller and the model's four settings.",
+      "source": {
+        "said": "a model for the judgments, through the shared model caller (Common Agent 12.4.1, system of kind model)"
+      }
+    },
+    {
+      "id": "C5",
+      "kind": "limit",
+      "priority": "must",
+      "verify": "test",
+      "shall": "The agent shall never cut content without saying so: what is over a limit is handed on in parts, or is named in the report with the limit it is over.",
+      "source": {
+        "said": "The report is a list of findings, each standing on its own"
+      }
+    }
+  ],
+  "systems": [
+    {
+      "name": "code-host",
+      "reach": "read",
+      "address": "https://api.github.com",
+      "credential": "none",
+      "why": "GitHub: the repository record, the commit record, its recent commits and the archive of the repository at the commit, read with GET requests only and no key, because only public repositories are inspected."
+    },
+    {
+      "name": "vulnerability-database",
+      "reach": "read",
+      "address": "https://api.osv.dev",
+      "credential": "none",
+      "why": "OSV (osv.dev): which exact versions of the dependencies have known vulnerabilities, asked by queries that change nothing, and the record of each vulnerability found, with no key."
+    }
+  ],
+  "settings": [
+    {
+      "name": "GITHUB_API",
+      "kind": "address",
+      "default": "https://api.github.com",
+      "set_by": "install",
+      "about": "where GitHub's API answers, its base address"
+    },
+    {
+      "name": "OSV_API",
+      "kind": "address",
+      "default": "https://api.osv.dev",
+      "set_by": "install",
+      "about": "where the OSV API answers, its base address"
+    }
+  ],
+  "open": [],
+  "price": "free"
+}

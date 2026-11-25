@@ -1,0 +1,599 @@
+{
+  "format": "agent-descriptor-v1",
+  "agent_version": "0.1.0",
+  "does": "Inspect reads an outside agent's code in a public GitHub repository at one commit, without running any of it, and hands back an inspection report on what the agent does and how safe it is: a list of findings in eight sections, each citing a file and line at the commit. Scripts collect the facts; a model writes only the judgments, and each judgment cites the facts it rests on. It gives no verdict on bringing the agent in and judges no fit with anyone's plan.",
+  "offerings": [
+    {
+      "id": "inspect-a-repository",
+      "name": "Inspect a repository",
+      "does": "Inspects one public GitHub repository at one commit and hands back the inspection report, the dependency list and a short summary.",
+      "inputs": [
+        {
+          "name": "repository",
+          "kind": "url",
+          "required": true,
+          "given_by": "either",
+          "about": "The public GitHub repository, as github.com<owner>/<name> or <owner>/<name>, on a line of the message (repository: ...) or anywhere in it."
+        },
+        {
+          "name": "commit",
+          "kind": "identifier",
+          "required": true,
+          "given_by": "either",
+          "about": "The commit's digest, 7 to 40 hexadecimal characters, on a line of the message (commit: ...), or as the last part of a github.com<owner>/<name>/commit/<digest> or /tree/<digest> address that names the repository too."
+        }
+      ],
+      "outputs": [
+        {
+          "name": "sbom",
+          "kind": "application/vnd.cyclonedx+json",
+          "when": "per_task",
+          "about": "The dependency list as a CycloneDX 1.5 bill of materials, made by rule and never by the model: every component with its version, its package URL and where it was read."
+        },
+        {
+          "name": "inspection",
+          "kind": "application/vnd.agentmesh.inspection-report+json",
+          "when": "per_task",
+          "about": "The inspection report in the inspection-report-v1 format: the repository and commit, the eight sections, the findings in section order, the judgments held back with why, the facts the findings cite, and what the job used.",
+          "schema": {
+            "title": "The inspection report (inspection-report-v1)",
+            "type": "object",
+            "required": [
+              "format",
+              "repository",
+              "commit",
+              "inspected_at",
+              "inspector",
+              "sections",
+              "findings",
+              "held_back",
+              "facts",
+              "counts"
+            ],
+            "additionalProperties": false,
+            "properties": {
+              "format": {
+                "const": "inspection-report-v1"
+              },
+              "repository": {
+                "type": "object",
+                "required": [
+                  "owner",
+                  "name",
+                  "url"
+                ],
+                "additionalProperties": false,
+                "properties": {
+                  "owner": {
+                    "type": "string"
+                  },
+                  "name": {
+                    "type": "string"
+                  },
+                  "url": {
+                    "type": "string"
+                  }
+                }
+              },
+              "commit": {
+                "type": "object",
+                "required": [
+                  "sha",
+                  "checked"
+                ],
+                "additionalProperties": false,
+                "properties": {
+                  "sha": {
+                    "type": "string",
+                    "pattern": "^[0-9a-f]{40}$"
+                  },
+                  "checked": {
+                    "type": "boolean",
+                    "description": "true when the archive's own header named this digest"
+                  },
+                  "date": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  }
+                }
+              },
+              "inspected_at": {
+                "type": "string",
+                "format": "date-time"
+              },
+              "inspector": {
+                "type": "object",
+                "required": [
+                  "name",
+                  "version"
+                ],
+                "properties": {
+                  "name": {
+                    "const": "inspect"
+                  },
+                  "version": {
+                    "type": "string"
+                  }
+                }
+              },
+              "sections": {
+                "type": "array",
+                "minItems": 8,
+                "maxItems": 8,
+                "items": {
+                  "type": "object",
+                  "required": [
+                    "number",
+                    "key",
+                    "title"
+                  ],
+                  "properties": {
+                    "number": {
+                      "type": "integer",
+                      "minimum": 1,
+                      "maximum": 8
+                    },
+                    "key": {
+                      "enum": [
+                        "at-a-glance",
+                        "what-was-inspected",
+                        "what-it-does",
+                        "how-it-works",
+                        "what-it-connects-to",
+                        "what-it-can-do-on-its-own",
+                        "risks",
+                        "tests-and-what-inspect-could-not-tell"
+                      ]
+                    },
+                    "title": {
+                      "type": "string"
+                    }
+                  }
+                }
+              },
+              "findings": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/$defs/Finding"
+                }
+              },
+              "held_back": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "required": [
+                    "section",
+                    "title",
+                    "why"
+                  ],
+                  "properties": {
+                    "section": {
+                      "type": "integer",
+                      "minimum": 1,
+                      "maximum": 8
+                    },
+                    "title": {
+                      "type": "string"
+                    },
+                    "says": {
+                      "type": "string"
+                    },
+                    "why": {
+                      "type": "string"
+                    }
+                  }
+                }
+              },
+              "facts": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/$defs/Fact"
+                }
+              },
+              "dependencies": {
+                "type": "object",
+                "properties": {
+                  "bom": {
+                    "const": "sbom.cdx.json"
+                  },
+                  "components": {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "checked": {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "not_checked": {
+                    "type": "integer",
+                    "minimum": 0
+                  }
+                }
+              },
+              "counts": {
+                "type": "object",
+                "required": [
+                  "findings",
+                  "by_section",
+                  "held_back",
+                  "facts"
+                ],
+                "properties": {
+                  "findings": {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "by_section": {
+                    "type": "object",
+                    "additionalProperties": {
+                      "type": "integer",
+                      "minimum": 0
+                    }
+                  },
+                  "held_back": {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "facts": {
+                    "type": "integer",
+                    "minimum": 0
+                  }
+                }
+              },
+              "usage": {
+                "type": "object",
+                "properties": {
+                  "code_host_calls": {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "vulnerability_database_calls": {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "model_calls": {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "tokens_in": {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "tokens_out": {
+                    "type": "integer",
+                    "minimum": 0
+                  }
+                }
+              }
+            },
+            "$defs": {
+              "Evidence": {
+                "type": "object",
+                "required": [
+                  "file",
+                  "line"
+                ],
+                "additionalProperties": false,
+                "properties": {
+                  "file": {
+                    "type": "string"
+                  },
+                  "line": {
+                    "type": "integer",
+                    "minimum": 1
+                  },
+                  "end_line": {
+                    "type": "integer",
+                    "minimum": 1
+                  },
+                  "text": {
+                    "type": "string",
+                    "description": "the line exactly as written at the commit, when it is at most 400 characters"
+                  },
+                  "long_line": {
+                    "type": "integer",
+                    "description": "the line's length, given instead of its text when it is longer than 400 characters"
+                  }
+                }
+              },
+              "Source": {
+                "type": "object",
+                "required": [
+                  "system",
+                  "call"
+                ],
+                "additionalProperties": false,
+                "properties": {
+                  "system": {
+                    "enum": [
+                      "code-host",
+                      "vulnerability-database",
+                      "text-reasoning"
+                    ]
+                  },
+                  "call": {
+                    "type": "string",
+                    "description": "the read-only call the fact came from, such as GET /repos/{owner}/{name}"
+                  },
+                  "field": {
+                    "type": "string"
+                  }
+                }
+              },
+              "Category": {
+                "type": "object",
+                "required": [
+                  "list",
+                  "id",
+                  "name"
+                ],
+                "additionalProperties": false,
+                "properties": {
+                  "list": {
+                    "enum": [
+                      "owasp-top-10-llm-2025",
+                      "owasp-top-10-agentic",
+                      "spdx-license-list",
+                      "cyclonedx-1.5",
+                      "osv"
+                    ]
+                  },
+                  "id": {
+                    "type": "string"
+                  },
+                  "name": {
+                    "type": "string"
+                  }
+                }
+              },
+              "Finding": {
+                "type": "object",
+                "required": [
+                  "id",
+                  "section",
+                  "kind",
+                  "title",
+                  "says",
+                  "by",
+                  "based_on"
+                ],
+                "additionalProperties": false,
+                "properties": {
+                  "id": {
+                    "type": "string",
+                    "pattern": "^S[1-8]-[0-9]{3,}$"
+                  },
+                  "section": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 8
+                  },
+                  "kind": {
+                    "enum": [
+                      "glance",
+                      "repository",
+                      "commit",
+                      "publisher",
+                      "license",
+                      "built-on",
+                      "activity",
+                      "job",
+                      "skill",
+                      "part",
+                      "input",
+                      "output",
+                      "model",
+                      "how-it-runs",
+                      "memory",
+                      "human-step",
+                      "system",
+                      "credential",
+                      "spend",
+                      "tool",
+                      "autonomy",
+                      "risk",
+                      "least-access",
+                      "approval",
+                      "test",
+                      "test-gap",
+                      "could-not-tell",
+                      "question",
+                      "not-judged"
+                    ]
+                  },
+                  "title": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "says": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "evidence": {
+                    "type": "array",
+                    "items": {
+                      "$ref": "#/$defs/Evidence"
+                    }
+                  },
+                  "source": {
+                    "type": "array",
+                    "items": {
+                      "$ref": "#/$defs/Source"
+                    }
+                  },
+                  "by": {
+                    "enum": [
+                      "script",
+                      "model"
+                    ]
+                  },
+                  "based_on": {
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "pattern": "^F[0-9]{4,}$"
+                    }
+                  },
+                  "level": {
+                    "enum": [
+                      "none",
+                      "low",
+                      "medium",
+                      "high",
+                      "critical"
+                    ]
+                  },
+                  "level_by": {
+                    "enum": [
+                      "source",
+                      "rule",
+                      "model"
+                    ],
+                    "description": "who set the level: the record it came from (OSV), a fixed rule of Inspect's (a committed credential is high), or the model"
+                  },
+                  "categories": {
+                    "type": "array",
+                    "items": {
+                      "$ref": "#/$defs/Category"
+                    }
+                  },
+                  "repeats": {
+                    "type": "string",
+                    "pattern": "^S[2-8]-[0-9]{3,}$"
+                  },
+                  "detail": {
+                    "type": "object",
+                    "description": "fields of the finding's kind: a skill's name, path, scripts and lift_out (yes or no) with the imports that keep it from standing alone; a model's name, where it is chosen and whether a setting changes it; a system's name, host, access (read, write, read-write or unknown) and the credentials it expects; a tool's name, what it does and whether it runs without a person's OK; a vulnerability's package, version, OSV id, aliases and fixed version"
+                  }
+                },
+                "anyOf": [
+                  {
+                    "required": [
+                      "evidence"
+                    ],
+                    "properties": {
+                      "evidence": {
+                        "minItems": 1
+                      }
+                    }
+                  },
+                  {
+                    "required": [
+                      "source"
+                    ],
+                    "properties": {
+                      "source": {
+                        "minItems": 1
+                      }
+                    }
+                  }
+                ]
+              },
+              "Fact": {
+                "type": "object",
+                "required": [
+                  "id",
+                  "kind"
+                ],
+                "properties": {
+                  "id": {
+                    "type": "string",
+                    "pattern": "^F[0-9]{4,}$"
+                  },
+                  "kind": {
+                    "type": "string"
+                  },
+                  "file": {
+                    "type": "string"
+                  },
+                  "line": {
+                    "type": "integer",
+                    "minimum": 1
+                  },
+                  "text": {
+                    "type": "string"
+                  },
+                  "long_line": {
+                    "type": "integer"
+                  },
+                  "source": {
+                    "$ref": "#/$defs/Source"
+                  },
+                  "data": {
+                    "type": "object"
+                  }
+                }
+              }
+            }
+          }
+        }
+      ],
+      "how": {
+        "control": "script",
+        "intelligence": "called",
+        "cost": "metered",
+        "contract": "full"
+      }
+    }
+  ],
+  "refusals": "Running, installing, building or testing the repository's code, because Inspect only reads it; it says so and inspects without running anything.\nGiving a verdict on whether to bring the agent in, or judging how it fits a plan or a catalog role, because that decision is the reader's; it says so and still delivers the report.\nA branch or a tag in place of a commit, because a branch or a tag can move and the report must stand for one commit; it asks for the commit's digest and inspects nothing.\nA repository that is not public on GitHub, or a commit that is not in it, because there is nothing it may read; it says which, and inspects nothing.\nAn archive larger than 50 MB or holding more than 20000 files, because it reads no more than that; it says how large the archive is, and inspects nothing.\nWriting a link from the archive, or a file whose path leaves its own folder, because an archive from somebody else must not decide where a file lands; it records each one as a fact and writes neither.\nRepeating the characters of anything that looks like a committed credential, because a report that repeats a key has published it; it keeps only the file, the line and the kind of credential.",
+  "records": [
+    {
+      "name": "the signed job manifest of each delivery",
+      "when": "per_task"
+    }
+  ],
+  "systems": [
+    {
+      "name": "code-host",
+      "access": "read",
+      "needs": "To read the public repository's record, the commit's record, its recent commits and the archive of the repository at the commit from api.github.com, with GET requests only and no key."
+    },
+    {
+      "name": "vulnerability-database",
+      "access": "read",
+      "needs": "To ask api.osv.dev which exact versions of the dependencies have known vulnerabilities, by queries that change nothing, and to read the record of each one found."
+    },
+    {
+      "name": "text-reasoning",
+      "access": "trigger",
+      "needs": "To write the judgments over the facts the scripts found: what the agent does, how it works, what it can do on its own, its risks and what it needs to run safely, and the few findings that matter most."
+    }
+  ],
+  "can_use": [
+    {
+      "schema": "https://schemas.agentmesh.ai/brand/v1",
+      "reads": [
+        "name",
+        "legal.first_mention",
+        "words.instead_of",
+        "words.never_say",
+        "palette.ink",
+        "palette.ground",
+        "palette.heading",
+        "palette.accent",
+        "type.heading.family",
+        "type.body.family",
+        "logo.mark.href"
+      ],
+      "required": false,
+      "does": "writes the organization's name as the brand writes it, uses its first-mention form the first time, and keeps out the words the brand never says; and draws in the brand's colors and faces and places its mark",
+      "without": "writes the organization's name as the person gave it, and says that no brand profile was given; and draws in this agent's own plain house style, and says that no brand profile was given"
+    },
+    {
+      "schema": "https://schemas.agentmesh.ai/style-guide/v1",
+      "reads": [
+        "voice",
+        "tone",
+        "spelling",
+        "words.prefer",
+        "words.avoid"
+      ],
+      "required": false,
+      "does": "writes in the organization's voice, tone and spelling, and uses the words it prefers in place of the ones it avoids",
+      "without": "writes in a plain, neutral voice in the spelling of the words it was given, and says that no style guide was given"
+    }
+  ]
+}

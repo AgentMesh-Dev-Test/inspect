@@ -1,0 +1,204 @@
+{
+  "title": "inspecting an outside agent's code before it is brought in",
+  "environments": ["dev", "test", "production"],
+  "systems": [
+    {
+      "name": "text-reasoning",
+      "plain": "text reasoning",
+      "capability": "text, with long context: the judgments are written over many facts at once",
+      "access": "trigger",
+      "why": "What the agent does, how safe it is and what to put behind an approval are judgments over the facts the scripts found, and a model writes them.",
+      "called_for": "a model for the judgments, through the shared model caller (Common Agent 12.4.1, system of kind model)"
+    }
+  ],
+  "kind": {
+    "kind": "plugin-on-harness",
+    "why": "The work is a fixed program: read the request, fetch one archive, read the facts by rule, ask OSV, ask the model for the judgments at three named points, check them, write the report. A harness reading one skill carries it, and nothing needs a service of its own."
+  },
+  "dependencies": [],
+  "limits": {
+    "cost": null,
+    "speed": {
+      "limit": "one inspection answered within 900 seconds",
+      "why": "One archive of at most 50 MB is read once, OSV is asked in a few batched queries, and the model is called three times; nothing waits on a person."
+    },
+    "data": {
+      "limit": "reads only public repositories at a commit; keeps nothing between jobs; hands the model the facts with anything that looks like a credential taken out, and OSV only package names and versions",
+      "why": "Everything it reads is public, and a committed credential it finds must not travel any further than its file and line."
+    },
+    "trust": {
+      "limit": "takes a job from any caller; it reads only and changes nothing on any system",
+      "why": "It never runs the repository's code and calls no write action anywhere, so a job cannot make it act on anything."
+    }
+  },
+  "drivers": [
+    {
+      "key": "read-only",
+      "quality": "safety",
+      "says": "It never runs the repository's code, and calls no write action anywhere.",
+      "from": "Read only: it never runs the repo's code. Inspect calls no write action anywhere."
+    },
+    {
+      "key": "facts-then-judgments",
+      "quality": "verifiability",
+      "says": "Scripts collect the facts; the model writes only the judgments, each citing a fact the scripts found.",
+      "from": "Scripts collect the facts; the model writes only the judgments, and each judgment cites a fact the scripts found."
+    },
+    {
+      "key": "cited",
+      "quality": "verifiability",
+      "says": "Every finding cites a file and line at the commit.",
+      "from": "Every finding cites a file and line at the commit."
+    },
+    {
+      "key": "precise-sections",
+      "quality": "precision",
+      "says": "Sections 3, 4 and 5 are precise, because another agent reads them.",
+      "from": "Sections 3, 4 and 5 must be precise, because the future Roadmap agent reads them."
+    },
+    {
+      "key": "shared-not-forked",
+      "quality": "maintainability",
+      "says": "The reverse engineer's fact-gathering scripts are shared, pinned to a version, not forked.",
+      "from": "The owner wants these shared, pinned to a version, not forked."
+    },
+    {
+      "key": "one-emitter",
+      "quality": "modifiability",
+      "says": "One place emits a finding, so posting each finding as it is found is a small later change.",
+      "from": "Shape its code so that posting each finding as it is found is a small later change (one place that emits a finding)."
+    }
+  ],
+  "egress": [
+    {
+      "destination": "GitHub's API, for the repository's record, the commit's record, its recent commits and the archive of the repository at the commit",
+      "why": "The job is about one public repository at one commit, and GitHub holds it.",
+      "service": { "name": "code-host", "access": "read", "address": "https://api.github.com" }
+    },
+    {
+      "destination": "OSV's API, for the known vulnerabilities of the dependencies' exact versions",
+      "why": "Known holes in dependencies are part of section 7, and OSV answers which versions have them.",
+      "service": { "name": "vulnerability-database", "access": "read", "address": "https://api.osv.dev" }
+    }
+  ],
+  "formats": [
+    {
+      "piece": "the repository",
+      "direction": "in",
+      "kind": "url",
+      "convention": "https://github.com/<owner>/<name> or <owner>/<name>, on a repository: line or anywhere in the message",
+      "given_by": "either",
+      "why": "A person or an agent names the outside agent's repository."
+    },
+    {
+      "piece": "the commit",
+      "direction": "in",
+      "kind": "identifier",
+      "convention": "the commit's digest, 7 to 40 hexadecimal characters, on a commit: line, or the last part of a /commit/<digest> or /tree/<digest> address",
+      "given_by": "either",
+      "why": "The report is about one commit, which never moves."
+    },
+    {
+      "piece": "the inspection report",
+      "direction": "out",
+      "kind": "application/vnd.agentmesh.inspection-report+json",
+      "convention": "the inspection-report-v1 JSON Schema in the spec: the repository and commit, the eight sections, the findings in section order, the judgments held back with why, and the facts the findings cite",
+      "given_by": "agent",
+      "why": "A page draws each finding and another agent reads sections 3 to 5, so code consumes it, exactly typed."
+    },
+    {
+      "piece": "the dependency list",
+      "direction": "out",
+      "kind": "application/vnd.cyclonedx+json",
+      "convention": "a CycloneDX 1.5 bill of materials, made by rule",
+      "given_by": "agent",
+      "why": "A published dependency format any tool reads."
+    },
+    {
+      "piece": "the summary",
+      "direction": "out",
+      "kind": "text/markdown",
+      "convention": "a header of the fields repository, commit, findings and held_back, then ## At a glance with one line per finding of section 1, then ## Sections with the number of findings in each",
+      "given_by": "agent",
+      "why": "A person reads the reply first; the report is attached beside it."
+    }
+  ],
+  "settings": [],
+  "skills": [
+    {
+      "name": "inspect-a-repository",
+      "responsibility": "Inspects one public GitHub repository at one commit and hands back the inspection report, the dependency list and a short summary, or refuses.",
+      "script": "Reads the request, fetches the archive at the commit, reads the facts by rule, lists the dependencies and asks OSV about them, has the model write the judgments, checks every judgment against the facts and the commit, and writes the report through one emitter."
+    }
+  ],
+  "parts": [
+    { "id": "request-reader", "name": "request reader", "within": "inspect-a-repository", "responsibility": "Finds the repository and the commit in the message, and refuses what is missing, a branch or tag name, and a request to run the code." },
+    { "id": "github-reader", "name": "GitHub reader", "within": "inspect-a-repository", "responsibility": "Reads the repository's record, the commit's record, its recent commits and the archive at the commit with GET requests only, at most six calls a job.", "reaches": "code-host" },
+    { "id": "archive-reader", "name": "archive reader", "within": "inspect-a-repository", "responsibility": "Unpacks the archive inside the job's folder, writing no link and no path that leaves it, records each link as a fact, and checks the archive names the commit." },
+    { "id": "fact-reader", "name": "fact reader", "within": "inspect-a-repository", "responsibility": "Reads the facts by rule with the reverse engineer's and the security reviewer's carried scripts and Inspect's own patterns, each with an id, a file and a line." },
+    { "id": "dependency-lister", "name": "dependency lister", "within": "inspect-a-repository", "responsibility": "Makes the CycloneDX 1.5 bill of materials with the reverse engineer's carried script, adding the packages of a uv.lock." },
+    { "id": "osv-reader", "name": "OSV reader", "within": "inspect-a-repository", "responsibility": "Asks OSV which exact versions have known vulnerabilities, by batched queries that change nothing, and reads each vulnerability found.", "reaches": "vulnerability-database" },
+    { "id": "judge", "name": "judgment writer", "within": "inspect-a-repository", "responsibility": "Has the model write the judgments of sections 3 to 8 and then section 1 through the shared model caller, each citing facts by id.", "reaches": "text-reasoning" },
+    { "id": "evidence-checker", "name": "evidence checker", "within": "inspect-a-repository", "responsibility": "Holds back every judgment that cites no fact the scripts found, whose evidence does not check against the commit, that guesses in a precise section, that has no level or listed category, or that gives a verdict." },
+    { "id": "report-writer", "name": "report writer", "within": "inspect-a-repository", "responsibility": "Emits every finding through one function, in section order, and writes the report, the dependency list and the summary." }
+  ],
+  "flow": [
+    { "from": "caller", "to": "harness", "data": "the repository and the commit", "says": "The caller names the outside agent's repository and a commit." },
+    { "from": "harness", "to": "request-reader", "data": "the message", "says": "The harness starts the script with the job's message file." },
+    { "from": "request-reader", "to": "github-reader", "data": "the owner, the name and the commit", "says": "The reader hands on the repository and commit it found, or the job is refused." },
+    { "from": "github-reader", "to": "code-host", "data": "the repository's and the commit's records, the recent commits and the archive", "says": "The GitHub reader asks with GET requests only." },
+    { "from": "github-reader", "to": "archive-reader", "data": "the archive at the commit", "says": "The archive is unpacked inside the job's folder, links recorded and never written." },
+    { "from": "archive-reader", "to": "fact-reader", "data": "the codebase at the commit", "says": "The fact reader reads every file by rule." },
+    { "from": "fact-reader", "to": "dependency-lister", "data": "the manifests and lockfiles", "says": "The lister makes the bill of materials by rule." },
+    { "from": "osv-reader", "to": "vulnerability-database", "data": "package names and exact versions", "says": "The OSV reader asks which versions have known vulnerabilities." },
+    { "from": "judge", "to": "text-reasoning", "data": "the facts, with anything that looks like a credential taken out", "says": "The judgment writer asks the model for judgments that cite facts by id." },
+    { "from": "judge", "to": "evidence-checker", "data": "the drafted judgments", "says": "The checker keeps only what checks, and lists the rest as held back." },
+    { "from": "evidence-checker", "to": "report-writer", "data": "the checked findings and the facts", "says": "Every finding passes the one emitter in section order." },
+    { "from": "report-writer", "to": "caller", "data": "the summary, the inspection report and the dependency list", "says": "The summary is the reply, with the report and the list attached." }
+  ],
+  "decisions": [
+    {
+      "decided": "Scripts collect every fact by rule, and the model writes only the judgments, at three named points, each citing facts by id",
+      "context": "The reverse engineer was fixed by splitting facts from judgments, and every finding must cite a file and line at the commit.",
+      "drivers": ["facts-then-judgments", "cited", "precise-sections", "speed"],
+      "why": "A fact read by rule always carries its file and line, and a judgment that must cite one can be checked by code before it is delivered.",
+      "alternatives": [
+        { "option": "A model in control that reads the code and writes the report itself", "why_not": "its claims would not be bound to facts the code can check, and its spend would not be bounded" }
+      ],
+      "consequences": ["The job is control script, intelligence called and contract full.", "A judgment the checks do not pass is listed as held back, never dropped silently."]
+    },
+    {
+      "decided": "Carry the reverse engineer's and the security reviewer's scripts and the shared model caller byte for byte, each pinned in reused.json by repository, commit and sha256",
+      "context": "The owner wants the fact-gathering skills shared, pinned to a version, not forked, and a package carries its own files.",
+      "drivers": ["shared-not-forked"],
+      "why": "A byte-for-byte copy held to a digest by a test cannot drift without the test failing, and moving to a newer version is a re-pin.",
+      "alternatives": [
+        { "option": "Copy and adapt the scripts", "why_not": "that is a fork, which the owner ruled out" },
+        { "option": "Read the scripts from the adlc repository at run time", "why_not": "a package carries its own files and the agent would reach a system nobody granted" }
+      ],
+      "consequences": ["Inspect's own code wraps the carried scripts; nothing in them is changed.", "The reverse engineer's unpacker refuses an archive holding a link, so Inspect has its own archive reader."]
+    },
+    {
+      "decided": "Fetch the repository as one archive at the commit from GitHub's API, read anonymously, and unpack it with Inspect's own reader",
+      "context": "The repo family reads a commit as one archive call; it reads as the platform's GitHub App, whose key an agent put on AgentMesh from a build folder cannot carry, and its archive reader keeps no lockfiles.",
+      "drivers": ["read-only", "speed", "trust"],
+      "why": "Public repositories read without a key, one archive call reads a whole commit, and a reader that writes no link and no path outside the job's folder keeps the archive from deciding where files land.",
+      "alternatives": [
+        { "option": "Read as the platform's GitHub App, as the repo family does", "why_not": "the install from a build folder cannot carry the App's key, and only public repositories are inspected" },
+        { "option": "Read each file with its own call", "why_not": "a repository of a thousand files would take a thousand calls" }
+      ],
+      "consequences": ["Anonymous reads have a small hourly allowance, so a job makes at most six calls and stops in words when the allowance runs out."]
+    },
+    {
+      "decided": "Answer at the end with a typed JSON report, the dependency list and a short Markdown summary, every finding passing one emitter",
+      "context": "A page will draw each finding as it arrives, and the adapter that lets an agent post findings during a job is not released yet.",
+      "drivers": ["one-emitter", "precise-sections"],
+      "why": "Code reads the report, so it is typed; a person reads the summary first; and one emitter makes posting each finding as it is found a change to one function.",
+      "alternatives": [
+        { "option": "A Markdown report", "why_not": "the Roadmap agent and the page read it as data" }
+      ],
+      "consequences": ["The report's schema is in the spec until it is published."]
+    }
+  ],
+  "questions": []
+}

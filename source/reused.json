@@ -1,0 +1,25 @@
+{
+  "reused": "v1",
+  "about": "The scripts Inspect carries byte for byte from other agents, each pinned to the commit it was taken from and the sha256 digest of its bytes, so they are shared at a version and never forked. test/reused.test.mjs fails when a carried script no longer matches its pin. To take a newer version: copy the file again from the new commit, re-pin it here, run the tests, release.",
+  "repository": "https://github.com/CommonAgent/adlc",
+  "commit": "7d66f36e31d9d48d91cfb167d1623ebc1df22e29",
+  "files": [
+    { "file": "scripts/codebase.mjs", "from": "agents/reverse-engineer/scripts/codebase.mjs", "agent": "reverse-engineer 0.3.2", "skill": "read-the-codebase", "sha256": "e737d31c938e7ef378b6ca21a81d6567a7daa9f7c5b49e8bdb4c862e965c4c70" },
+    { "file": "scripts/facts.mjs", "from": "agents/reverse-engineer/scripts/facts.mjs", "agent": "reverse-engineer 0.3.2", "skill": "read-the-codebase", "sha256": "ff668f85135805f19665b34e11d7b613c85376681b560616658c75c910c8de3d" },
+    { "file": "scripts/surface.mjs", "from": "agents/reverse-engineer/scripts/surface.mjs", "agent": "reverse-engineer 0.3.2", "skill": "read-the-codebase", "sha256": "bb5b6c212bf7eb27528d25027fe24ec93a57cdc2162611ccc7dee5a76ce34042" },
+    { "file": "scripts/js-source.mjs", "from": "agents/reverse-engineer/scripts/js-source.mjs", "agent": "reverse-engineer 0.3.2", "skill": "read-the-codebase", "sha256": "9629c82768fe610b8ceefcfa6e4026a8a549ab9cb9fe1bba978e6d1e2c95a408" },
+    { "file": "scripts/declarations.mjs", "from": "agents/reverse-engineer/scripts/declarations.mjs", "agent": "reverse-engineer 0.3.2", "skill": "read-the-codebase", "sha256": "4afc68db3fa0d8661491792b51d149084cef35a6e4da682485483d45786bfd2b" },
+    { "file": "scripts/flags.mjs", "from": "agents/reverse-engineer/scripts/flags.mjs", "agent": "reverse-engineer 0.3.2", "skill": "read-the-codebase", "sha256": "8ece2635ab7c6f735bb73f685b90f2bbc5c347376ec4f74ca63ebf50590db70b" },
+    { "file": "scripts/sbom.mjs", "from": "agents/reverse-engineer/scripts/sbom.mjs", "agent": "reverse-engineer 0.3.2", "skill": "list-the-dependencies", "sha256": "59f3f64153121aa5cc6e7071ded5d55cbd1e13569a415abdf565fcba0fd5f9b5" },
+    { "file": "scripts/evidence.mjs", "from": "agents/reverse-engineer/scripts/evidence.mjs", "agent": "reverse-engineer 0.3.2", "skill": "check-the-evidence", "sha256": "1b558e99a77973f1f4bbdb8029c4c21347ed18b2e61433fb8f2a1f0fdf40707d" },
+    { "file": "scripts/secrets.mjs", "from": "agents/security-reviewer/scripts/secrets.mjs", "agent": "security-reviewer 0.3.3", "skill": "review-a-package", "sha256": "2afe261d4588b47cf200880e0278f789e5b6372f0ee93ed6ba38d7bc883f4549" },
+    { "file": "scripts/trace-programs.mjs", "from": "agents/security-reviewer/scripts/trace-programs.mjs", "agent": "security-reviewer 0.3.3", "skill": "review-a-package", "sha256": "7416855e7c7fccdb10b2860ffd9085adab3582aa4a265be81e26764aed855158" },
+    { "file": "scripts/model-caller.mjs", "from": "agents/package-maker/shared/model-caller.mjs", "agent": "the shared model caller (Common Agent 12.4.1)", "skill": "all", "sha256": "40ab3337beacd37c3aec19abf03c7b43ceb485abbf77d5222d237f0cdd8a3119", "from_sha256": "e382eb49732353b63478621ffbb54866a413fcfb225cb80363e53157c1c5ec5e", "changed": "lines 1 to 488 of the pinned file, byte for byte; its command-line block (lines 489 to 499, run only when the file is started as a command, which reads PROMPT_FILE) is left out, because the ADLC plugin's Code gate refuses a script that reads a variable the agent's files do not declare, and Inspect never starts the caller as a command (the coordinator's decision, 2026-11-25)" }
+  ],
+  "not_carried": [
+    { "from": "agents/reverse-engineer/scripts/archive.mjs", "why": "it refuses a whole archive that holds a link, and GitHub's archive of a repository holds each link the repository has; Inspect's own reader records each link and writes none" },
+    { "from": "agents/reverse-engineer/scripts/read-request.mjs and run-config.mjs", "why": "they read the reverse engineer's own request; Inspect is asked for a repository and a commit" },
+    { "from": "agents/reverse-engineer/scripts/carried.mjs, baseline.mjs", "why": "they exist for rebuilding code: the original tests carried byte for byte, and one baseline run; Inspect runs nothing" },
+    { "from": "agents/reverse-engineer/scripts/behaviors.mjs, interfaces.mjs and kinds.mjs", "why": "they check the claims of an as-built record (behaviors and schemas); Inspect checks findings with checkClaims and checkEvidence from evidence.mjs" }
+  ]
+}
