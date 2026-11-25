@@ -348,7 +348,7 @@ test("[F5.R9] Risks: a filter by level, every row shown highest first, what it n
   tabNamed(app, "Risks").click();
   const panel = shownPanel(app);
   const chips = panel.querySelectorAll("button.chip").map((b) => b.textContent);
-  assert.deepEqual(chips, ["All34", "High1", "Medium1", "Low31", "No risk1"]);
+  assert.deepEqual(chips, ["All", "High1", "Medium1", "Low31", "No risk1"]);
   const rated = panel.querySelector("ul.rows.rated").children;
   assert.equal(rated.length, 34, "every risk is drawn, none folded");
   assert.deepEqual(rated.slice(0, 2).map((li) => li.id), ["f-S7-012", "f-S7-001"], "the highest first");
@@ -359,6 +359,30 @@ test("[F5.R9] Risks: a filter by level, every row shown highest first, what it n
   assert.ok(rowOf(app, "S7-027"), "least access is a row under it");
   panel.querySelectorAll("button.chip").find((b) => b.textContent.startsWith("High")).click();
   assert.deepEqual(shownPanel(app).querySelectorAll("li.row").map((r) => r.id), ["f-S7-012"]);
+});
+
+test("[F5.R9] a section opens on the model's judgments before the scripts' lists, and code in its words is drawn in the code face without its marks", () => {
+  const extra = [
+    { id: "S3-120", section: 3, kind: "job", title: "Makes launch films from a brief", says: "It plans, renders and posts a film.", by: "model", evidence: ev("src/design_agent/pipelines/launch_film.py", 12) },
+    { id: "S5-020", section: 5, kind: "credential", title: "SLACK_BOT_TOKEN", says: "It reads the credential.", by: "script", evidence: ev("src/design_agent/settings.py", 10) },
+    { id: "S6-001", section: 6, kind: "tool", title: "It can post to Slack", says: "A tool.", by: "model", evidence: ev("src/design_agent/assembly.py", 370) },
+  ];
+  const list = findings();
+  // The scripts' credential before the model's system, and a tool before the autonomy finding, as the report orders them.
+  list.splice(list.findIndex((f) => f.id === "S5-001"), 0, extra[1]);
+  list.splice(list.findIndex((f) => f.id === "S6-011"), 0, extra[2]);
+  list.push(extra[0]);
+  const withCode = list.map((f) => (f.id === "S6-011" ? { ...f, says: "The list in `interrupt_on` is empty." } : f));
+  const { app } = drawn(report(withCode));
+  tabNamed(app, "What it does").click();
+  assert.equal(shownPanel(app).querySelector("li.row").id, "f-S3-120", "what it does, before the list of its skills");
+  tabNamed(app, "What it reaches").click();
+  const ids = shownPanel(app).querySelectorAll("li.row").map((r) => r.id);
+  assert.deepEqual(ids, ["f-S5-001", "f-S5-020", "f-S6-011", "f-S6-001"], "the system before the credential; which tools run without an OK before the tools");
+  rowOf(app, "S6-011").querySelector(".toggle").click();
+  const p = rowOf(app, "S6-011").querySelector(".detail p");
+  assert.equal(p.textContent, "The list in interrupt_on is empty.");
+  assert.equal(p.querySelector("span.mono").textContent, "interrupt_on");
 });
 
 test("[F5.R9] a tab of two sections has two plain headings, with no number and no count; a tab of one has none", () => {

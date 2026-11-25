@@ -281,3 +281,18 @@ How it was checked in a browser:
 - test/view-host.html no longer draws a heading of its own and hands the view the Descriptor; test/view-shots.mjs can open rows (`open` in a case).
 - In headless Edge, started hidden: a synthetic report shaped like design-agent's (223 findings) on each tab at a 1440 window with a 960-pixel frame, delivered, while running and with nothing yet, in light and dark, and at 400 with a 368-pixel frame. The view said ready within 45 ms, asked only for resize, sent nothing outside the bridge and scrolled nothing sideways.
 - The design pass fixed three things: the tiles did not fill their grid cells, a zero tile drew its shape in the danger color, and an open row's words sat a few pixels left of its title.
+
+The 0.2.4 install and proof on dev:
+- Filed as an update through the deploy ticket at 3:31 pm Mountain time on 2026-11-25 and approved as asking for nothing new. It was running as inspect.platform@agentmesh.ai by 3:45 pm.
+- Dev's Descriptor for it gave agent_version 0.2.4 and named views/report.html at sha256:c7483d42a54a874cdf729893642eb723f092e532c8c66c48e794759c1ac55f54; GET /v1/agents/:key/views/:digest served 49,312 bytes that hash to it.
+- One live run from the Next app on dev (the job page rebuilt in AgentMesh at the same time), as a new dev test account of ours, on langchain-ai/design-agent at 86d8f66, in headless Chromium at 1440 wide in light: job 01a214f3-5baa-7001-b4fa-43273a0f38a8. Sent at 4:03:43 pm; at 1 min 24 s the view showed Overview 6, What it does 127, What it reaches 21, Risks 9 and Tests and gaps 6, filling, with "Judging what it can do on its own, its risks and its tests" under the tabs; delivered by 4:08:47 pm with 215 findings (Overview 11, What it does 127, What it reaches 32, Risks 29 with the highest High, Tests and gaps 16). The page's text, the host's and the view's, held none of "Drawn by", "Delivered", "A draft until you accept it", "repeated from sections", "findings: ", "S7-", "LLM0" or a 40-character hex.
+
+## 0.2.5: what a tab opens on
+
+The cut pass on 0.2.4's live screenshots found two things, fixed here. Only views/report.html changed, with its tests, its digest and the version.
+
+- **A section opens on the model's judgments, then the scripts' lists.** What it does opened on "Its skills" and 36 skill names before the jobs the agent does; What it reaches opened on credentials before the systems they reach. Rows are now ordered by level, then by kind (the jobs, outputs and inputs; the systems and spend; which tools run without an OK; how it runs; what Inspect couldn't tell; then the tests, tools, credentials, skills and parts), then the report's order.
+- **The All chip on Risks carries no count.** It counted the risks (27) while the tab counted section 7 with what it needs to run safely (29): two numbers for one tab. The level chips keep theirs.
+- **Code in the model's words** (`interrupt_on`) is drawn in the code face, without the backticks.
+- The suite: 85 tests, 84 pass, one skipped. The new test fails on 0.2.4's view.
+- Checked in the stand-in host with 0.2.4's delivered design-agent report (215 findings) on each tab, light and dark: ready within 50 ms, only resize asked, nothing outside the bridge, nothing sideways.

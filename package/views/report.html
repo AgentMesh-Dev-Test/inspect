@@ -371,6 +371,8 @@ button { font: inherit; color: inherit; cursor: pointer; }
     const path = String(file).split("/").map((x) => encodeURIComponent(x)).join("/");
     return `${u.origin}${u.pathname.replace(/\/+$/, "")}/blob/${sha}/${path}${Number(line) >= 1 ? `#L${Number(line)}` : ""}`;
   }
+  // The model's words, with `code` drawn in the code face and its marks gone.
+  const prose = (s) => String(s ?? "").split(/`([^`\n]+)`/).map((part, i) => (i % 2 ? el("span", { class: "mono", text: part }) : part)).filter((x) => x !== "");
   // A path may break after each folder, so a narrow row splits no name.
   const breakable = (s) => String(s).split(/(?<=\/)/).flatMap((part, i) => (i ? [el("wbr"), part] : [part]));
   // The job's state, when the host gives it, says whether the job runs; a
@@ -513,8 +515,8 @@ button { font: inherit; color: inherit; cursor: pointer; }
       const rated = levelOf(f) ? f : target ?? f;
       const tab = target ? tabOf(target.section) : null;
       return el("li", {}, el("div", {}, badge(rated)), el("div", {},
-        el("div", { class: "t", text: f.title }),
-        f.says ? el("p", { class: "says", text: f.says }) : null,
+        el("div", { class: "t" }, prose(f.title)),
+        f.says ? el("p", { class: "says" }, prose(f.says)) : null,
         tab ? el("p", { class: "see" }, el("button", { class: "linkish", type: "button", "data-k": `see:${f.id}`, onclick: () => reveal(target.id), text: `See it in ${tab.name}` })) : null));
     }));
   }
@@ -599,7 +601,7 @@ button { font: inherit; color: inherit; cursor: pointer; }
       el("button", { class: "toggle", type: "button", "aria-expanded": open ? "true" : "false", "aria-controls": detailId, "data-k": `row:${f.id}`, onclick: () => { if (state.open.has(f.id)) state.open.delete(f.id); else state.open.add(f.id); draw(); resize(); } },
         el("span", { class: "chev", "aria-hidden": "true", text: open ? "▾" : "▸" }),
         rated ? badge(f) : null,
-        el("span", { class: "tt", text: f.title })));
+        el("span", { class: "tt" }, prose(f.title))));
     if (open) row.append(drawDetail(d, f, detailId));
     return row;
   }
@@ -611,13 +613,17 @@ button { font: inherit; color: inherit; cursor: pointer; }
     else if (f.source?.length) add("From", f.source.map((s) => SYSTEM_WORD[s.system] ?? s.system).join(", "));
     add("Category", categoryWords(f));
     return el("div", { class: "detail", id },
-      f.says ? el("p", { text: f.says }) : null,
+      f.says ? el("p", {}, prose(f.says)) : null,
       dl.childNodes.length ? dl : null,
       el("button", { class: "copy", type: "button", "data-k": `copy:${f.id}`, onclick: () => doCopy(d, f), text: "Copy" }));
   }
   // A list of findings in the order drawn: the highest level first, else the
   // report's order.
-  const ordered = (list) => list.map((f, i) => [f, i]).sort((a, b) => rank(a[0]) - rank(b[0]) || a[1] - b[1]).map(([f]) => f);
+  // A section opens on the model's judgments before the scripts' lists: what
+  // the agent does, reaches or leaves unsaid, then the list of its parts.
+  const KIND_ORDER = ["job", "output", "input", "system", "spend", "autonomy", "how-it-runs", "human-step", "memory", "model", "could-not-tell", "question", "test-gap", "test", "tool", "credential", "skill", "part", "not-judged"];
+  const kindRank = (f) => { const i = KIND_ORDER.indexOf(f?.kind); return i < 0 ? KIND_ORDER.length : i; };
+  const ordered = (list) => list.map((f, i) => [f, i]).sort((a, b) => rank(a[0]) - rank(b[0]) || kindRank(a[0]) - kindRank(b[0]) || a[1] - b[1]).map(([f]) => f);
   function drawRows(d, list, rated) {
     return list.length ? el("ul", { class: rated ? "rows rated" : "rows" }, list.map((f) => drawRow(d, f, rated))) : el("p", { class: "quiet", text: "None found." });
   }
@@ -643,12 +649,13 @@ button { font: inherit; color: inherit; cursor: pointer; }
     if (!all.length) return [el("p", { class: "quiet", text: pending.has(RISKS) || sectionCount(d, RISKS) ? "Nothing yet." : "None found." })];
     const n = (l) => risks.filter((f) => keeps(f, l)).length;
     if (state.level !== "all" && !n(state.level)) state.level = "all";
-    const chips = [["all", "All", risks.length], ...LEVELS.filter((l) => n(l)).map((l) => [l, LEVEL_WORD[l], n(l)])];
+    // All carries no count: the tab already does, with what it needs to run safely.
+    const chips = [["all", "All", null], ...LEVELS.filter((l) => n(l)).map((l) => [l, LEVEL_WORD[l], n(l)])];
     const out = [];
     if (risks.length) {
       out.push(el("div", { class: "chips", role: "group", "aria-label": "Show risks of one level" },
         chips.map(([key, word, count]) => el("button", { class: "chip", type: "button", "aria-pressed": state.level === key ? "true" : "false", "data-k": `lv:${key}`, onclick: () => { state.level = key; draw(); resize(true); } },
-          key !== "all" ? el("span", { class: `lv ${key}` }, shape(key, 11)) : null, el("span", { text: word }), el("span", { class: "c", text: String(count) })))));
+          key !== "all" ? el("span", { class: `lv ${key}` }, shape(key, 11)) : null, el("span", { text: word }), count === null ? null : el("span", { class: "c", text: String(count) })))));
       out.push(drawRows(d, risks.filter((f) => keeps(f, state.level)), true));
     }
     if (safely.length && state.level === "all") out.push(el("h2", { text: "To run it safely" }), drawRows(d, safely, false));
