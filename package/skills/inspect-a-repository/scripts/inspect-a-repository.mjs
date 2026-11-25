@@ -40,7 +40,7 @@ import { judge } from "./judge.mjs";
 import { checkDrafts, checkGlance } from "./checks.mjs";
 import { buildReport, notJudged, replyOf, scriptFindings } from "./report.mjs";
 
-export const VERSION = "0.1.0";
+export const VERSION = "0.1.1";
 const DAY_MS = 24 * 60 * 60 * 1000;
 
 /**

@@ -69,8 +69,13 @@ const PATTERNS = [
   { kind: "capability", what: "browser", re: /\b(playwright|puppeteer|selenium|webdriver|chromium\.launch|browser_use|BrowserToolkit)\b/gi, group: 1 },
   { kind: "capability", what: "send-message", re: /\b(chat_postMessage|chat\.postMessage|files_upload(?:_v2)?|conversations_replies|WebClient|sendMessage|send_message|smtplib|sendgrid|nodemailer|twilio|post_message|reply_to_thread)\b/g, group: 1 },
   { kind: "human-step", re: /\b(interrupt_on|interrupt_before|interrupt_after|HumanInTheLoopMiddleware|human_in_the_loop|humanInTheLoop|interrupt\s*\(|Command\s*\(\s*resume|requires_approval|require_approval|needs_approval|approval_required|ask_human|AskHuman)\b/g, group: 1 },
+  // A question put to the person whose answers include an approval.
+  { kind: "human-step", re: /\b(ask\s*\([^\n]*\b(?:APPROVE|approve|approval)\b)/g, group: 1 },
   { kind: "memory", re: /\b(checkpointer|InMemorySaver|MemorySaver|PostgresSaver|AsyncPostgresSaver|SqliteSaver|RedisSaver|InMemoryStore|PostgresStore|BaseStore|StoreBackend|CompositeBackend|FilesystemBackend|long_term_memory|memories)\b/g, group: 1 },
 ];
+
+/** A line of a skill's instructions that waits for the person's approval. */
+export const APPROVAL_WORDS = /\b(?:user|person|human|they)\b[^.\n]{0,60}\bapprov(?:e|es|ed|al)\b|\bapprov(?:e|es|ed|al)\b[^.\n]{0,40}\b(?:user|person|human)\b|\b(?:only )?after (?:the )?(?:user|person)?'?s? ?approval\b|\bwait (?:for|on) (?:the )?(?:user|person)'?s? (?:approval|OK|go-ahead)\b|\bask (?:the )?(?:user|person) (?:to )?(?:approve|confirm)\b/i;
 
 /** Agent frameworks a dependency's name shows, by package name. */
 export const FRAMEWORKS = {
@@ -269,6 +274,10 @@ export function agentFacts(files, read, { entries = [] } = {}) {
       scripts: code, instructions_only: code.length === 0, for_coding_assistants: isAssistantSkill(folder),
     });
     add("part", f, fm.name_line ?? 1, { part: "skill", name: fm.name || base(folder), folder, ...liftOut(folder, code, textOf) });
+    // A skill's own instructions that stop for the person's approval: one
+    // fact for the file, at its first such line, with every line.
+    const stops = linesOf(textOf(f) ?? "").map((l, i) => (APPROVAL_WORDS.test(l) ? i + 1 : 0)).filter(Boolean);
+    if (stops.length) add("human-step", f, stops[0], { match: "an approval the skill's instructions wait for", in: "instructions", lines: stops });
   }
 
   // Scripts that run as commands, outside a skill's folder or inside one.

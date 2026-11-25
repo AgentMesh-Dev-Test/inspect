@@ -78,6 +78,21 @@ test("[F2.A3] a skill, a model chosen by a setting, a tool, a stop for a person,
   assert.deepEqual([inst.file, inst.line, inst.data.script], ["package.json", 4, "postinstall"]);
 });
 
+test("[F2.A3] a skill's instructions that wait for the person's approval, and a question offering an approval, are steps where a person steps in", () => {
+  const facts = factsOf({
+    "skills/explainer/SKILL.md": "---\nname: explainer\n---\n# Explainer\n\n1. Draft the plan.\n2. Render only after the user approves the plan.\n",
+    "src/pipeline.py": 'async def finish(ctx):\n    answer = await ctx.ask("Render the final?", [APPROVE, CHANGES])\n    return answer\n',
+  });
+  const steps = facts.filter((x) => x.kind === "human-step");
+  const fromSkill = steps.find((x) => x.file === "skills/explainer/SKILL.md");
+  assert.ok(fromSkill, "the skill's approval is a step");
+  assert.equal(fromSkill.line, 7);
+  assert.equal(fromSkill.data.in, "instructions");
+  const fromCode = steps.find((x) => x.file === "src/pipeline.py");
+  assert.ok(fromCode, "the question offering an approval is a step");
+  assert.equal(fromCode.line, 2);
+});
+
 test("[F2.A4] which parts can be lifted out: its own folder and the language's modules, no credential, no package at run time", () => {
   const files = {
     "tools/lint.mjs": '#!/usr/bin/env node\nimport { readFileSync } from "node:fs";\nimport { dir } from "./helpers.mjs";\nconsole.log(readFileSync(dir));\n',

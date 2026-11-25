@@ -8,8 +8,9 @@ Inspect takes a public GitHub repository and a commit, reads the agent's code at
 
 ## Who did what
 
-- Built through the ADLC plugin (0.4.2) by one builder, the harness (Claude Code), on the owner's rule of 2026-11-12 (the ADLC One-Builder Plan): the builder wrote the spec, the architecture record, the prose of the agent's files, the tests and the scripts. The kit's generators wrote the agent's own files and the standard checks.
-- The spec: the owner gave the spec's approval to the builder ("you own the spec, don't ask me for approval on it", request.md); the handle and the price were decided by the coordinator on that word (inspect.platform@agentmesh.ai; free, as repo-reader, repo-architect and repo-scanner declare). The owner ran the plugin's approval command, which only the person may run.
+- One builder, the harness (Claude Code), wrote the spec, the architecture record, the prose of the agent's files, the tests and the scripts. It started in an ADLC plugin (0.4.2) build folder, and the plugin's generators wrote the agent's own files and the standard checks.
+- The spec: the owner gave the spec's approval to the builder: "you own the spec, don't ask me for approval on it" (request.md). He declined to run the plugin's approval command and directed the build ("I asked you to build this"), and then said he never wanted Inspect built through the ADLC. So the plugin's lock was never written, its build gates were not used, and its `put` was not run. The package was checked by its own suite (60 tests, 59 pass, one skipped) and by the Common Agent packer, and it was filed on dev through the platform's front door (POST /v1/deploy/by-email) with the platform's deploy key, as the platform's own address.
+- The handle and the price were decided by the coordinator on the owner's word: inspect.platform@agentmesh.ai, and free, as repo-reader, repo-architect and repo-scanner declare.
 - No running limit is in the spec or the record (the owner: "building the software is different than setting limits on running it!"). The record says the package sets none.
 
 ## What it reuses, pinned, not forked
@@ -24,7 +25,7 @@ reused.json pins every carried file to CommonAgent/adlc 7d66f36 and its sha256; 
 
 ## Where it lives
 
-The build folder is agents/inspect on branch adlc/inspect of AgentMesh-Dev-Test/adlc-plugin-proof, the place plugin builds go. It is not in AgentMesh's packages/repo: AgentMesh's own gates scan every file of a package there, the plugin's kit and the byte-pinned copies among them, and neither may be edited.
+The build folder is agents/inspect on branch adlc/inspect of AgentMesh-Dev-Test/adlc-plugin-proof, the place plugin builds go. The agent repository AgentMesh reads is https://github.com/AgentMesh-Dev-Test/inspect: the package under package/, and what it was built from under source/. It is not in AgentMesh's packages/repo: AgentMesh's own gates scan every file of a package there, the byte-pinned copies among them, which may not be edited.
 
 ## Dev
 
