@@ -146,3 +146,12 @@ The delivered report fits its schema. The answer came 85 seconds sooner than in 
   - The host sends view/data once more with job_state completed and lifecycle null: answered without its deliverable (DESCRIPTOR-UI Section 6, rule 1).
   - 0.2.0 still drew Running, because the working copy says partial.
   - 0.2.1 reads the job's state first. It draws "Finished, but the full report did not arrive", with the findings that were posted. A failed or canceled job still draws as stopped.
+
+The 0.2.1 install and proof on dev:
+
+- Filed through the deploy ticket and approved as asking for nothing new. It has been running since 9:50 am Mountain time on 2026-11-25.
+- The design-agent proof was sent at 9:51 am; its Task was 01a2139e-55ad-7000-b12a-b25b07e8f631.
+  - The Task completed in 177 seconds.
+  - Its answer carries the job manifest with all three pieces, each with step inspect-a-repository: inspection (1,024,391 bytes), inspection-md (179,075 bytes) and sbom (175,405 bytes). Their files are on the answer for the sender.
+  - The 0.2.0 proof's answer, read the same way, carried the words alone.
+- GET /v1/agents/:key/views/:digest on dev now serves views/report.html for sha256:e8d075de783125c609b0a85569056f6046b3853d33b248c9ec004ed54bc3a3e5, and the bytes hash to it.
