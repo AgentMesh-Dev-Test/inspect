@@ -255,3 +255,29 @@ The 0.2.3 install and proof on dev:
 
 - The view stayed on Overview through every update; it moved only when Risks was clicked.
 - The screenshots (1440 wide, light): one while it ran with the counts climbing, one on Overview when it finished, one on Risks.
+
+## 0.2.4: the whole view is tabs, with no commentary
+
+The owner rejected the result page again on 2026-11-25 ("Fix it"): the tabs sat under a head, the status line and lines that explained the counts, and the page carried remarks about how the report was made. Only views/report.html changed, with its tests, the stand-in host, its digest and the version. The host's side (the Next app's job page) changed in AgentMesh at the same time.
+
+- **One row of six tabs, with nothing above it.** Overview, What it does, What it reaches, Risks, Tests and gaps, and About Inspect.
+  - The view's own head is gone: the eyebrow, the repository's name, the commit and dates line, the count sentence and the Running, Draft, Accepted, Published line. The host's header names the repository.
+  - No section codes on a tab. The first five carry a small count; Risks also names its highest level as a word and a shape.
+  - The ARIA tabs pattern, the keys, view/resize after each change of tab, and the tab staying put when data arrives are kept.
+- **Overview:** the risk tiles (each opens Risks at its level), the top judgments, each with its level and a link that reads "See it in Risks" (or the tab that holds it), what was inspected as a label and value list (license, what it is built on, how actively it is kept up, publisher, the commit in seven characters), and a plain "Save a summary for security" button.
+- **Rows show only the title, and on Risks the level.** Opening a row shows the finding's words, where it is in the code (file and line), the category by its plain name from the OWASP lists, and Copy. No file, category code or Copy on a closed row.
+- **Inside the tabs:** a tab of two sections has two plain headings (What it does and How it works; What it connects to and What it can do on its own); a tab of one has none. No numbers and no counts in headings. Every row is shown; nothing folds.
+- **Risks:** the level filter; the risks highest first; what it needs to run safely (least access and approvals) under "To run it safely". No line saying how many are shown.
+- **Tests and gaps:** section 8, and any judgment held back under "Held back".
+- **About Inspect:** what it does (the Descriptor's summary), how it works (scripts collect the facts, a model writes the judgments and cites them) and what it doesn't do (its first two refusals), from the Descriptor the host hands in view/data, with Inspect's own words when the host hands none.
+- **Removed:** every sentence that explained a count, a section or how the report was made: "5 findings, each repeated from sections 2 to 8", the report's total split by section, "Showing 31 of the 31 findings in section 7", "This section is written last…", "This copy leaves out each finding's words…", the footer, the security box's description, the waiting card, the lines under sections still to come, "Written by", "Level, as the model judged it", and a finding's id in a toast.
+- **While running:** the counts fill in, a tab with nothing yet shows "…", and one line under the tabs says what Inspect is doing in a few words ("Reading the code", "Judging what it can do on its own, its risks and its tests"), mapped from the stage its working copy names. It is gone once the report is done. A job that stops says so in one line in the same place.
+
+The tests:
+- test/view-draw.test.mjs is rewritten for the six tabs: the tab set with nothing above it; rows closed by default with the evidence only when opened; Overview; See it in Risks; the Risks filter and its groups; the headings; About Inspect from the Descriptor; the line while running; the tab staying put; the keys; and a test that fails if the page draws any of "repeated from sections", "findings: ", a section or category code, a status word, a full commit or "Drawn by".
+- The suite: 84 tests, 83 pass, one skipped.
+
+How it was checked in a browser:
+- test/view-host.html no longer draws a heading of its own and hands the view the Descriptor; test/view-shots.mjs can open rows (`open` in a case).
+- In headless Edge, started hidden: a synthetic report shaped like design-agent's (223 findings) on each tab at a 1440 window with a 960-pixel frame, delivered, while running and with nothing yet, in light and dark, and at 400 with a 368-pixel frame. The view said ready within 45 ms, asked only for resize, sent nothing outside the bridge and scrolled nothing sideways.
+- The design pass fixed three things: the tiles did not fill their grid cells, a zero tile drew its shape in the danger color, and an open row's words sat a few pixels left of its title.

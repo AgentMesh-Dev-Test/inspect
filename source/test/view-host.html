@@ -41,7 +41,7 @@ iframe.loading { visibility: hidden; height: 0 !important; }
 </style>
 </head>
 <body>
-<div class="page"><div class="box" id="box"><h2>What came back</h2></div></div>
+<div class="page"><div class="box" id="box"></div></div>
 <script>
 "use strict";
 (() => {
@@ -117,7 +117,7 @@ iframe.loading { visibility: hidden; height: 0 !important; }
   host.data = (text, o = {}) => {
     const d = { text, o };
     if (!host.live) { pending = d; return; }
-    post({ jsonrpc: "2.0", method: "view/data", params: { name: "inspection", media_type: "application/vnd.agentmesh.inspection-report+json", text, about: null, lifecycle: o.lifecycle ?? null, job_state: o.job_state ?? "completed", descriptor: null } });
+    post({ jsonrpc: "2.0", method: "view/data", params: { name: "inspection", media_type: "application/vnd.agentmesh.inspection-report+json", text, about: null, lifecycle: o.lifecycle ?? null, job_state: o.job_state ?? "completed", descriptor: o.descriptor ?? null } });
   };
 })();
 </script>

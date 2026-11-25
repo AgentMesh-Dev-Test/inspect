@@ -25,6 +25,7 @@ import { fileURLToPath, pathToFileURL } from "node:url";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const VIEW = readFileSync(join(HERE, "..", "views", "report.html"), "utf8");
+const DESCRIPTOR = JSON.parse(readFileSync(join(HERE, "..", "agent-descriptor.json"), "utf8"));
 const HOST = pathToFileURL(join(HERE, "view-host.html")).href;
 const EDGE = process.env.EDGE ?? "C:/Program Files (x86)/Microsoft/Edge/Application/msedge.exe";
 
@@ -119,9 +120,10 @@ try {
     await cdp.send("Page.navigate", { url: HOST }, page);
     for (let i = 0; i < 50 && (await inHost("document.readyState").catch(() => "")) !== "complete"; i += 1) await pause(100);
     await inHost(`window.host.start(${JSON.stringify(VIEW)}, ${JSON.stringify({ scheme: c.scheme, box: c.box })})`);
-    await inHost(`window.host.data(${JSON.stringify(text)}, ${JSON.stringify(st)})`);
+    await inHost(`window.host.data(${JSON.stringify(text)}, ${JSON.stringify({ ...st, descriptor: DESCRIPTOR })})`);
     await settled();
     if (c.tab) await inView(`document.getElementById(${JSON.stringify(`tab-${c.tab}`)})?.click()`);
+    for (const id of c.open ?? []) await inView(`document.getElementById(${JSON.stringify(`f-${id}`)})?.querySelector(".toggle")?.click()`);
     for (const key of c.press ?? []) await inView(`document.activeElement.dispatchEvent(new KeyboardEvent("keydown", { key: ${JSON.stringify(key)}, bubbles: true }))`);
     await settled();
     const seen = await inView(`(() => {

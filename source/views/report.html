@@ -13,17 +13,17 @@
   the host for three things only: a height (view/resize), words copied to the
   clipboard (view/copy-text) and a file saved (view/save-file).
 
-  It draws the delivered report, and the working copy the job posts while it
-  runs (the same format, with "partial"), so a person sees the findings so
-  far and the stage the job is at. Colors and fonts come from the host's
-  --ca-* tokens, each with a fallback for light and for dark. A level is
-  always a word and a shape, never a color alone.
-
-  Since 0.2.3 the report is five tabs under its head: Overview (sections 1
-  and 2), What it does (3 and 4), What it reaches (5 and 6), Risks (7) and
-  Tests and gaps (8). Each tab's label counts its findings, and Risks names
-  its highest level. The view starts on Overview, since the frame keeps
-  nothing between visits, and only the person moves it to another tab.
+  Since 0.2.4 the whole view is one row of six tabs, with nothing above it:
+  the host's own header names the repository. Overview (the risks by level,
+  the top judgments and what was inspected), What it does (sections 3 and
+  4), What it reaches (5 and 6), Risks (7), Tests and gaps (8) and About
+  Inspect (Inspect's own words, from the Descriptor the host hands it). A
+  row shows its title, and on Risks its level; opening it shows the
+  finding's words, where it is in the code, its category and Copy. While the
+  job runs, the counts fill in and one line under the tabs says what Inspect
+  is doing. Colors and fonts come from the host's --ca-* tokens, each with a
+  fallback for light and for dark. A level is always a word and a shape,
+  never a color alone.
 -->
 <style>
 :root {
@@ -57,99 +57,66 @@
 }
 * { box-sizing: border-box; }
 html, body { margin: 0; background: var(--bg); color: var(--text); font-family: var(--body); font-size: var(--size); line-height: 1.5; }
-body { padding: calc(var(--s) * 2.5) calc(var(--s) * 2); }
+body { padding: 2px 2px calc(var(--s) * 2); }
 #app { min-width: 0; }
-h1, h2, h3, p { margin: 0; }
-button, select { font: inherit; color: inherit; }
-button { cursor: pointer; }
+h2, h3, p { margin: 0; }
+button { font: inherit; color: inherit; cursor: pointer; }
 :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 4px; }
 .muted { color: var(--muted); }
-.mono { font-family: var(--mono); font-size: 0.88em; }
+.mono { font-family: var(--mono); font-size: 0.84em; }
 .sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
-
-/* The head */
-.head { display: flex; gap: calc(var(--s) * 2); align-items: flex-start; justify-content: space-between; flex-wrap: wrap; }
-.eyebrow { font-size: 0.8em; letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); font-weight: 600; }
-h1 { font-size: 1.55em; line-height: 1.2; font-weight: 650; margin-top: calc(var(--s) * 0.5); overflow-wrap: anywhere; }
-.meta { margin-top: calc(var(--s) * 0.75); font-size: 0.9em; color: var(--muted); }
-.meta span + span::before { content: "\00B7"; padding: 0 0.45em; }
-.btn { border: 1px solid var(--border); background: var(--surface); border-radius: var(--radius); padding: calc(var(--s) * 0.75) calc(var(--s) * 1.5); font-size: 0.9em; font-weight: 550; display: inline-flex; gap: 0.5em; align-items: center; white-space: nowrap; }
+.btn { border: 1px solid var(--border); background: var(--surface); border-radius: calc(var(--radius) * 0.75); padding: calc(var(--s) * 0.7) calc(var(--s) * 1.3); min-height: 44px; font-size: 0.92em; font-weight: 600; display: inline-flex; gap: 0.5em; align-items: center; white-space: nowrap; }
 .btn:hover { border-color: var(--muted); }
-.btn[disabled] { opacity: 0.55; cursor: default; }
+.linkish { background: none; border: 0; padding: 0; color: var(--accent); font-weight: 600; text-decoration: underline; text-underline-offset: 2px; }
 
-/* Where the report is in its life */
-.track { list-style: none; padding: 0; margin: calc(var(--s) * 2) 0 0; display: flex; flex-wrap: wrap; gap: calc(var(--s) * 0.5) 0; font-size: 0.88em; }
-.track li { display: inline-flex; align-items: center; gap: 0.45em; color: var(--muted); }
-.track li + li::before { content: ""; width: calc(var(--s) * 3); height: 1px; background: var(--border); margin: 0 0.6em; }
-.track li[aria-current="step"] { color: var(--text); font-weight: 650; }
-.track li.done { color: var(--text); }
-.track svg { flex: none; }
-.now { margin-top: calc(var(--s) * 1); font-size: 0.92em; display: flex; gap: 0.55em; align-items: baseline; }
+/* The tabs: the first thing on the page. The open tab is underlined and
+   bold; a count sits small beside each name, and Risks names its highest
+   level as a word and a shape. */
+.tabs-wrap { border-bottom: 1px solid var(--border); min-width: 0; }
+.tabs { display: flex; gap: calc(var(--s) * 0.25); overflow-x: auto; overflow-y: hidden; scrollbar-width: none; overscroll-behavior-x: contain; margin-bottom: -1px; }
+.tabs::-webkit-scrollbar { display: none; }
+.tabs.more-right { -webkit-mask-image: linear-gradient(to right, #000 calc(100% - 3em), transparent); mask-image: linear-gradient(to right, #000 calc(100% - 3em), transparent); }
+.tabs.more-left { -webkit-mask-image: linear-gradient(to right, transparent, #000 3em); mask-image: linear-gradient(to right, transparent, #000 3em); }
+.tabs.more-left.more-right { -webkit-mask-image: linear-gradient(to right, transparent, #000 3em, #000 calc(100% - 3em), transparent); mask-image: linear-gradient(to right, transparent, #000 3em, #000 calc(100% - 3em), transparent); }
+.tab { all: unset; box-sizing: border-box; flex: none; cursor: pointer; display: inline-flex; align-items: center; gap: 0.5em; min-height: 44px; padding: calc(var(--s) * 0.6) calc(var(--s) * 1.1); border-bottom: 3px solid transparent; color: var(--muted); white-space: nowrap; }
+.tab:hover { color: var(--text); border-bottom-color: var(--border); }
+.tab[aria-selected="true"] { color: var(--text); border-bottom-color: var(--accent); }
+.tab:focus-visible { outline: 2px solid var(--accent); outline-offset: -3px; border-radius: 4px; }
+.tab-name { font-size: 0.94em; font-weight: 600; white-space: nowrap; }
+.tab[aria-selected="true"] .tab-name { font-weight: 700; }
+.tab-n { font-size: 0.82em; font-variant-numeric: tabular-nums; color: var(--muted); }
+.tab .lv { font-size: 0.8em; }
+.now { margin-top: calc(var(--s) * 1); font-size: 0.9em; color: var(--muted); display: flex; gap: 0.55em; align-items: baseline; }
 .pulse { display: inline-block; width: 0.55em; height: 0.55em; border-radius: 50%; background: var(--accent); flex: none; transform: translateY(-0.05em); animation: pulse 1.6s ease-in-out infinite; }
 @keyframes pulse { 50% { opacity: 0.3; } }
-@media (prefers-reduced-motion: reduce) { .pulse, .tab .live { animation: none; } }
-.stopped.notice { border-color: var(--border); background: var(--surface); }
-.stopped { margin-top: calc(var(--s) * 1.5); border: 1px solid var(--danger); border-radius: var(--radius); padding: calc(var(--s) * 1) calc(var(--s) * 1.5); display: flex; gap: 0.6em; align-items: flex-start; }
-.note { margin-top: calc(var(--s) * 1); font-size: 0.86em; color: var(--muted); }
-
-/* The tabs: an index of the report. Each tab names the sections it holds by
-   the prefix their findings carry (S7 for S7-010), then its name, then how
-   many findings it holds. The tab the person is on is raised and underlined;
-   a tab still filling has a dotted rule under it, never a color alone. */
-.tabs-wrap { margin-top: calc(var(--s) * 2.25); border-bottom: 1px solid var(--border); min-width: 0; }
-.tabs { position: relative; display: flex; gap: calc(var(--s) * 0.35); overflow-x: auto; overflow-y: hidden; scrollbar-width: none; overscroll-behavior-x: contain; margin-bottom: -1px; }
-.tabs::-webkit-scrollbar { display: none; }
-.tabs.more-right { -webkit-mask-image: linear-gradient(to right, #000 calc(100% - 3.5em), transparent); mask-image: linear-gradient(to right, #000 calc(100% - 3.5em), transparent); }
-.tabs.more-left { -webkit-mask-image: linear-gradient(to right, transparent, #000 3.5em); mask-image: linear-gradient(to right, transparent, #000 3.5em); }
-.tabs.more-left.more-right { -webkit-mask-image: linear-gradient(to right, transparent, #000 3.5em, #000 calc(100% - 3.5em), transparent); mask-image: linear-gradient(to right, transparent, #000 3.5em, #000 calc(100% - 3.5em), transparent); }
-.tab { all: unset; box-sizing: border-box; flex: none; cursor: pointer; display: grid; align-content: start; gap: calc(var(--s) * 0.15); min-width: 7.2em; padding: calc(var(--s) * 0.9) calc(var(--s) * 1.35) calc(var(--s) * 0.85); border: 1px solid transparent; border-bottom: 0; border-radius: calc(var(--radius) * 0.75) calc(var(--radius) * 0.75) 0 0; color: var(--muted); position: relative; }
-.tab::after { content: ""; position: absolute; left: calc(var(--s) * 0.6); right: calc(var(--s) * 0.6); bottom: 0; border-bottom: 3px solid transparent; }
-.tab:hover { color: var(--text); }
-.tab:hover::after { border-bottom-color: var(--border); }
-.tab[aria-selected="true"] { color: var(--text); background: var(--surface); border-color: var(--border); }
-.tab[aria-selected="true"]::after { left: -1px; right: -1px; border-bottom-color: var(--accent); }
-.tab:not([aria-selected="true"]).tab-filling::after, .tab:not([aria-selected="true"]).tab-waiting::after { border-bottom: 2px dotted var(--muted); opacity: 0.7; }
-.tab:focus-visible { outline: 2px solid var(--accent); outline-offset: -3px; }
-.tab-key { font-family: var(--mono); font-size: 0.68em; letter-spacing: 0.04em; color: var(--muted); white-space: nowrap; }
-.tab-name { font-size: 0.86em; font-weight: 600; white-space: nowrap; }
-.tab[aria-selected="true"] .tab-name { font-weight: 700; }
-.tab-sub { display: flex; align-items: center; gap: 0.5em; white-space: nowrap; min-height: 1.7em; }
-.tab-n { font-size: 1.32em; font-weight: 650; line-height: 1.2; font-variant-numeric: tabular-nums; color: var(--text); letter-spacing: -0.01em; }
-.tab:not([aria-selected="true"]) .tab-n { font-weight: 560; }
-.tab-n.wait { color: var(--muted); font-weight: 500; letter-spacing: 0.08em; }
-.tab .sep { color: var(--muted); }
-.tab .lv { font-size: 0.8em; }
-.tab .live { width: 0.5em; height: 0.5em; border-radius: 50%; background: var(--accent); flex: none; animation: live 1.6s ease-in-out infinite; }
-@keyframes live { 50% { opacity: 0.55; } }
+@media (prefers-reduced-motion: reduce) { .pulse { animation: none; } }
 
 /* A tab's panel */
-.panel { padding-top: calc(var(--s) * 2.5); }
+.panel { padding-top: calc(var(--s) * 2); }
 .panel:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; border-radius: 4px; }
 .panel > :first-child { margin-top: 0; }
+.panel h2 { font-size: 1.02em; font-weight: 650; margin: calc(var(--s) * 2.5) 0 calc(var(--s) * 0.75); }
+.panel > h2:first-child { margin-top: 0; }
+.quiet { color: var(--muted); font-size: 0.92em; padding: calc(var(--s) * 0.75) 0; }
 
-/* At a glance */
-.glance { margin-top: calc(var(--s) * 3); background: var(--surface); border: 1px solid var(--border); border-radius: calc(var(--radius) * 1.25); padding: calc(var(--s) * 2.25); }
-.glance-h { display: flex; flex-wrap: wrap; align-items: baseline; gap: 0.25em 0.75em; }
-.glance h2 { font-size: 1.1em; font-weight: 650; }
-.glance-h .count { font-size: 0.86em; color: var(--muted); }
-.tiles { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: calc(var(--s) * 1); margin-top: calc(var(--s) * 1.5); }
-.tile { background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius); padding: calc(var(--s) * 1.25) calc(var(--s) * 1.5); }
-.tile .n { font-size: 1.6em; font-weight: 650; line-height: 1.1; font-variant-numeric: tabular-nums; }
-.tile .w { display: flex; gap: 0.4em; align-items: center; font-size: 0.86em; margin-top: 0.25em; }
+/* Overview: the risks by level, the top judgments, what was inspected */
+.tiles { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: calc(var(--s) * 0.75); }
+.tile { all: unset; box-sizing: border-box; cursor: pointer; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: calc(var(--s) * 1) calc(var(--s) * 1.25); display: grid; gap: 0.15em; min-height: 44px; width: 100%; }
+.tile:hover { border-color: var(--muted); }
+.tile:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.tile .n { font-size: 1.5em; font-weight: 650; line-height: 1.1; font-variant-numeric: tabular-nums; }
+.tile .w { display: flex; gap: 0.4em; align-items: center; font-size: 0.88em; }
 .tile.zero .n, .tile.zero .w, .tile.zero .lv { color: var(--muted); font-weight: 500; }
+.tiles > div { display: grid; min-width: 0; }
 .matters { list-style: none; margin: calc(var(--s) * 2) 0 0; padding: 0; display: grid; gap: calc(var(--s) * 1.5); }
-.matters li { display: grid; grid-template-columns: 6.6em minmax(0, 1fr); gap: calc(var(--s) * 1.25); }
+.matters li { display: grid; grid-template-columns: 6.4em minmax(0, 1fr); gap: calc(var(--s) * 1); }
 .matters .t { font-weight: 620; }
-.matters .says { color: var(--text); margin-top: 0.15em; }
-.matters .see { margin-top: 0.3em; font-size: 0.86em; }
-.linkish { background: none; border: 0; padding: 0; color: var(--accent); text-decoration: underline; text-underline-offset: 2px; }
-.lead { margin-top: calc(var(--s) * 1.5); font-size: 0.9em; color: var(--muted); }
-
-/* For security, on Overview */
-.forsec { margin-top: calc(var(--s) * 3); display: flex; gap: calc(var(--s) * 1.5) calc(var(--s) * 2.5); align-items: center; justify-content: space-between; flex-wrap: wrap; border: 1px solid var(--border); border-radius: calc(var(--radius) * 1.25); padding: calc(var(--s) * 1.75) calc(var(--s) * 2); }
-.forsec > div { flex: 1 1 18em; min-width: 0; }
-.forsec h2 { font-size: 1em; font-weight: 650; }
-.forsec p { font-size: 0.88em; color: var(--muted); margin-top: 0.2em; max-width: 52ch; }
+.matters .says { margin-top: 0.15em; }
+.matters .see { margin-top: 0.3em; font-size: 0.88em; }
+.facts { display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: calc(var(--s) * 0.5) calc(var(--s) * 2); margin: 0; font-size: 0.94em; }
+.facts dt { color: var(--muted); }
+.facts dd { margin: 0; min-width: 0; overflow-wrap: anywhere; }
+.save { margin-top: calc(var(--s) * 2.5); }
 
 /* Levels: a shape and a word */
 .lv { display: inline-flex; align-items: center; gap: 0.4em; font-size: 0.86em; font-weight: 600; white-space: nowrap; }
@@ -158,88 +125,54 @@ h1 { font-size: 1.55em; line-height: 1.2; font-weight: 650; margin-top: calc(var
 .lv.medium { color: var(--text); }
 .lv.low, .lv.none { color: var(--muted); }
 .lv .word { color: var(--text); }
-.lv.unrated { color: var(--muted); font-weight: 500; }
-.lv.unrated .word { color: var(--muted); }
+.lv.unrated, .lv.unrated .word { color: var(--muted); font-weight: 500; }
 
 /* The level filter, on Risks */
-.filters { margin-top: 0; display: flex; flex-wrap: wrap; gap: calc(var(--s) * 1.25) calc(var(--s) * 2.5); align-items: center; padding-bottom: calc(var(--s) * 1.5); border-bottom: 1px solid var(--border); }
-.chips { display: inline-flex; flex-wrap: wrap; gap: calc(var(--s) * 0.5); align-items: center; }
-.chips .lbl { font-size: 0.9em; margin-right: 0.2em; }
-.chip { border: 1px solid var(--border); background: var(--bg); border-radius: 999px; padding: 0.2em 0.75em; font-size: 0.85em; display: inline-flex; gap: 0.4em; align-items: center; }
+.chips { display: flex; flex-wrap: wrap; gap: calc(var(--s) * 0.5); align-items: center; margin-bottom: calc(var(--s) * 1.25); }
+.chip { border: 1px solid var(--border); background: var(--bg); border-radius: 999px; padding: 0.3em 0.85em; min-height: 36px; font-size: 0.86em; display: inline-flex; gap: 0.4em; align-items: center; }
 .chip[aria-pressed="true"] { border-color: var(--text); background: var(--surface); font-weight: 650; box-shadow: inset 0 0 0 1px var(--text); }
 .chip .c { color: var(--muted); font-variant-numeric: tabular-nums; }
-.showing { font-size: 0.86em; color: var(--muted); width: 100%; margin: calc(var(--s) * -0.25) 0 0; }
 
-/* The sections */
-section.sec { margin-top: calc(var(--s) * 3); }
-.sec-h { display: flex; flex-wrap: wrap; align-items: baseline; gap: 0 0.75em; padding-bottom: calc(var(--s) * 0.75); }
-.sec-h .num { font-variant-numeric: tabular-nums; color: var(--muted); font-weight: 600; min-width: 1.2em; }
-.sec-h h2 { font-size: 1.05em; font-weight: 650; }
-.sec-h .count { font-size: 0.86em; color: var(--muted); white-space: nowrap; }
+/* The rows: the title, and on Risks its level; the rest when opened */
 .rows { list-style: none; margin: 0; padding: 0; border-top: 1px solid var(--border); }
 .row { border-bottom: 1px solid var(--border); }
-/* A row: the level, then the whole title with the file and line under it,
-   then the category. The title wraps; it is never cut. */
-.line { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: start; }
-.toggle { all: unset; box-sizing: border-box; cursor: pointer; display: grid; grid-template-columns: 6.6em minmax(0, 1fr) auto; grid-template-areas: "lv t cat"; gap: calc(var(--s) * 0.5) calc(var(--s) * 1.25); align-items: baseline; padding: calc(var(--s) * 0.9) calc(var(--s) * 0.75); min-width: 0; border-radius: 4px; }
+.toggle { all: unset; box-sizing: border-box; cursor: pointer; width: 100%; display: grid; grid-template-columns: 1em minmax(0, 1fr); gap: calc(var(--s) * 0.6); align-items: baseline; min-height: 44px; padding: calc(var(--s) * 0.75) calc(var(--s) * 0.5); border-radius: 4px; }
+.rows.rated .toggle { grid-template-columns: 1em 6.4em minmax(0, 1fr); }
 .toggle:hover { background: var(--surface); }
 .toggle:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
-.toggle > .lv { grid-area: lv; }
-.toggle > .t { grid-area: t; min-width: 0; display: grid; gap: 0.2em; }
-.toggle > .cat { grid-area: cat; justify-self: end; }
-.toggle .tt { overflow-wrap: anywhere; padding-left: 0.9em; text-indent: -0.9em; }
-.toggle .tt .chev { display: inline-block; width: 0.9em; text-indent: 0; color: var(--muted); }
-.cat { font-family: var(--mono); font-size: 0.8em; border: 1px solid var(--border); border-radius: 4px; padding: 0.05em 0.4em; white-space: nowrap; color: var(--text); display: inline-flex; max-width: 24ch; min-width: 0; }
-.cat .id { overflow: hidden; text-overflow: ellipsis; min-width: 0; }
-.cat .n-more { flex: none; color: var(--muted); }
-.place { font-family: var(--mono); font-size: 0.82em; color: var(--muted); overflow-wrap: anywhere; padding-left: calc(0.9em / 0.82); }
-.place.src { font-family: var(--body); font-size: 0.86em; padding-left: calc(0.9em / 0.86); }
-.copy { border: 0; background: none; color: var(--muted); font-size: 0.85em; padding: calc(var(--s) * 0.95) calc(var(--s) * 1); border-radius: 4px; white-space: nowrap; }
-.row:hover .copy, .copy:focus-visible { color: var(--accent); }
-.copy:hover { text-decoration: underline; text-underline-offset: 2px; }
-.rows.unrated .toggle { grid-template-columns: minmax(0, 1fr) auto; grid-template-areas: "t cat"; }
-.detail { padding: 0 calc(var(--s) * 1) calc(var(--s) * 1.75) calc(var(--s) * 0.75 + 6.6em + var(--s) * 1.25); display: grid; gap: calc(var(--s) * 1); font-size: 0.93em; }
-.rows.unrated .detail { padding-left: calc(var(--s) * 2.2); }
-.detail dl { display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: calc(var(--s) * 0.5) calc(var(--s) * 1.5); margin: 0; font-size: 0.92em; }
+.toggle .chev { color: var(--muted); }
+.toggle .tt { min-width: 0; overflow-wrap: anywhere; }
+.detail { padding: 0 calc(var(--s) * 1) calc(var(--s) * 1.5) calc(var(--s) * 0.5 + 1em + var(--s) * 0.6); display: grid; gap: calc(var(--s) * 1); }
+.detail > p { font-size: 0.96em; }
+.rows.rated .detail { padding-left: calc(var(--s) * 0.5 + 1em + 6.4em + var(--s) * 1.2); }
+.detail dl { display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: calc(var(--s) * 0.5) calc(var(--s) * 1.5); margin: 0; font-size: 0.9em; }
 .detail dt { color: var(--muted); }
-.detail dd { margin: 0; min-width: 0; }
-.detail ul { margin: 0; padding: 0; list-style: none; display: grid; gap: calc(var(--s) * 0.5); }
-.detail code { font-family: var(--mono); font-size: 0.86em; display: block; white-space: pre-wrap; overflow-wrap: anywhere; color: var(--muted); }
-.more { margin: calc(var(--s) * 1) 0 0 calc(var(--s) * 0.75); }
-.empty { padding: calc(var(--s) * 1.25) calc(var(--s) * 0.75); color: var(--muted); font-size: 0.92em; border-bottom: 1px solid var(--border); }
-.coming { display: flex; gap: 0.6em; align-items: baseline; padding: calc(var(--s) * 1) calc(var(--s) * 0.75); color: var(--muted); font-size: 0.9em; border-bottom: 1px solid var(--border); }
+.detail dd { margin: 0; min-width: 0; overflow-wrap: anywhere; }
+.detail ul { margin: 0; padding: 0; list-style: none; display: grid; gap: calc(var(--s) * 0.35); }
+.copy { justify-self: start; border: 1px solid var(--border); background: var(--bg); border-radius: calc(var(--radius) * 0.6); padding: 0.3em 0.9em; min-height: 36px; font-size: 0.88em; }
+.copy:hover { border-color: var(--muted); }
 
-/* A tab whose sections have not arrived yet */
-.waitcard { border: 1px dashed var(--border); border-radius: calc(var(--radius) * 1.25); padding: calc(var(--s) * 2) calc(var(--s) * 2.25); }
-.waitcard .msg { display: flex; gap: 0.75em; align-items: baseline; }
-.waitcard .msg strong { font-weight: 650; }
-.waitcard .msg p { margin-top: 0.2em; font-size: 0.92em; }
-.waitcard ul { list-style: none; margin: calc(var(--s) * 1.75) 0 0; padding: 0; border-top: 1px solid var(--border); }
-.waitcard li { display: grid; grid-template-columns: 1.6em minmax(0, 1fr) auto; gap: calc(var(--s) * 1); align-items: baseline; padding: calc(var(--s) * 0.9) 0; border-bottom: 1px solid var(--border); }
-.waitcard li:last-child { border-bottom: 0; }
-.waitcard .num { color: var(--muted); font-weight: 600; font-variant-numeric: tabular-nums; }
-.waitcard .st { display: inline-flex; gap: 0.4em; align-items: center; color: var(--muted); font-size: 0.86em; white-space: nowrap; }
+/* About Inspect */
+.about { display: grid; gap: calc(var(--s) * 0.5); max-width: 68ch; }
+.about h2 { margin: calc(var(--s) * 1.25) 0 0; }
+.about > h2:first-child { margin-top: 0; }
+.about ul { margin: 0; padding-left: 1.2em; display: grid; gap: calc(var(--s) * 0.35); }
 
-.held { margin-top: calc(var(--s) * 3); font-size: 0.92em; }
-.held h2 { font-size: 1.05em; font-weight: 650; margin-bottom: calc(var(--s) * 1); }
-.held ul { margin: 0; padding-left: 1.2em; display: grid; gap: calc(var(--s) * 0.5); }
-.foot { margin-top: calc(var(--s) * 3); font-size: 0.86em; color: var(--muted); }
 .waiting { padding: calc(var(--s) * 4) 0; color: var(--muted); }
 .toast { position: fixed; right: calc(var(--s) * 2); bottom: calc(var(--s) * 2); background: var(--text); color: var(--bg); border-radius: var(--radius); padding: calc(var(--s) * 0.75) calc(var(--s) * 1.5); font-size: 0.88em; opacity: 0; transition: opacity 0.2s; pointer-events: none; }
 .toast.on { opacity: 1; }
 
 @media (max-width: 640px) {
   .tiles { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  .toggle { grid-template-columns: auto minmax(0, 1fr); grid-template-areas: "lv cat" "t t"; align-items: center; }
-  .toggle > .cat { justify-self: start; }
-  .rows.unrated .toggle { grid-template-columns: minmax(0, 1fr); grid-template-areas: "t" "cat"; }
-  .detail { padding-left: calc(var(--s) * 0.75); }
-  .matters li { grid-template-columns: 1fr; gap: calc(var(--s) * 0.5); }
-  .track li + li::before { display: none; }
-  .track { gap: calc(var(--s) * 0.75) calc(var(--s) * 2); }
-  .tab { min-width: 6.4em; padding: calc(var(--s) * 0.75) calc(var(--s) * 1.1) calc(var(--s) * 0.75); }
-  .forsec { padding: calc(var(--s) * 1.5); }
-  .waitcard { padding: calc(var(--s) * 1.5); }
+  .rows.rated .toggle { grid-template-columns: 1em minmax(0, 1fr); grid-template-areas: "c lv" "c t"; }
+  .rows.rated .toggle > .chev { grid-area: c; }
+  .rows.rated .toggle > .lv { grid-area: lv; }
+  .rows.rated .toggle > .tt { grid-area: t; }
+  .detail, .rows.rated .detail { padding-left: calc(var(--s) * 0.5 + 1em + var(--s) * 0.6); }
+  .matters li { grid-template-columns: 1fr; gap: calc(var(--s) * 0.35); }
+  .facts { grid-template-columns: 1fr; gap: 0; }
+  .facts dd { margin-bottom: calc(var(--s) * 0.75); }
+  .tab { padding: calc(var(--s) * 0.6) calc(var(--s) * 0.9); }
 }
 </style>
 </head>
@@ -257,28 +190,49 @@ section.sec { margin-top: calc(var(--s) * 3); }
   const KIND = "application/vnd.agentmesh.inspection-report+json";
   const LEVELS = ["critical", "high", "medium", "low", "none"];
   const LEVEL_WORD = { critical: "Critical", high: "High", medium: "Medium", low: "Low", none: "No risk" };
-  // A finding the report gives no level: said in words and with a shape of
-  // its own, like every level, so it never reads as an empty column.
+  // A finding the report gives no level, in a list where the others have
+  // one: said in words and with a shape of its own.
   const NOT_RATED = "Not rated";
   const SYSTEM_WORD = { "code-host": "GitHub's records", "vulnerability-database": "OSV, the vulnerability database", "text-reasoning": "the model" };
-  const FOLD_AT = 12;
-  // The five tabs, each holding whole sections, in the report's own order.
+  // The six tabs. The first five hold whole sections, in the report's own
+  // order; About Inspect holds Inspect's own words.
   const TABS = [
     { id: "overview", name: "Overview", sections: [1, 2] },
     { id: "does", name: "What it does", sections: [3, 4] },
     { id: "reaches", name: "What it reaches", sections: [5, 6] },
     { id: "risks", name: "Risks", sections: [7] },
     { id: "tests", name: "Tests and gaps", sections: [8] },
+    { id: "about", name: "About Inspect", sections: [] },
   ];
   const RISKS = 7;
+  // Section 7's findings that say what it needs to run safely, not a risk.
+  const SAFELY = ["least-access", "approval"];
   // How a job's findings arrive: the scripts' findings all at once (section
   // 2 among them), then the model's judgments of sections 3 to 5 in one
   // call, of 6 to 8 in the next, and section 1 last.
   const CALLS = [[3, 4, 5], [6, 7, 8]];
+  // What Inspect is doing, in a few words, from the stage its working copy
+  // names (scripts/inspect-a-repository.mjs and judge.mjs).
+  const STAGES = [
+    [/^reading github/i, "Reading the repository"],
+    [/^unpacked/i, "Reading the code"],
+    [/osv about|asking osv/i, "Checking the dependencies for known vulnerabilities"],
+    [/^osv /i, "Writing the findings"],
+    [/sections 3, 4 and 5/i, "Judging what it does, how it works and what it connects to"],
+    [/sections 6, 7 and 8/i, "Judging what it can do on its own, its risks and its tests"],
+    [/^writing section 1/i, "Writing the overview"],
+    [/^done/i, "Finishing the report"],
+  ];
+  // Inspect's own words, for About Inspect when the host hands no Descriptor.
+  const OWN = {
+    summary: "Reads an outside agent's code on GitHub at one commit, without running any of it, and reports what it does and how safe it is.",
+    how: "Scripts collect the facts; a model writes only the judgments, and each judgment cites the facts it rests on.",
+    not: ["Running, installing, building or testing the repository's code", "Giving a verdict on whether to bring the agent in, or judging how it fits a plan or a catalog role"],
+  };
 
   const root = document.documentElement;
   const app = document.getElementById("app");
-  const state = { initialized: false, ready: false, locale: undefined, doc: null, params: null, tab: TABS[0].id, level: "all", open: new Set(), unfolded: new Set() };
+  const state = { initialized: false, ready: false, locale: undefined, doc: null, params: null, tab: TABS[0].id, level: "all", open: new Set() };
   let seq = 0;
   const waiting = new Map();
 
@@ -339,8 +293,8 @@ section.sec { margin-top: calc(var(--s) * 3); }
     }
   }
 
-  // view/data: the output's bytes, its lifecycle, and the job's state. A new
-  // report never moves the person to another tab.
+  // view/data: the output's bytes, its lifecycle, the job's state and the
+  // Descriptor. A new report never moves the person to another tab.
   function take(p) {
     let text = typeof p.text === "string" ? p.text : null;
     if (text === null && typeof p.base64 === "string") {
@@ -387,14 +341,10 @@ section.sec { margin-top: calc(var(--s) * 3); }
     low: '<circle cx="8" cy="8" r="5.6" fill="none" stroke="currentColor" stroke-width="2.4"/>',
     none: '<rect x="2" y="6.8" width="12" height="2.4" fill="currentColor"/>',
     unrated: '<rect x="2.6" y="2.6" width="10.8" height="10.8" rx="1" fill="none" stroke="currentColor" stroke-width="1.8"/>',
-    done: '<path d="M2.5 8.5l3.5 3.5 7.5-8" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>',
-    current: '<circle cx="8" cy="8" r="6.5" fill="none" stroke="currentColor" stroke-width="1.6"/><circle cx="8" cy="8" r="3.4" fill="currentColor"/>',
-    stop: '<polygon points="5,1 11,1 15,5 15,11 11,15 5,15 1,11 1,5" fill="none" stroke="currentColor" stroke-width="1.6"/><rect x="7.1" y="4" width="1.8" height="5.5" fill="currentColor"/><rect x="7.1" y="10.8" width="1.8" height="1.8" fill="currentColor"/>',
-    todo: '<circle cx="8" cy="8" r="6.2" fill="none" stroke="currentColor" stroke-width="1.6"/>',
   };
   function shape(level, size = 13) {
     const t = document.createElement("template");
-    t.innerHTML = `<svg width="${Number(size)}" height="${Number(size)}" viewBox="0 0 16 16" aria-hidden="true" focusable="false">${SHAPES[level] ?? SHAPES.todo}</svg>`;
+    t.innerHTML = `<svg width="${Number(size)}" height="${Number(size)}" viewBox="0 0 16 16" aria-hidden="true" focusable="false">${SHAPES[level] ?? SHAPES.unrated}</svg>`;
     return t.content.firstChild;
   }
   const levelOf = (f) => (LEVELS.includes(f?.level) ? f.level : null);
@@ -406,6 +356,7 @@ section.sec { margin-top: calc(var(--s) * 3); }
   const rank = (f) => { const l = levelOf(f); return l ? LEVELS.indexOf(l) : LEVELS.length; };
   const plural = (n, one, many = `${one}s`) => `${n} ${n === 1 ? one : many}`;
   const short = (sha) => String(sha ?? "").slice(0, 7);
+  const one = (s) => String(s ?? "").replace(/\s+/g, " ").trim();
   const dateOf = (iso) => {
     const t = Date.parse(iso);
     if (!Number.isFinite(t)) return null;
@@ -420,24 +371,8 @@ section.sec { margin-top: calc(var(--s) * 3); }
     const path = String(file).split("/").map((x) => encodeURIComponent(x)).join("/");
     return `${u.origin}${u.pathname.replace(/\/+$/, "")}/blob/${sha}/${path}${Number(line) >= 1 ? `#L${Number(line)}` : ""}`;
   }
-  // A long path keeps its first folder and its end, the file and the line,
-  // which are what a person looks for: skills/.../SKILL.md:2.
-  const fit = (path, max = 40) => {
-    if (path.length <= max) return path;
-    const parts = path.split("/");
-    let tail = parts.pop();
-    while (parts.length > 1 && `${parts[0]}/…/${parts.at(-1)}/${tail}`.length <= max) tail = `${parts.pop()}/${tail}`;
-    const out = parts.length > 1 ? `${parts[0]}/…/${tail}` : `${parts[0] ? `${parts[0]}/` : ""}${tail}`;
-    return out.length <= max ? out : `…${out.slice(out.length - max + 1)}`;
-  };
   // A path may break after each folder, so a narrow row splits no name.
   const breakable = (s) => String(s).split(/(?<=\/)/).flatMap((part, i) => (i ? [el("wbr"), part] : [part]));
-  const placeOf = (f) => {
-    const ev = Array.isArray(f.evidence) ? f.evidence : [];
-    if (ev.length) { const more = ev.length - 1 + (Number(f.more_evidence) || 0); const at = `${ev[0].file}:${ev[0].line}`; return { text: `${fit(at, more ? 56 : 60)}${more ? ` +${more}` : ""}`, full: at, src: false }; }
-    const src = Array.isArray(f.source) ? f.source[0] : null;
-    return { text: src ? `from ${SYSTEM_WORD[src.system] ?? src.system}` : "", full: src ? `${src.call}` : "", src: true };
-  };
   // The job's state, when the host gives it, says whether the job runs; a
   // working copy alone says so only when the host gives no state.
   function running(p, d) {
@@ -445,87 +380,35 @@ section.sec { margin-top: calc(var(--s) * 3); }
     if (js) return js === "working" || js === "submitted" || js === "input_required";
     return Boolean(d?.partial);
   }
-
-  // Where the report is: running, draft, accepted, published; stopped; or
-  // finished without its report, when the job ended and only the working
-  // copy arrived (DESCRIPTOR-UI Section 6, rule 1: answered without its
-  // deliverable, so never shown as a draft).
-  function lifecycle(d, p) {
+  // A job that ended without its report: stopped, or finished with only the
+  // working copy (DESCRIPTOR-UI Section 6, rule 1: never shown as done).
+  function ended(d, p) {
     const js = String(p?.job_state ?? "").toLowerCase();
-    const life = typeof p?.lifecycle === "string" ? p.lifecycle.toLowerCase() : null;
-    if (["failed", "canceled", "cancelled", "rejected"].includes(js)) return { stopped: true, js };
-    if (running(p, d)) return { step: 0, asking: js === "input_required" };
-    if (life === "draft") return { step: 1 };
-    if (life === "accepted") return { step: 2 };
-    if (life === "published") return { step: 3 };
-    if (d?.partial) return { short: true };
-    return { step: null };
+    if (js === "canceled" || js === "cancelled") return "Canceled before the report was finished.";
+    if (["failed", "rejected"].includes(js)) return "Stopped before the report was finished.";
+    if (!running(p, d) && d?.partial) return "Finished without the full report.";
+    return null;
   }
-  function drawLife(d, p) {
-    const at = lifecycle(d, p);
-    const out = [];
-    if (at.stopped) {
-      out.push(el("div", { class: "stopped", role: "status" }, el("span", { class: "lv critical" }, shape("stop", 16)),
-        el("div", {}, el("strong", { text: at.js === "canceled" || at.js === "cancelled" ? "The job was canceled before the report was finished." : "The job stopped before the report was finished." }),
-          el("p", { class: "muted", text: "These are the findings it made before it stopped." }))));
-      return out;
-    }
-    if (at.short) {
-      out.push(el("div", { class: "stopped notice", role: "status" }, el("span", { class: "lv none" }, shape("todo", 16)),
-        el("div", {}, el("strong", { text: "Finished, but the full report did not arrive." }),
-          el("p", { class: "muted", text: "These are the findings it posted while it ran. The whole report, with the facts behind each finding, was not delivered." }))));
-      return out;
-    }
-    const steps = ["Running", "Draft", "Accepted", "Published"];
-    const words = ["Running", "Draft, waiting for your review", "Accepted", "Published"];
-    out.push(el("ol", { class: "track", "aria-label": "Where this report is" }, steps.map((s, i) => {
-      const done = at.step !== null ? i < at.step : i === 0;
-      const now = at.step === i;
-      return el("li", { class: done ? "done" : "", "aria-current": now ? "step" : null }, shape(now ? "current" : done ? "done" : "todo", 14), el("span", { text: now ? words[i] : s }), done ? el("span", { class: "sr", text: "(done)" }) : null);
-    })));
-    if (at.step === 0) {
-      const stage = String(d.partial?.stage ?? "").trim();
-      out.push(el("p", { class: "now", role: "status" }, el("span", { class: "pulse", "aria-hidden": "true" }),
-        el("span", {}, el("strong", { text: at.asking ? "Waiting for your answer. " : "Now: " }), stage || "The inspection is under way.")));
-      const notes = [];
-      if (d.partial?.says_left_out) notes.push("This copy leaves out each finding's words to stay small; they arrive with the report.");
-      if (Number(d.partial?.omitted) > 0) notes.push(`${plural(Number(d.partial.omitted), "finding")} without a level are not in this copy yet; every one arrives with the report.`);
-      if (notes.length) out.push(el("p", { class: "note", text: notes.join(" ") }));
-    } else if (at.step === null) {
-      out.push(el("p", { class: "note", text: "Delivered. The host has not said whether it has been reviewed." }));
-    }
-    return out;
+  // What Inspect is doing now, in a few words.
+  function stageWords(d) {
+    const s = one(d?.partial?.stage);
+    if (!s) return "Starting";
+    const hit = STAGES.find(([re]) => re.test(s));
+    return hit ? hit[1] : s.replace(/\s*\(.*?\)/g, "").replace(/[.;:]+$/, "");
   }
 
   // Risks by level, each counted once: section 1 repeats findings of the
-  // other sections, so it is left out. A working copy never leaves out a
-  // finding that carries a level, so its counts are whole too.
+  // other sections, so it is left out.
   function counts(d) {
     const c = { critical: 0, high: 0, medium: 0, low: 0, none: 0, not_rated: 0 };
     for (const f of d.findings) if (f.section !== 1 && !f.repeats) c[levelOf(f) ?? "not_rated"] += 1;
     return c;
   }
-  // What the counts count. The report's total, as its counts and its reply
-  // give it, holds section 1 too, whose findings repeat ones of sections 2
-  // to 8; the other sections hold sections 2 to 8. So every count says which
-  // it is, and they add up.
-  function tally(d) {
-    const glance = d.findings.filter((f) => f.section === 1);
-    const omitted = Number(d.partial?.omitted) || 0;
-    const rest = d.findings.length - glance.length + omitted;
-    return { all: glance.length + rest, glance: glance.length, repeats: glance.length > 0 && glance.every((f) => f.repeats), rest, omitted };
-  }
-  function tallyWords(d, live) {
-    const t = tally(d);
-    const all = `${plural(t.all, "finding")}${live ? " so far" : ""}`;
-    if (!t.glance) return all;
-    return `${all}: ${t.rest} in sections 2 to 8, and ${t.glance} at a glance${t.repeats ? ` that ${t.glance === 1 ? "repeats one" : "repeat them"}` : ""}`;
-  }
 
   // ── The tabs ──
   const ofSection = (d, n) => d.findings.filter((f) => f.section === n);
   const tabOf = (n) => TABS.find((t) => t.sections.includes(n)) ?? TABS[0];
-  const titleOf = (d, n) => (d.sections ?? []).find((s) => s.number === n)?.title ?? `Section ${n}`;
+  const titleOf = (d, n) => (d.sections ?? []).find((s) => s.number === n)?.title ?? "";
   // How many findings a section holds: the report's own count, which a
   // working copy keeps whole when it leaves findings out to stay small.
   function sectionCount(d, n) {
@@ -551,27 +434,24 @@ section.sec { margin-top: calc(var(--s) * 3); }
     const coming = t.sections.some((s) => pending.has(s));
     return { n, waiting: coming && n === 0, filling: coming && n > 0 };
   }
-  // The highest level a risk in section 7 carries, for the Risks tab's label.
+  // The highest level a risk in section 7 carries, for the Risks tab.
   function highestRisk(d) {
     const here = new Set(ofSection(d, RISKS).map(levelOf).filter(Boolean));
     return LEVELS.find((l) => here.has(l)) ?? null;
   }
-  const keyOf = (t) => t.sections.map((s) => `S${s}`).join(" ");
   function drawTabs(d, pending) {
     return el("div", { class: "tabs-wrap" },
-      el("div", { class: "tabs", role: "tablist", "aria-label": "Parts of the report", onkeydown: onTabKey, onscroll: (e) => edges(e.currentTarget) },
+      el("div", { class: "tabs", role: "tablist", "aria-label": "The report", onkeydown: onTabKey, onscroll: (e) => edges(e.currentTarget) },
         TABS.map((t) => {
           const on = state.tab === t.id;
-          const s = tabStatus(d, t, pending);
+          const counted = t.sections.length > 0;
+          const s = counted ? tabStatus(d, t, pending) : null;
           const top = t.id === "risks" && s.n ? highestRisk(d) : null;
-          const said = s.waiting ? "nothing yet, still to come" : `${plural(s.n, "finding")}${s.filling ? " so far, more to come" : ""}${top ? `, the highest ${LEVEL_WORD[top]}` : ""}`;
-          return el("button", { class: `tab${s.waiting ? " tab-waiting" : s.filling ? " tab-filling" : ""}`, type: "button", role: "tab", id: `tab-${t.id}`, "aria-selected": on ? "true" : "false", "aria-controls": `panel-${t.id}`, tabindex: on ? "0" : "-1", "aria-label": `${t.name}, ${t.sections.length > 1 ? "sections" : "section"} ${t.sections.join(" and ")}: ${said}`, "data-k": `tab:${t.id}`, onclick: () => setTab(t.id, true) },
-            el("span", { class: "tab-key", "aria-hidden": "true", text: keyOf(t) }),
+          const said = !counted ? t.name : s.waiting ? `${t.name}, still to come` : `${t.name}, ${plural(s.n, "finding")}${s.filling ? " so far" : ""}${top ? `, the highest ${LEVEL_WORD[top]}` : ""}`;
+          return el("button", { class: "tab", type: "button", role: "tab", id: `tab-${t.id}`, "aria-selected": on ? "true" : "false", "aria-controls": `panel-${t.id}`, tabindex: on ? "0" : "-1", "aria-label": said, "data-k": `tab:${t.id}`, onclick: () => setTab(t.id, true) },
             el("span", { class: "tab-name", text: t.name }),
-            el("span", { class: "tab-sub", "aria-hidden": "true" },
-              s.waiting ? el("span", { class: "tab-n wait", text: "…" }) : el("span", { class: "tab-n", text: String(s.n) }),
-              top ? [el("span", { class: "sep", text: "·" }), badge({ level: top })] : null,
-              s.filling ? el("span", { class: "live" }) : null));
+            counted ? el("span", { class: "tab-n", "aria-hidden": "true", text: s.waiting ? "…" : String(s.n) }) : null,
+            top ? el("span", { "aria-hidden": "true" }, badge({ level: top })) : null);
         })));
   }
   // Arrow keys, Home and End move between the tabs, and the tab moved to
@@ -595,7 +475,7 @@ section.sec { margin-top: calc(var(--s) * 3); }
     return resize(true);
   }
   // At a phone's width the strip scrolls sideways inside itself: the tab
-  // moved to is kept in sight, and a fading edge says more lies that way.
+  // moved to is kept in sight, and a fading edge shows more lies that way.
   function showTab(strip, tab) {
     const w = Number(strip?.clientWidth) || 0;
     if (!w || !tab) return;
@@ -612,71 +492,98 @@ section.sec { margin-top: calc(var(--s) * 3); }
     strip.classList[room - left > 2 ? "add" : "remove"]("more-right");
   }
 
-  function drawGlance(d, p) {
+  // ── Overview ──
+  function drawTiles(d) {
     const c = counts(d);
-    const tiles = el("div", { class: "tiles", role: "list", "aria-label": "Risks by level" }, ["critical", "high", "medium", "low"].map((l) => {
+    return el("div", { class: "tiles", role: "list", "aria-label": "Risks by level" }, ["critical", "high", "medium", "low"].map((l) => {
       const n = Number(c[l]) || 0;
-      return el("div", { class: `tile${n ? "" : " zero"}`, role: "listitem" }, el("div", { class: "n", text: String(n) }),
-        el("div", { class: "w" }, el("span", { class: `lv ${l}` }, shape(l)), el("span", { text: `${LEVEL_WORD[l]} ${n === 1 ? "risk" : "risks"}` })));
+      return el("div", { role: "listitem" }, el("button", { class: `tile${n ? "" : " zero"}`, type: "button", "data-k": `tile:${l}`, "aria-label": `${plural(n, `${LEVEL_WORD[l].toLowerCase()} risk`)}; show ${n === 1 ? "it" : "them"} in Risks`, onclick: () => { state.level = n ? l : "all"; setTab("risks", true); } },
+        el("span", { class: "n", text: String(n) }),
+        el("span", { class: "w" }, el("span", { class: `lv ${l}` }, shape(l)), el("span", { text: `${LEVEL_WORD[l]} ${n === 1 ? "risk" : "risks"}` }))));
     }));
-    const firsts = d.findings.filter((f) => f.section === 1);
-    let list; let lead = null;
-    if (firsts.length) {
-      list = firsts;
-    } else {
-      list = d.findings.filter((f) => f.section !== 1 && levelOf(f) && levelOf(f) !== "none").sort((a, b) => rank(a) - rank(b)).slice(0, 3);
-      lead = running(p, d)
-        ? (list.length ? "This section is written last, once the other sections are judged. Until then, the highest risks found so far:" : "This section is written last, once the other sections are judged.")
-        : "Nothing was judged for this section.";
-    }
-    // Every item shows a level: its own, else the level of the finding it
-    // repeats, else Not rated, each a word and a shape.
-    const items = list.map((f) => {
-      const target = f.repeats || f.id;
-      const rated = levelOf(f) ? f : d.findings.find((x) => x.id === f.repeats && x.section !== 1) ?? f;
+  }
+  // The top judgments: section 1, each with its level and a link to the
+  // finding it repeats. Before section 1 is written, the highest risks so far.
+  function drawMatters(d) {
+    const firsts = ofSection(d, 1);
+    const list = firsts.length ? firsts : d.findings.filter((f) => f.section !== 1 && levelOf(f) && levelOf(f) !== "none").sort((a, b) => rank(a) - rank(b)).slice(0, 3);
+    if (!list.length) return null;
+    return el("ul", { class: "matters", "aria-label": "Top judgments" }, list.map((f) => {
+      const target = d.findings.find((x) => x.id === (f.repeats || f.id) && x.section !== 1) ?? null;
+      const rated = levelOf(f) ? f : target ?? f;
+      const tab = target ? tabOf(target.section) : null;
       return el("li", {}, el("div", {}, badge(rated)), el("div", {},
         el("div", { class: "t", text: f.title }),
         f.says ? el("p", { class: "says", text: f.says }) : null,
-        el("p", { class: "see" }, el("button", { class: "linkish", type: "button", "data-k": `see:${f.id}`, onclick: () => reveal(target), text: `See ${target}` }))));
-    });
-    const t = tally(d);
-    const said = !firsts.length ? null : t.repeats ? `${plural(t.glance, "finding")}, ${t.glance === 1 ? "repeated" : "each repeated"} from sections 2 to 8` : plural(t.glance, "finding");
-    return el("section", { class: "glance", "aria-labelledby": "glance-h" },
-      el("div", { class: "glance-h" }, el("h2", { id: "glance-h", text: "At a glance" }), said ? el("span", { class: "count", text: said }) : null), tiles,
-      lead ? el("p", { class: "lead", text: lead }) : null,
-      items.length ? el("ul", { class: "matters" }, items) : null);
+        tab ? el("p", { class: "see" }, el("button", { class: "linkish", type: "button", "data-k": `see:${f.id}`, onclick: () => reveal(target.id), text: `See it in ${tab.name}` })) : null));
+    }));
+  }
+  // What was inspected, as a short label and value list.
+  function inspected(d) {
+    const two = ofSection(d, 2);
+    const of = (kind) => two.find((f) => f.kind === kind);
+    const lead = (s) => one(s).split(/(?<=\.)\s/)[0].replace(/\.$/, "");
+    const rows = [];
+    const lic = of("license");
+    if (lic) rows.push(["License", lic.detail?.spdx ?? lic.categories?.[0]?.name ?? (lic.says ? lead(lic.says).replace(/^Licensed\s+/, "").replace(/,.*$/, "") : null) ?? "None named"]);
+    const built = of("built-on");
+    if (built) {
+      const langs = Array.isArray(built.detail?.languages) ? built.detail.languages.slice(0, 3).map((l) => l.language).filter(Boolean) : [];
+      const fws = Array.isArray(built.detail?.frameworks) ? built.detail.frameworks : [];
+      const and = (xs) => (xs.length < 2 ? xs.join("") : `${xs.slice(0, -1).join(", ")} and ${xs.at(-1)}`);
+      const value = langs.length ? `${and(langs)}${fws.length ? `, with ${and(fws)}` : ""}` : built.says ? lead(built.says).replace(/^Written in\s+/, "").replace(/\s*\([^)]*\)/g, "") : null;
+      if (value) rows.push(["Built on", value]);
+    }
+    const act = of("activity");
+    if (act) {
+      const a = act.detail ?? null;
+      const pushed = a?.pushed_at ? dateOf(a.pushed_at) : null;
+      const n = Number(a?.commits_last_90_days);
+      const value = a ? [pushed ? `Last pushed ${pushed}` : null, Number.isFinite(n) && a.commits_last_90_days !== null ? `${plural(n, "commit")} in the last 90 days` : null, a.archived ? "archived" : null].filter(Boolean).join(", ") : act.says ? one(act.says).split(";").slice(0, 2).join(",").replace(/ before the inspection/, "").replace(/\.$/, "") : "";
+      if (value) rows.push(["Kept up", value]);
+    }
+    const pub = of("publisher");
+    if (pub) {
+      const login = pub.detail?.login; const type = String(pub.detail?.type ?? "").toLowerCase();
+      const value = login ? `${login}${type ? `, ${/^[aeiou]/.test(type) ? "an" : "a"} ${type}` : ""}` : pub.says ? lead(pub.says).replace(/^Published by\s+/, "").replace(/,\s*an? GitHub\s+(\w+)/i, (m, w) => `, ${/^[aeiou]/i.test(w) ? "an" : "a"} ${w.toLowerCase()}`) : null;
+      if (value) rows.push(["Publisher", value]);
+    }
+    const sha = d.commit?.sha;
+    if (sha) rows.push(["Commit", `${short(sha)}${dateOf(d.commit?.date) ? `, ${dateOf(d.commit.date)}` : ""}`]);
+    return rows;
+  }
+  function drawOverview(d) {
+    const out = [drawTiles(d), drawMatters(d)];
+    const rows = inspected(d);
+    if (rows.length) out.push(el("h2", { text: titleOf(d, 2) || "What was inspected" }), el("dl", { class: "facts" }, rows.flatMap(([k, v]) => [el("dt", { text: k }), el("dd", { text: v })])));
+    out.push(el("p", { class: "save" }, el("button", { class: "btn", type: "button", "data-k": "save", onclick: () => doSave(d), text: "Save a summary for security" })));
+    return out;
   }
 
-  // Section 7's filter by level, on the Risks tab.
-  const keeps = (f, level) => level === "all" || (level === "unrated" ? !levelOf(f) : levelOf(f) === level);
-  function drawLevelFilter(d, shown) {
-    const pool = ofSection(d, RISKS);
-    const n = (l) => pool.filter((f) => keeps(f, l)).length;
-    const chips = [["all", "All", pool.length], ...LEVELS.filter((l) => n(l)).map((l) => [l, LEVEL_WORD[l], n(l)]), ...(n("unrated") ? [["unrated", NOT_RATED, n("unrated")]] : [])];
-    const more = sectionCount(d, RISKS) - pool.length;
-    return el("div", { class: "filters" },
-      el("div", { class: "chips", role: "group", "aria-label": "Level" }, el("span", { class: "lbl", text: "Level" }),
-        chips.map(([key, word, count]) => el("button", { class: "chip", type: "button", "aria-pressed": state.level === key ? "true" : "false", "data-k": `lv:${key}`, onclick: () => { state.level = key; draw(); } },
-          key !== "all" ? el("span", { class: `lv ${key}` }, shape(key, 11)) : null, el("span", { text: word }), el("span", { class: "c", text: String(count) })))),
-      el("p", { class: "showing", "aria-live": "polite", text: `Showing ${shown} of the ${plural(pool.length, "finding")} in section 7${more > 0 ? `; ${more} more ${more === 1 ? "arrives" : "arrive"} with the report` : ""}` }));
+  // ── The rows ──
+  // A category as a person names it, from the two OWASP lists: "Supply
+  // chain", never its code. The dependency and the advisory a known
+  // vulnerability names are in its title already.
+  const OWASP = new Set(["owasp-top-10-llm-2025", "owasp-top-10-agentic"]);
+  const plainName = (s) => { const w = one(s).replace(/\s*&\s*/g, " and "); return w ? w[0].toUpperCase() + w.slice(1).toLowerCase() : ""; };
+  function categoryWords(f) {
+    const names = (f.categories ?? []).filter((c) => OWASP.has(c?.list) || /^(LLM\d|ASI\d)/i.test(String(c?.id ?? ""))).map((c) => (c.name && c.name !== c.id ? plainName(c.name) : "")).filter(Boolean);
+    return [...new Set(names)].join(", ");
   }
-
   function copyText(d, f) {
     const l = levelOf(f);
-    const lines = [`${f.id}${l ? `, ${LEVEL_WORD[l].toLowerCase()}${l === "none" ? "" : " risk"}` : ""}: ${f.title}`];
+    const lines = [`${f.title}${l ? ` (${LEVEL_WORD[l].toLowerCase()}${l === "none" ? "" : " risk"})` : ""}`];
     if (f.says) lines.push(f.says);
     const cats = (f.categories ?? []).map((c) => (c.name && c.name !== c.id ? `${c.id} ${c.name}` : c.id)).filter(Boolean);
     if (cats.length) lines.push(`Category: ${cats.join("; ")}`);
     for (const e of (f.evidence ?? []).slice(0, 10)) { const a = address(d, e.file, e.line); lines.push(`${e.file} line ${e.line}${a ? `: ${a}` : ""}`); }
-    const more = Math.max(0, (f.evidence?.length ?? 0) - 10) + (Number(f.more_evidence) || 0);
-    if (more) lines.push(`And ${plural(more, "more place")} in the report.`);
     if (!f.evidence?.length && f.source?.length) lines.push(`From ${f.source.map((s) => `${SYSTEM_WORD[s.system] ?? s.system}, ${s.call}`).join("; ")}.`);
-    lines.push(`From Inspect's report on ${repoName(d)} at commit ${short(d.commit?.sha)}.`);
+    lines.push(`From Inspect's report on ${repoName(d)} at commit ${short(d.commit?.sha)} (${f.id}).`);
     return lines.join("\n");
   }
   async function doCopy(d, f) {
     const r = await ask("view/copy-text", { text: copyText(d, f) });
-    toast(r && !r.error ? `Copied ${f.id}.` : `${f.id} was not copied.`);
+    if (r && !r.error && r.result?.copied !== false) toast("Copied.");
   }
   let toastTimer;
   function toast(words) {
@@ -687,19 +594,12 @@ section.sec { margin-top: calc(var(--s) * 3); }
 
   function drawRow(d, f, rated) {
     const open = state.open.has(f.id);
-    const cat = (f.categories ?? [])[0];
     const detailId = `d-${f.id}`;
-    const place = placeOf(f);
     const row = el("li", { class: "row", id: `f-${f.id}` },
-      el("div", { class: "line" },
-        el("button", { class: "toggle", type: "button", "aria-expanded": open ? "true" : "false", "aria-controls": detailId, "data-k": `row:${f.id}`, onclick: () => { if (state.open.has(f.id)) state.open.delete(f.id); else state.open.add(f.id); draw(); } },
-          rated ? badge(f) : null,
-          el("span", { class: "t" },
-            el("span", { class: "tt" }, el("span", { class: "chev", "aria-hidden": "true", text: open ? "▾" : "▸" }), f.title),
-            place.text ? el("span", { class: place.src ? "place src" : "place", title: place.full || null }, breakable(place.text)) : null),
-          cat ? el("span", { class: "cat", title: cat.name || cat.id }, el("span", { class: "id", text: cat.id }),
-            f.categories.length > 1 ? el("span", { class: "n-more", text: ` +${f.categories.length - 1}` }) : null) : null),
-        el("button", { class: "copy", type: "button", "aria-label": `Copy ${f.id} with its address`, "data-k": `copy:${f.id}`, onclick: () => doCopy(d, f), text: "Copy" })));
+      el("button", { class: "toggle", type: "button", "aria-expanded": open ? "true" : "false", "aria-controls": detailId, "data-k": `row:${f.id}`, onclick: () => { if (state.open.has(f.id)) state.open.delete(f.id); else state.open.add(f.id); draw(); resize(); } },
+        el("span", { class: "chev", "aria-hidden": "true", text: open ? "▾" : "▸" }),
+        rated ? badge(f) : null,
+        el("span", { class: "tt", text: f.title })));
     if (open) row.append(drawDetail(d, f, detailId));
     return row;
   }
@@ -707,81 +607,89 @@ section.sec { margin-top: calc(var(--s) * 3); }
     const ev = Array.isArray(f.evidence) ? f.evidence : [];
     const dl = el("dl", {});
     const add = (k, v) => { if (v) dl.append(el("dt", { text: k }), el("dd", {}, v)); };
-    if (f.categories?.length) add(f.categories.length === 1 ? "Category" : "Categories", f.categories.map((c) => `${c.id}${c.name && c.name !== c.id ? ` ${c.name}` : ""}`).join("; "));
-    const l = levelOf(f);
-    if (l) add("Level", `${LEVEL_WORD[l]}, ${f.level_by === "source" ? "as its record gives it" : f.level_by === "rule" ? "by a fixed rule of Inspect's" : f.level_by === "model" ? "as the model judged it" : "set by Inspect"}`);
-    add("Written", f.by === "model" ? "by the model, from facts the scripts found" : "by Inspect's scripts, by rule");
-    if (ev.length) {
-      const more = Number(f.more_evidence) || 0;
-      add("Cites", el("ul", {}, ev.map((e) => el("li", {}, el("span", { class: "mono", text: `${e.file}:${e.line}` }), e.text ? el("code", { text: String(e.text).slice(0, 300) }) : null)),
-        more ? el("li", { class: "muted", text: `And ${plural(more, "more place")}, in the delivered report.` }) : null));
-    } else if (f.source?.length) {
-      add("From", f.source.map((s) => `${SYSTEM_WORD[s.system] ?? s.system}: ${s.call}`).join("; "));
-    }
+    if (ev.length) add("In the code", el("ul", {}, ev.map((e) => el("li", { class: "mono" }, breakable(`${e.file}:${e.line}`)))));
+    else if (f.source?.length) add("From", f.source.map((s) => SYSTEM_WORD[s.system] ?? s.system).join(", "));
+    add("Category", categoryWords(f));
     return el("div", { class: "detail", id },
-      f.says ? el("p", { text: f.says }) : el("p", { class: "muted", text: "Its words arrive with the delivered report." }),
-      dl);
+      f.says ? el("p", { text: f.says }) : null,
+      dl.childNodes.length ? dl : null,
+      el("button", { class: "copy", type: "button", "data-k": `copy:${f.id}`, onclick: () => doCopy(d, f), text: "Copy" }));
   }
-
-  // A section's rows in the order drawn: the highest level first, else the
-  // report's order; on Risks, only the level the filter keeps.
-  function rowsOf(d, s) {
-    const level = s === RISKS ? state.level : "all";
-    return ofSection(d, s).map((f, i) => [f, i]).filter(([f]) => keeps(f, level)).sort((a, b) => rank(a[0]) - rank(b[0]) || a[1] - b[1]).map(([f]) => f);
+  // A list of findings in the order drawn: the highest level first, else the
+  // report's order.
+  const ordered = (list) => list.map((f, i) => [f, i]).sort((a, b) => rank(a[0]) - rank(b[0]) || a[1] - b[1]).map(([f]) => f);
+  function drawRows(d, list, rated) {
+    return list.length ? el("ul", { class: rated ? "rows rated" : "rows" }, list.map((f) => drawRow(d, f, rated))) : el("p", { class: "quiet", text: "None found." });
   }
-  function drawSection(d, p, s, pending) {
-    const all = ofSection(d, s);
-    const list = rowsOf(d, s);
-    const filtered = s === RISKS && state.level !== "all";
-    const coming = pending.has(s);
-    const n = sectionCount(d, s);
-    const missing = n - all.length;
-    const folded = list.length > FOLD_AT && !state.unfolded.has(s);
-    const visible = folded ? list.slice(0, FOLD_AT) : list;
-    const rated = all.some((f) => levelOf(f));
-    const count = filtered ? `${list.length} of ${all.length}` : !n && coming ? "none yet" : `${plural(n, "finding")}${coming ? " so far" : ""}`;
-    const head = el("div", { class: "sec-h" }, el("span", { class: "num", text: String(s) }), el("h2", { id: `s-${s}`, text: titleOf(d, s) }), el("span", { class: "count", text: count }));
-    const body = !list.length && missing > 0 && !filtered ? null : list.length
-      ? el("ul", { class: rated ? "rows" : "rows unrated", "aria-labelledby": `s-${s}` }, visible.map((f) => drawRow(d, f, rated)))
-      : el("p", { class: "empty", text: filtered ? "No finding of this level in this section." : coming ? "Nothing yet. This section fills in while Inspect runs." : d.partial && !running(p, d) ? "Nothing was posted for this section before the job ended." : "Nothing was found for this section." });
-    const notes = [];
-    if (missing > 0 && !filtered) notes.push(el("p", { class: "coming", text: `${plural(missing, "more finding")} without a level ${missing === 1 ? "is" : "are"} not in this copy yet; ${missing === 1 ? "it arrives" : "they arrive"} with the report.` }));
-    if (coming && list.length) notes.push(el("p", { class: "coming" }, el("span", { class: "pulse", "aria-hidden": "true" }), el("span", { text: "More findings for this section arrive once the model has judged it." })));
-    return { node: el("section", { class: "sec" }, head, body, notes,
-      folded ? el("button", { class: "btn more", type: "button", "data-k": `more:${s}`, onclick: () => { state.unfolded.add(s); draw(); }, text: `Show all ${list.length}` }) : null), shown: list.length };
-  }
-  // A tab none of whose sections has arrived: it says so, and names them.
-  function drawWaiting(d, t) {
-    return el("div", { class: "waitcard" },
-      el("div", { class: "msg" }, el("span", { class: "pulse", "aria-hidden": "true" }),
-        el("div", {}, el("strong", { text: "Nothing here yet." }),
-          el("p", { class: "muted", text: "Inspect posts these sections as it reads the code. This tab fills in by itself; you can read the others in the meantime." }))),
-      el("ul", { "aria-label": "Still to come" }, t.sections.map((s) => el("li", {}, el("span", { class: "num", text: String(s) }), el("span", { text: titleOf(d, s) }),
-        el("span", { class: "st" }, shape("todo", 12), el("span", { text: "Waiting" }))))));
-  }
-  function drawForSecurity(d) {
-    return el("section", { class: "forsec", "aria-labelledby": "forsec-h" },
-      el("div", {}, el("h2", { id: "forsec-h", text: "For your security team" }),
-        el("p", { text: "One plain-text file: the risks, highest first, the credentials it reads, what it can do on its own and what Inspect couldn't tell, each with its file and line." })),
-      el("button", { class: "btn", type: "button", "data-k": "save", onclick: () => doSave(d), text: "Save a summary for security" }));
-  }
-  function drawPanel(d, p, t, pending) {
+  // A tab of whole sections: one plain heading each when it holds two, none
+  // when it holds one, which its tab already names.
+  function drawSections(d, t, pending) {
     const out = [];
-    if (t.id === "overview") {
-      out.push(drawGlance(d, p), drawSection(d, p, 2, pending).node, drawForSecurity(d));
-    } else if (tabStatus(d, t, pending).waiting) {
-      out.push(drawWaiting(d, t));
-    } else {
-      const drawn = t.sections.map((s) => drawSection(d, p, s, pending));
-      if (t.sections.includes(RISKS) && ofSection(d, RISKS).length) out.push(drawLevelFilter(d, drawn[t.sections.indexOf(RISKS)].shown));
-      out.push(...drawn.map((x) => x.node));
-    }
-    const held = (Array.isArray(d.held_back) ? d.held_back : []).filter((h) => t.sections.includes(Number(h.section)));
-    if (held.length) {
-      out.push(el("section", { class: "held" }, el("h2", { text: `${plural(held.length, "judgment")} held back` }),
-        el("ul", {}, held.map((h) => el("li", { text: `Section ${h.section}, ${h.title}: ${h.why}` })))));
+    for (const s of t.sections) {
+      const list = ordered(ofSection(d, s));
+      const rated = list.some((f) => levelOf(f));
+      if (t.sections.length > 1) out.push(el("h2", { text: titleOf(d, s) }));
+      out.push(!list.length && (pending.has(s) || sectionCount(d, s) > 0) ? el("p", { class: "quiet", text: "Nothing yet." }) : drawRows(d, list, rated));
     }
     return out;
+  }
+  // Risks: the level filter, the risks highest first, then what it needs to
+  // run safely.
+  const keeps = (f, level) => level === "all" || levelOf(f) === level;
+  function drawRisks(d, pending) {
+    const all = ofSection(d, RISKS);
+    const risks = ordered(all.filter((f) => !SAFELY.includes(f.kind) || levelOf(f)));
+    const safely = all.filter((f) => SAFELY.includes(f.kind) && !levelOf(f));
+    if (!all.length) return [el("p", { class: "quiet", text: pending.has(RISKS) || sectionCount(d, RISKS) ? "Nothing yet." : "None found." })];
+    const n = (l) => risks.filter((f) => keeps(f, l)).length;
+    if (state.level !== "all" && !n(state.level)) state.level = "all";
+    const chips = [["all", "All", risks.length], ...LEVELS.filter((l) => n(l)).map((l) => [l, LEVEL_WORD[l], n(l)])];
+    const out = [];
+    if (risks.length) {
+      out.push(el("div", { class: "chips", role: "group", "aria-label": "Show risks of one level" },
+        chips.map(([key, word, count]) => el("button", { class: "chip", type: "button", "aria-pressed": state.level === key ? "true" : "false", "data-k": `lv:${key}`, onclick: () => { state.level = key; draw(); resize(true); } },
+          key !== "all" ? el("span", { class: `lv ${key}` }, shape(key, 11)) : null, el("span", { text: word }), el("span", { class: "c", text: String(count) })))));
+      out.push(drawRows(d, risks.filter((f) => keeps(f, state.level)), true));
+    }
+    if (safely.length && state.level === "all") out.push(el("h2", { text: "To run it safely" }), drawRows(d, safely, false));
+    return out;
+  }
+  // Tests and gaps: section 8, and any judgment held back.
+  function drawTests(d, t, pending) {
+    const out = drawSections(d, t, pending);
+    const held = Array.isArray(d.held_back) ? d.held_back : [];
+    if (held.length) {
+      out.push(el("h2", { text: "Held back" }), el("ul", { class: "rows" }, held.map((h, i) => {
+        const key = `held:${i}`; const open = state.open.has(key);
+        const li = el("li", { class: "row" }, el("button", { class: "toggle", type: "button", "aria-expanded": open ? "true" : "false", "data-k": `row:${key}`, onclick: () => { if (state.open.has(key)) state.open.delete(key); else state.open.add(key); draw(); resize(); } },
+          el("span", { class: "chev", "aria-hidden": "true", text: open ? "▾" : "▸" }), el("span", { class: "tt", text: one(h.title) || "A judgment" })));
+        if (open && h.why) li.append(el("div", { class: "detail" }, el("p", { text: one(h.why) })));
+        return li;
+      })));
+    }
+    return out;
+  }
+  // About Inspect: what it does, how it works and what it doesn't do, in its
+  // own words from the Descriptor the host hands it.
+  function drawAbout() {
+    const desc = state.params?.descriptor && typeof state.params.descriptor === "object" ? state.params.descriptor : null;
+    const sentences = (s) => one(s).split(/(?<=[.!?])\s+(?=[A-Z])/).filter(Boolean);
+    const does = sentences(desc?.does);
+    const summary = one(desc?.summary) || does[0] || OWN.summary;
+    const how = does.find((s) => /\bscripts?\b.*\bmodel\b/i.test(s)) || OWN.how;
+    const refusals = String(desc?.refusals ?? "").split(/\n+/).map((l) => one(l).split(/,\s*because\b/i)[0].replace(/[.;:]$/, "")).filter(Boolean);
+    const not = refusals.length ? refusals.slice(0, 2) : OWN.not;
+    return [el("div", { class: "about" },
+      el("h2", { text: "What it does" }), el("p", { text: summary }),
+      el("h2", { text: "How it works" }), el("p", { text: how }),
+      el("h2", { text: "What it doesn't do" }), el("ul", {}, not.map((x) => el("li", { text: x }))))];
+  }
+  function drawPanel(d, p, t, pending) {
+    if (t.id === "about") return drawAbout();
+    if (t.id === "overview") return drawOverview(d);
+    if (t.id === "risks") return drawRisks(d, pending);
+    if (t.id === "tests") return drawTests(d, t, pending);
+    return drawSections(d, t, pending);
   }
 
   function focusKey() {
@@ -802,24 +710,17 @@ section.sec { margin-top: calc(var(--s) * 3); }
     app.replaceChildren();
     if (!d) { app.append(el("p", { class: "waiting", text: "Waiting for the report." })); resize(); return; }
     const p = state.params ?? {};
-    const live = running(p, d);
     const pending = pendingOf(d, p);
-    const meta = el("p", { class: "meta" },
-      el("span", { text: `Commit ${short(d.commit?.sha)}` }),
-      d.commit?.date && dateOf(d.commit.date) ? el("span", { text: `committed ${dateOf(d.commit.date)}` }) : null,
-      dateOf(d.inspected_at) ? el("span", { text: `${d.partial ? "inspection started" : "inspected"} ${dateOf(d.inspected_at)}` }) : null,
-      el("span", { class: "tally", text: tallyWords(d, live) }));
-    app.append(el("header", {},
-      el("div", { class: "head" },
-        el("div", {}, el("p", { class: "eyebrow", text: live ? "Inspection report, so far" : d.partial ? "Inspection report, as posted while it ran" : "Inspection report" }), el("h1", { text: repoName(d) }), meta)),
-      drawLife(d, p)));
-    const tabs = drawTabs(d, pending);
-    app.append(tabs);
+    app.append(drawTabs(d, pending));
+    // One short line under the tabs: what Inspect is doing while it runs, or
+    // that the job ended without its report.
+    const stop = ended(d, p);
+    if (running(p, d)) app.append(el("p", { class: "now", role: "status" }, el("span", { class: "pulse", "aria-hidden": "true" }), el("span", { text: stageWords(d) })));
+    else if (stop) app.append(el("p", { class: "now", role: "status", text: stop }));
     app.append(...TABS.map((t) => {
       const on = state.tab === t.id;
       return el("div", { class: "panel", role: "tabpanel", id: `panel-${t.id}`, "aria-labelledby": `tab-${t.id}`, tabindex: "0", hidden: !on, "data-k": `panel:${t.id}` }, on ? drawPanel(d, p, t, pending) : null);
     }));
-    app.append(el("p", { class: "foot", text: "Inspect read this code without running any of it. It gives no verdict on bringing the agent in; that decision is yours." }));
     const strip = app.querySelector(".tabs");
     if (strip) { strip.scrollLeft = stripLeft; edges(strip); }
     if (focused && keyed.has(focused)) keyed.get(focused).focus({ preventScroll: true });
@@ -827,15 +728,14 @@ section.sec { margin-top: calc(var(--s) * 3); }
     resize();
   }
 
-  // "See S7-010": the tab that holds the finding, then the finding itself,
-  // in sight and open, once the frame has been made to fit the tab.
+  // "See it in Risks": the tab that holds the finding, then the finding
+  // itself, in sight and open, once the frame has been made to fit the tab.
   async function reveal(id) {
     const d = state.doc;
     const f = d?.findings.find((x) => x.id === id);
     if (!f) return;
     if (f.section === RISKS && !keeps(f, state.level)) state.level = "all";
     state.open.add(id);
-    if (rowsOf(d, f.section).indexOf(f) >= FOLD_AT) state.unfolded.add(f.section);
     const fitted = setTab(tabOf(f.section).id);
     await Promise.race([fitted, new Promise((r) => setTimeout(r, 600))]);
     const row = document.getElementById(`f-${id}`);
@@ -845,21 +745,18 @@ section.sec { margin-top: calc(var(--s) * 3); }
   // The summary for security, as plain text: the risks highest first, the
   // credentials it reads, what it can do on its own and what Inspect could
   // not tell, each with its file and line and the address of that line.
-  const one = (s) => String(s ?? "").replace(/\s+/g, " ").trim();
   function summary(d) {
-    const c = counts(d); const p = state.params ?? {}; const at = lifecycle(d, p);
+    const c = counts(d); const p = state.params ?? {};
     const findings = d.findings.filter((f) => f.section !== 1);
     const risks = findings.filter((f) => levelOf(f) && levelOf(f) !== "none").sort((a, b) => rank(a) - rank(b));
     const places = (f, indent) => (f.evidence ?? []).slice(0, 3).map((e) => { const a = address(d, e.file, e.line); return `${indent}${one(e.file)} line ${e.line}${a ? `: ${a}` : ""}`; });
     const cat = (f) => (f.categories ?? []).map((x) => one(x.name && x.name !== x.id ? `${x.id} ${x.name}` : x.id)).join("; ");
-    const where = at.stopped ? "The job stopped before the report was finished; this summary is of the findings it made."
-      : at.short ? "The job finished, but the full report did not arrive; this summary is of the findings it posted while it ran."
-      : at.step === 0 ? `The job is still running (${one(d.partial?.stage)}); this summary is of the findings so far.`
-      : at.step === 1 ? "Delivered, and waiting for review." : at.step === 2 ? "Delivered and accepted." : at.step === 3 ? "Delivered, accepted and published." : "Delivered.";
+    const stop = ended(d, p);
+    const where = stop ? `${stop} This summary is of the findings it made.` : running(p, d) ? `Still running (${stageWords(d).toLowerCase()}); this summary is of the findings so far.` : null;
     const lines = [
       `Security summary: ${repoName(d)} at commit ${short(d.commit?.sha)}`, "",
       `Inspect read the code of ${repoName(d)} at commit ${d.commit?.sha} without running any of it. It gives no verdict on bringing the agent in.`,
-      `Repository: ${one(d.repository?.url)}`, `Report: ${where}`, "",
+      `Repository: ${one(d.repository?.url)}`, ...(where ? [where] : []), "",
       "Risks by level", "",
       `${c.critical ?? 0} critical, ${c.high ?? 0} high, ${c.medium ?? 0} medium and ${c.low ?? 0} low.`, "",
       "Risks, highest first", "",
@@ -886,7 +783,7 @@ section.sec { margin-top: calc(var(--s) * 3); }
   async function doSave(d) {
     const name = `security-summary-${repoName(d).replace(/[^A-Za-z0-9._-]+/g, "-")}-${short(d.commit?.sha)}.txt`;
     const r = await ask("view/save-file", { name, media_type: "text/plain", text: summary(d) });
-    toast(r && !r.error ? "The summary was handed over to save." : "The summary was not saved.");
+    if (r && !r.error && r.result?.saved) toast("Saved.");
   }
 
   // The height the frame needs: asked for when it changes, and after every
