@@ -113,3 +113,24 @@ What it found:
   - an empty level column in sections with no levels;
   - paths cut before the file name and line;
   - a frame that never shrank after a filter.
+
+The 0.2.0 install and proof on dev:
+
+- 0.2.0 was filed as an update through the deploy ticket and approved as asking for nothing new. It has been running since 16:14 UTC on 2026-11-25.
+- The installed package holds views/report.html at its declared digest, sha256:c61e8f8d1966a80a6ed8be76f13022e00e8ad1d8896bc3c85f8fc3b018c957d9.
+- The route a view host will read it from, GET /v1/agents/:key/views/:digest, is being added by the views-host work. It answered 404 on dev at the time of the proof.
+
+The design-agent proof, sent 16:14:37 UTC, Task 01a2137c-d5b8-7000-8b47-27ecefdfb11e:
+
+| After the send | On the sender's Task |
+|---|---|
+| 2 s | the Task is open |
+| 12 s | the first status line |
+| 20 s | the first working copy, with no findings yet, and the stage |
+| 24 s | the first findings |
+| 28.6 s | all 143 of the scripts' findings, and a working copy holding them; asking the model about sections 3 to 5 |
+| 80 s | sections 3 to 5 posted (175 findings), and a working copy holding them |
+| 179 s | all 226 findings, and the last working copy (47 KB) |
+| 182.3 s | the answer reaches the sender, with inspection.json, inspection.md and sbom.cdx.json |
+
+The delivered report fits its schema. The answer came 85 seconds sooner than in the 0.1.2 proof, because the scripts' findings are now one upload.
