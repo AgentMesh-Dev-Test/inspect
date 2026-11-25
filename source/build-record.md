@@ -238,3 +238,20 @@ How it was checked in a browser:
   - a dotted rule under the open tab while it filled, which read as broken (the open tab now always has its solid rule);
   - waiting tabs 160 pixels tall: their class shared the name of the page's own "waiting" line and took its padding;
   - three signals for one fact on a waiting tab (the live dot is now only on tabs that are filling).
+
+The 0.2.3 install and proof on dev:
+- Filed through the deploy ticket at 1:32 pm Mountain time on 2026-11-25 and approved as asking for nothing new. It has been running as inspect.platform@agentmesh.ai since 1:36 pm.
+- Dev's Descriptor for it, GET /v1/agents/:key/descriptor, gives agent_version 0.2.3 and names views/report.html at sha256:84fd9268110c5784a54f9de398d872e21067d9a2d0969cdc382aa9cca21d5f0f, asking for resize, copy-text and save-file.
+- GET /v1/agents/:key/views/:digest serves the view for that digest, 60,653 bytes, and the bytes hash to it.
+- One live run from the Next app on dev, as a new dev test account of ours (made for the run, closed after it), on langchain-ai/design-agent at 86d8f66, in headless Edge at a 1440 window in light: job 01a2146e-26af-7001-812c-f40f75a1911a.
+
+| Mountain time | In the view |
+|---|---|
+| 1:38:13 pm | sent from Inspect's page |
+| 1:39:03 pm | the first findings: 143 so far; Overview 6, What it does 113, What it reaches 9, Risks 9 and Tests and gaps 6, each still filling |
+| 1:39:56 pm | the model's answer on sections 3 to 5: What it does settles at 129, What it reaches climbs to 25 |
+| 1:41:57 pm | delivered: 228 findings, 223 in sections 2 to 8 and 5 at a glance; Overview 11, What it does 129, What it reaches 36, Risks 31 (highest High) and Tests and gaps 21 |
+| 1:42:06 pm | the view draws the draft, still on Overview |
+
+- The view stayed on Overview through every update; it moved only when Risks was clicked.
+- The screenshots (1440 wide, light): one while it ran with the counts climbing, one on Overview when it finished, one on Risks.
