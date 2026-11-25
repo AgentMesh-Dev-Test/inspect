@@ -17,7 +17,7 @@ import assert from "node:assert/strict";
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { inspect, writeOutputs } from "../scripts/inspect-a-repository.mjs";
-import { createEmitter } from "../scripts/emit.mjs";
+import { createEmitter, liveUpdates, pieceData, PIECE_CHARS, UPDATES_FILE } from "../scripts/emit.mjs";
 import { checkDelivered } from "./delivered-formats.test.mjs";
 import { ENV, inTemp, world, model, smallAgent, reportSchema, schemaProblems } from "./helpers.mjs";
 
@@ -66,6 +66,52 @@ test("[F5.A3] every finding passes the one emitter once, with the id it has in t
   const a = e.emitFinding({ section: 7, title: "a" }); const b = e.emitFinding({ section: 2, title: "b" }); const c = e.emitFinding({ section: 7, title: "c" });
   assert.deepEqual([a.id, b.id, c.id], ["S7-001", "S2-001", "S7-002"]);
   assert.deepEqual(e.findings().map((f) => f.id), ["S2-001", "S7-001", "S7-002"]);
+});
+
+test("[F5.R4] the one emitter posts each finding to the job folder's updates.jsonl as a piece named by its id, and each stage as a status line", async () => {
+  await inTemp(async (job) => {
+    const live = liveUpdates(job);
+    live.status("Reading GitHub's records.");
+    live.finding({ id: "S2-004", section: 2, kind: "license", title: "The license", says: "Licensed Apache-2.0.", by: "script", based_on: ["F0001"], evidence: [{ file: "LICENSE", line: 1 }] });
+    const lines = readFileSync(join(job, UPDATES_FILE), "utf8").split("\n").filter(Boolean).map((l) => JSON.parse(l));
+    assert.deepEqual(lines[0], { progress: "Reading GitHub's records." });
+    assert.equal(lines[1].piece, "S2-004");
+    assert.equal(lines[1].last, true);
+    assert.equal(lines[1].data.title, "The license");
+    assert.match(lines[1].piece, /^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$/, "a name the adapter takes for a piece");
+  });
+});
+
+test("[F5.R4] a finding larger than one piece goes as its title and words, with a note saying the rest is in inspection.json", () => {
+  const big = { id: "S3-001", section: 3, kind: "skill", title: "Its skills", says: "Many.", by: "script", based_on: [], evidence: Array.from({ length: 3000 }, (_, i) => ({ file: `skills/s${i}/SKILL.md`, line: 2, text: "name: a skill with a long line of words" })) };
+  const d = pieceData(big);
+  assert.ok(JSON.stringify(d).length <= PIECE_CHARS);
+  assert.equal(d.title, "Its skills");
+  assert.match(d.note, /inspection\.json under S3-001/);
+  assert.equal(d.evidence, undefined);
+});
+
+test("[F5.R4] in an inspection the stages are said in order, and sections 3 to 5 are posted before the model is asked about 6 to 8", async () => {
+  const events = [];
+  const answers = [
+    { findings: [{ section: 4, kind: "how-it-runs", title: "A graph", says: "It runs as a graph.", based_on: ["F0001"] }] },
+    (prompt) => { events.push(["second call", null]); return { text: JSON.stringify({ findings: [] }) }; },
+  ];
+  await inTemp((at) => inspect({ text: "repository: acme/helper\ncommit: 86d8f66", workDir: at, env: ENV, fetchImpl: world({ files: smallAgent() }).fetchImpl, ask: model(answers).ask,
+    onFinding: (f) => events.push(["finding", f]), onStatus: (s) => events.push(["status", s]) }));
+  const statuses = events.filter(([k]) => k === "status").map(([, s]) => s);
+  for (const [i, word] of ["Reading GitHub", "Unpacked", "Read ", "OSV", "sections 3, 4 and 5", "sections 6, 7 and 8", "section 1", "Done"].entries()) assert.ok(statuses[i]?.includes(word), `status ${i + 1} says ${word}: ${statuses[i]}`);
+  const second = events.findIndex(([k]) => k === "second call");
+  const sectionFour = events.findIndex(([k, f]) => k === "finding" && f.section === 4 && f.by === "model");
+  assert.ok(sectionFour >= 0 && sectionFour < second, "the model's finding of section 4 was posted before the second call was made");
+});
+
+test("[C2] a live piece takes out anything that looks like a credential, as the report does", async () => {
+  await inTemp(async (job) => {
+    const token = ["sk", "-", "abcdefghijklmnopqrstuvwx"].join("");
+    liveUpdates(job).finding({ id: "S5-001", section: 5, kind: "credential", title: "A key", says: `It reads ${token}.`, by: "script", based_on: [] });
+    assert.ok(!readFileSync(join(job, UPDATES_FILE), "utf8").includes(token));
+  });
 });
 
 test("[F5.A4] the reply opens with its header, gives section 1's findings one to a line, then the counts, and both pieces are attached", async () => {

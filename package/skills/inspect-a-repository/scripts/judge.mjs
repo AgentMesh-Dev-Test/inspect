@@ -99,7 +99,7 @@ export function glancePrompt(findings) {
  * Each answer is {drafts} or {failed: why}. `ask(prompt, options)` answers
  * {text, tokens_in, tokens_out}; by default the shared model caller.
  */
-export async function judge({ facts, repo, ask = (prompt, o) => callModel(prompt, o), glanceOf = null } = {}) {
+export async function judge({ facts, repo, ask = (prompt, o) => callModel(prompt, o), onStatus = () => {}, onCall = async () => {} } = {}) {
   const usage = { model_calls: 0, tokens_in: 0, tokens_out: 0 };
   const notMade = [];
   const all = facts.map(factLine).join("\n");
@@ -128,15 +128,22 @@ export async function judge({ facts, repo, ask = (prompt, o) => callModel(prompt
       return { failed: e?.modelFailure ? String(e.message) : `the model could not be reached (${String(e?.message ?? e)})` };
     }
   }
-  const first = await one("first", promptFor("first", firstPrompt), BUDGETS.first, [3, 4, 5]);
-  const second = await one("second", promptFor("second", secondPrompt), BUDGETS.second, [6, 7, 8]);
   const draftsOf = (r) => (Array.isArray(r?.doc?.findings) ? r.doc.findings : []);
+  const answerOf = (r) => (r.failed ? { failed: r.failed } : { drafts: draftsOf(r) });
+  // Each call's answer is handed on the moment it lands (onCall), so its
+  // findings are checked and posted while the next call is still running.
+  onStatus("Asking the model for the judgments of sections 3, 4 and 5: what it does, how it works and what it connects to.");
+  const first = answerOf(await one("first", promptFor("first", firstPrompt), BUDGETS.first, [3, 4, 5]));
+  await onCall("first", first);
+  onStatus("Asking the model for the judgments of sections 6, 7 and 8: what it can do on its own, its risks, and its tests.");
+  const second = answerOf(await one("second", promptFor("second", secondPrompt), BUDGETS.second, [6, 7, 8]));
+  await onCall("second", second);
   const out = {
-    first: first.failed ? { failed: first.failed } : { drafts: draftsOf(first) },
-    second: second.failed ? { failed: second.failed } : { drafts: draftsOf(second) },
+    first, second,
     usage, not_made: notMade,
     /** The last call, made once the findings it reads are checked. */
     async glance(findings) {
+      onStatus("Writing section 1, at a glance, from the checked findings.");
       const r = await one("glance", glancePrompt(findings), BUDGETS.glance, [1]);
       return r.failed ? { failed: r.failed } : { drafts: Array.isArray(r.doc?.glance) ? r.doc.glance : [] };
     },

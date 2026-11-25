@@ -35,20 +35,21 @@ import { githubReader, GitHubFailed } from "./github.mjs";
 import { untar } from "./untar.mjs";
 import { collectFacts } from "./collect.mjs";
 import { addUvLock, checkWithOsv, lineOfComponent } from "./deps.mjs";
-import { createEmitter } from "./emit.mjs";
+import { createEmitter, liveUpdates } from "./emit.mjs";
 import { judge } from "./judge.mjs";
 import { checkDrafts, checkGlance } from "./checks.mjs";
 import { buildReport, notJudged, replyOf, scriptFindings } from "./report.mjs";
 
-export const VERSION = "0.1.1";
+export const VERSION = "0.1.2";
 const DAY_MS = 24 * 60 * 60 * 1000;
 
 /**
  * One inspection: {code, reply, report?, bom?}. Every system is reached
  * through what is handed in: `fetchImpl` for GitHub and OSV, `ask` for the
- * model; `onFinding` hears each finding as it is emitted.
+ * model; `onFinding` hears each finding as it is emitted, and `onStatus`
+ * a status line as each stage begins.
  */
-export async function inspect({ text, workDir, env = process.env, fetchImpl = fetch, ask, now = () => new Date(), onFinding } = {}) {
+export async function inspect({ text, workDir, env = process.env, fetchImpl = fetch, ask, now = () => new Date(), onFinding, onStatus = () => {} } = {}) {
   const req = readRequest(text);
   if (!req.ok) return { code: 0, reply: req.refusal };
   const notes = [...(req.asks_to_run ? [RUN_REFUSAL] : []), ...(req.asks_verdict ? [VERDICT_REFUSAL] : [])];
@@ -58,6 +59,7 @@ export async function inspect({ text, workDir, env = process.env, fetchImpl = fe
   try {
     let gh, repository, commitRec, recent, bytes;
     try {
+      onStatus(`Reading GitHub's records of ${owner}/${name} and its archive at ${req.commit}.`);
       gh = githubReader({ owner, name, env, fetchImpl });
       repository = await gh.repository();
       commitRec = await gh.commit(req.commit);
@@ -76,6 +78,7 @@ export async function inspect({ text, workDir, env = process.env, fetchImpl = fe
     const bytesOf = (f) => { try { return readFileSync(join(dir, f)); } catch { return null; } };
     const textFiles = files.filter((f) => { const b = bytesOf(f); return b && looksLikeText(b); }).length;
     const url = String(repository.html_url ?? `https://github.com/${owner}/${name}`);
+    onStatus(`Unpacked ${files.length} files of ${owner}/${name} at ${sha.slice(0, 12)}; reading the facts by rule.`); // cut-ok: a short digest in a status line; the full one is in the report
     const collected = collectFacts({ files, read, bytesOf, archive, github: { repository, commit: commitRec, recent }, owner, name, sha });
     const { facts, byId, add } = collected;
 
@@ -83,6 +86,7 @@ export async function inspect({ text, workDir, env = process.env, fetchImpl = fe
     const made = makeSbom({ files, read, repository: url, commit: sha, tool: { name: "inspect", version: VERSION } });
     const { bom, gaps } = addUvLock(made.bom, made.gaps, files, read);
     for (const g of gaps) add("bom-gap", g.evidence?.[0] ?? null, { about: g.about, why: g.why });
+    onStatus(`Read ${facts.length} facts; listed ${bom.components.length} dependencies and asking OSV about their known vulnerabilities.`);
     const osv = await checkWithOsv(bom.components, { env, fetchImpl });
     if (!osv.ok) add("osv-failed", { source: { system: "vulnerability-database", call: osv.calls.at(-1)?.call ?? "POST /v1/querybatch", field: "status" } }, { said: osv.said });
     for (const v of osv.found) {
@@ -95,6 +99,7 @@ export async function inspect({ text, workDir, env = process.env, fetchImpl = fe
 
     const ctx = contextFor({ files, read });
     const emitter = createEmitter({ onFinding });
+    onStatus(`OSV ${osv.ok ? `names ${osv.found.length} known vulnerabilities` : "could not be asked"}; writing the findings the scripts make.`);
     for (const f of scriptFindings({ facts, ctx, owner, name, sha, repoUrl: url, osv, bomGaps: gaps, files, textFiles })) emitter.emitFinding(f);
 
     // The judgments.
@@ -106,13 +111,17 @@ export async function inspect({ text, workDir, env = process.env, fetchImpl = fe
       osv: new Set(facts.filter((f) => f.kind === "vulnerability").map((f) => f.data.osv_id)),
     };
     if (textFiles) {
-      const j = await judge({ facts, repo: `${owner}/${name} at ${sha}`, ...(ask ? { ask } : {}) });
-      for (const [r, sections, which] of [[j.first, [3, 4, 5], "3, 4 and 5"], [j.second, [6, 7, 8], "6, 7 and 8"]]) {
-        if (r.failed) { for (const f of notJudged(sections, r.failed, which)) emitter.emitFinding(f); continue; }
+      // Each call's judgments are checked and emitted the moment it answers,
+      // so sections 3 to 5 reach the sender while 6 to 8 are still being judged.
+      const SECTIONS_OF = { first: [[3, 4, 5], "3, 4 and 5"], second: [[6, 7, 8], "6, 7 and 8"] };
+      const onCall = async (which, r) => {
+        const [sections, words] = SECTIONS_OF[which];
+        if (r.failed) { for (const f of notJudged(sections, r.failed, words)) emitter.emitFinding(f); return; }
         const c = checkDrafts(r.drafts, { sections, byId, ctx, known });
         for (const f of c.kept) emitter.emitFinding(f);
         held.push(...c.held);
-      }
+      };
+      const j = await judge({ facts, repo: `${owner}/${name} at ${sha}`, ...(ask ? { ask } : {}), onStatus, onCall });
       const g = await j.glance(emitter.findings());
       if (g.failed) for (const f of notJudged([1], g.failed, "1")) emitter.emitFinding(f);
       else {
@@ -128,6 +137,7 @@ export async function inspect({ text, workDir, env = process.env, fetchImpl = fe
       owner, name, url, sha, checked: archive.commit === sha, date: commitFact?.data?.date ?? null, version: VERSION, now: now().toISOString(),
       findings: emitter.findings(), held, facts, bom, osv, usage,
     }));
+    onStatus(`Done: ${report.counts.findings} findings, ${report.counts.held_back} judgments held back; the report follows as the answer.`);
     return { code: 0, reply: deepScrub(replyOf(report, { notes })), report, bom };
   } finally {
     rmSync(dir, { recursive: true, force: true });
@@ -170,7 +180,10 @@ if (ranDirectly) {
     // bucket, where a thousand files would be a thousand writes), and the
     // folder is removed when the job ends.
     const workDir = mkdtempSync(join(tmpdir(), `inspect-${basename(jobDir).replace(/[^\w.-]/g, "_")}-`));
-    inspect({ text, workDir }).then((out) => {
+    // Each finding and each stage goes to the running job as it happens,
+    // through the job folder's updates file (emit.mjs liveUpdates).
+    const live = liveUpdates(jobDir);
+    inspect({ text, workDir, onFinding: live.finding, onStatus: live.status }).then((out) => {
       if (out.report) writeOutputs(jobDir, out);
       rmSync(workDir, { recursive: true, force: true });
       process.stdout.write(`${JSON.stringify({ reply: out.reply })}\n`);
