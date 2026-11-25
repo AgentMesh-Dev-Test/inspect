@@ -42,3 +42,74 @@ The build folder is agents/inspect on branch adlc/inspect of AgentMesh-Dev-Test/
 - 2 steps that need a person: confirmed. The plan approval (S4-009, skills/faceless-explainer/SKILL.md:94) and the approval before the final render (S4-010, skills/hyperframes-cli/SKILL.md:27; S4-011, src/design_agent/pipelines/launch_film.py:178). No tool call waits for a person in code: interrupt_on is an empty mapping (S4-012, src/design_agent/assembly.py:362).
 - Apache-2.0: confirmed (S2-004, LICENSE:1, and GitHub's record).
 - Two skills that can be lifted out, brand-lint.mjs and contrast-report.mjs: brand-lint.mjs is confirmed, with workspace/tools/toolchain.mjs, which it imports from its own folder, reading two settings with defaults (S3-103; toolchain.mjs:39 and :40). contrast-report.mjs cannot be lifted out on its own: its package-loader.mjs loads a package whose name it works out at run time (S3-112; package-loader.mjs:54) and installs it with npm when it is missing. In all, the report finds 59 scripts that can be lifted out.
+
+## 0.1.2: the findings reach the sender while the job runs
+
+What changed: the one emitter (scripts/emit.mjs) posts each finding to the running job as a piece named by its id (S3-014 and so on) as soon as it is found. It posts a status line as each stage begins. Both go as lines of the job folder's updates.jsonl, which adapter 0.102.0 reads while the job is open and applies to the job's A2A Task.
+
+What the dev fleet needed, dev only, each change backed up:
+
+- Adapter 0.102.0 on the fleet host. The dev fleet ran 0.100.2-dev.2, so 0.102.0-dev.1 was packed from AgentMesh main (tools/pack-adapter.mjs --env dev) and installed with npm install -g.
+- MESH_ADAPTER_JOBS=/mesh/jobs/node-platform on mesh-node-platform, so the adapter's job folders are on the shared mount where the worker writes. The setting lives in /opt/fleet/mesh-node-platform.jobs-on-mount.config.js, which wraps the generated /opt/fleet/deploymgr-agents.config.js. pm2 keeps it, and it survived the 0.1.2 install. The permanent home is the deployment manager's template (an adlc change, not made).
+- A one-second metadata cache on the /mesh mount (gcsfuse --metadata-cache-ttl-secs=1 in /etc/systemd/system/mesh-state.service; backup mesh-state.service.bak-ttl-20261125T152150Z).
+  - With gcsfuse's default of 60 seconds, the adapter saw updates.jsonl grow once a minute.
+  - Its last read before the reply could miss the end of the file: the first proof put 179 of 226 findings on the Task.
+  - The host's reads now and then get ESTALE (-116) while the worker rewrites the file. The adapter reads again the next second, and nothing is lost.
+
+The proof, on the sender's Task as the core holds it: langchain-ai/design-agent at 86d8f66, sent 15:36:02 UTC on 2026-11-25, Task 01a21359-827b-7000-b162-bad4902a3d13.
+
+| After the send | On the sender's Task |
+|---|---|
+| 3 s | the Task is open |
+| 15 s | the first status line: reading GitHub's records |
+| 23 s | the first 4 findings |
+| 62 s | 93 findings |
+| 82 s | the scripts' findings all there; asking the model about sections 3 to 5 |
+| 152 s | asking about sections 6 to 8, with sections 3 to 5 posted |
+| 254 s | writing section 1 |
+| 262 s | Done: all 217 findings on the Task |
+| 267.5 s | the answer reaches the sender |
+
+The first finding reached the sender 244 seconds before the answer. The scripts' findings took a minute to arrive, because every append on the worker's mounted bucket uploads the whole file again. 0.2.0 writes each batch at once.
+
+## 0.2.0: the report's view, the Markdown copy, and the working copy
+
+To the published Common Agent Specification, Section 6.13, and the Descriptor to user interface binding 0.2.0, Section 9 (CommonAgent/common-agent-standards main at 6d47910).
+
+- **The report's view, views/report.html.** One self-contained file, declared in views[] by its digest for the output inspection, asking only for resize, copy-text and save-file.
+  - It opens on At a glance, with the risks by level.
+  - Then come the eight sections, one line per finding, with its level, its category and its file and line.
+  - Risks sort by level, and a person can filter by section and by level.
+  - A person can copy each finding with the address of its line at the commit, and save a plain-text summary for security.
+  - Each level is a word and a shape (critical an octagon, high a triangle, medium a diamond, low a ring), never a color alone.
+  - Colors and fonts come from the --ca-* tokens, each with a fallback for light and for dark.
+  - It loads nothing, names no address, and runs under its own content security policy as well as the host's.
+- **The working copy.** Each write of updates.jsonl ends with the report so far, posted under the report's own name, inspection.
+  - It is marked partial, with the stage the job is at, and is re-posted whole, replacing the one before.
+  - It must fit one piece (60,000 characters). Findings go without their words when they do not fit. When that still does not fit, findings with no level are left out from the largest section first, and the copy counts them.
+  - So the view draws the findings so far while the job runs, and the delivered report replaces the copy.
+  - The report's schema says so: a partial member, and a short finding for the copy.
+  - The writes are batched once per turn of the event loop. The scripts' findings are now one upload, where they were one upload each in 0.1.2.
+- **inspection.md.** The same report as Markdown for the plain page.
+  - Each level is in words, and each place is a link to its line on GitHub.
+  - Every character from the repository or the model that could start a link, an image or a tag is made plain.
+- **Words for a person (6.13.1, 6.13.8).**
+  - The name "Inspect", a one-sentence summary, and an about for each input written for a person.
+  - An example: design-agent at 86d8f66, with what a good result looks like.
+  - The specification gives a label to settings, not to inputs, so the inputs carry their sentence in about.
+- **The count of risks by level** leaves out section 1, which repeats findings of the other sections.
+
+How the view was checked, by a stand-in host that played the host's side of the bridge:
+- It ran in headless Edge, started hidden and driven over the DevTools protocol.
+- The view was in a sandboxed frame under Section 9.3's policy.
+- The fixtures were the delivered design-agent report, a working copy as it stands after the model's first answer, a working copy that then changes, and an empty report.
+- It covered light, dark, the fallbacks with no tokens, a stopped job, an accepted report and a narrow frame.
+
+What it found:
+- In every case the view said ready within 50 ms of loading and asked only for what it declares.
+- It reached nothing on the network, and it could not read the host's page (SecurityError).
+- The design pass, made from the screenshots, fixed four things:
+  - zero-count tiles that kept the danger color;
+  - an empty level column in sections with no levels;
+  - paths cut before the file name and line;
+  - a frame that never shrank after a filter.

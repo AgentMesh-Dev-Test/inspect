@@ -10,8 +10,12 @@
 // and what could not be read or asked. The model's findings are checked in
 // checks.mjs; every finding of both passes the one emitter (emit.mjs).
 //
+// It also writes the report's two other forms (0.2.0): the working copy the
+// job posts while it runs (workingCopy), and the report as Markdown for a
+// person to read where the report's view is not shown (markdownOf).
+//
 //   needs: node >= 22. Nothing here reads the network or writes a file.
-//   import { scriptFindings, notJudged, buildReport, replyOf, evidenceOf } from "./report.mjs"
+//   import { scriptFindings, notJudged, buildReport, replyOf, evidenceOf, workingCopy, markdownOf } from "./report.mjs"
 import { checkEvidence } from "./evidence.mjs";
 import { SECTIONS, categoryOf, LIST_IDS } from "./lists.mjs";
 
@@ -160,9 +164,21 @@ export function notJudged(sections, why, which) {
   }));
 }
 
+/** The levels a finding may carry, highest first. */
+export const LEVEL_ORDER = ["critical", "high", "medium", "low", "none"];
+const levelRank = (f) => { const i = LEVEL_ORDER.indexOf(f?.level); return i < 0 ? LEVEL_ORDER.length : i; };
+/** How many findings carry each level, and how many carry none, each counted
+ *  once: section 1 repeats findings of the other sections and is left out. */
+export function byLevel(findings) {
+  const out = Object.fromEntries([...LEVEL_ORDER, "not_rated"].map((l) => [l, 0]));
+  for (const f of findings) if (f.section !== 1 && !f.repeats) out[LEVEL_ORDER.includes(f.level) ? f.level : "not_rated"] += 1;
+  return out;
+}
+const bySection = (findings) => Object.fromEntries(SECTIONS.map((s) => [String(s.number), findings.filter((f) => f.section === s.number).length]));
+
 /** The report as the inspection-report-v1 schema says. */
 export function buildReport({ owner, name, url, sha, checked, date, version, now, findings, held, facts, bom, osv, usage }) {
-  const by = Object.fromEntries(SECTIONS.map((s) => [String(s.number), findings.filter((f) => f.section === s.number).length]));
+  const by = bySection(findings);
   return {
     format: "inspection-report-v1",
     repository: { owner, name, url },
@@ -174,9 +190,137 @@ export function buildReport({ owner, name, url, sha, checked, date, version, now
     held_back: held,
     facts,
     dependencies: { bom: "sbom.cdx.json", components: bom?.components?.length ?? 0, checked: osv?.asked ?? 0, not_checked: facts.filter((f) => f.kind === "not-checked").length },
-    counts: { findings: findings.length, by_section: by, held_back: held.length, facts: facts.length },
+    counts: { findings: findings.length, by_section: by, by_level: byLevel(findings), held_back: held.length, facts: facts.length },
     usage,
   };
+}
+
+/** The most a working copy takes as JSON: one piece, which the adapter caps at 64 KB. */
+export const WORKING_COPY_CHARS = 60_000;
+
+/**
+ * The working copy of the report while the job runs (0.2.0): the same
+ * inspection-report-v1 document, with `partial` saying the stage it is at,
+ * and the findings so far in their short form (no facts, no detail, the first
+ * place each cites). It is one piece, so it is kept within
+ * WORKING_COPY_CHARS: when the findings with their words do not fit, they go
+ * without their words (`partial.says_left_out`), and when that still does not
+ * fit, findings that carry no level are left out from the largest section
+ * first, counted in `partial.omitted`. The counts are always of every finding
+ * so far. The delivered report replaces it.
+ */
+export function workingCopy({ about, findings, stage, limit = WORKING_COPY_CHARS }) {
+  const a = about ?? {};
+  const short = (f, words) => {
+    const ev = Array.isArray(f.evidence) ? f.evidence : [];
+    return {
+      id: f.id, section: f.section, kind: f.kind, title: f.title, ...(words ? { says: f.says } : {}), by: f.by,
+      ...(f.level ? { level: f.level, ...(f.level_by ? { level_by: f.level_by } : {}) } : {}),
+      ...(f.categories?.length ? { categories: f.categories } : {}),
+      ...(f.repeats ? { repeats: f.repeats } : {}),
+      ...(ev.length ? { evidence: [{ file: ev[0].file, line: ev[0].line }], ...(ev.length > 1 ? { more_evidence: ev.length - 1 } : {}) } : {}),
+      ...(!ev.length && f.source?.length ? { source: [f.source[0]] } : {}),
+    };
+  };
+  const all = [...findings].sort((x, y) => x.section - y.section);
+  const doc = (list, words, omitted) => ({
+    format: "inspection-report-v1",
+    partial: { stage: trim(stage) || "Starting.", findings_so_far: all.length, omitted, says_left_out: !words },
+    repository: { owner: a.owner, name: a.name, url: a.url },
+    commit: { sha: a.sha, checked: a.checked === true, date: a.date ?? null },
+    inspected_at: a.started_at,
+    inspector: { name: "inspect", version: a.version },
+    sections: SECTIONS,
+    findings: list,
+    held_back: [],
+    facts: [],
+    counts: { findings: all.length, by_section: bySection(all), by_level: byLevel(all), held_back: 0, facts: 0 },
+  });
+  const fits = (d) => JSON.stringify(d).length <= limit;
+  let d = doc(all.map((f) => short(f, true)), true, 0);
+  if (fits(d)) return d;
+  let list = all.map((f) => short(f, false));
+  d = doc(list, false, 0);
+  let omitted = 0;
+  while (!fits(d)) {
+    const sizes = new Map();
+    for (const f of list) if (!f.level) sizes.set(f.section, (sizes.get(f.section) ?? 0) + 1);
+    if (!sizes.size) break;
+    const biggest = [...sizes.entries()].sort((x, y) => y[1] - x[1] || y[0] - x[0])[0][0];
+    const drop = Math.max(1, Math.ceil(list.length / 20));
+    let dropped = 0;
+    list = list.filter((f) => !(f.section === biggest && !f.level && dropped++ < drop));
+    omitted += dropped;
+    d = doc(list, false, omitted);
+  }
+  return d;
+}
+
+// ── The report as Markdown, for a person to read without the view ──
+
+/** Text from the repository or the model, made safe to put in Markdown: no
+ *  character starts a link, an image, a tag or emphasis. */
+export function mdText(s) {
+  return String(s ?? "").replace(/\s+/g, " ").trim().replace(/[\\`*_[\]<>!|#~]/g, (c) => `\\${c}`);
+}
+/** The address of one line of one file at the commit, on GitHub, or null
+ *  when the repository's address is not GitHub's. */
+export function lineAddress(repo, sha, file, line) {
+  let u;
+  try { u = new URL(String(repo?.url ?? "")); } catch { return null; }
+  if (u.protocol !== "https:" || u.hostname !== "github.com" || !/^[0-9a-f]{40}$/.test(String(sha ?? ""))) return null;
+  const path = String(file ?? "").split("/").map((seg) => encodeURIComponent(seg).replace(/[!'()*]/g, (ch) => `%${ch.charCodeAt(0).toString(16).toUpperCase()}`)).join("/");
+  return `${u.origin}${u.pathname.replace(/\/+$/, "")}/blob/${sha}/${path}${Number(line) >= 1 ? `#L${Number(line)}` : ""}`;
+}
+const LEVEL_WORDS = { critical: "Critical", high: "High", medium: "Medium", low: "Low", none: "No risk" };
+/** A finding's level, category and place, as a person reads them. */
+function findingLine(f, report) {
+  const level = f.level ? `**${LEVEL_WORDS[f.level] ?? mdText(f.level)}${f.level === "none" ? "" : " risk"}.** ` : "";
+  const cats = (f.categories ?? []).map((c) => mdText(c.id === c.name ? c.id : `${c.id} ${c.name}`)).join("; ");
+  // A place is set as code, where nothing is read as Markdown, so a path
+  // needs no escapes; a backquote in it, the one character that would end
+  // the code, is shown as a quote.
+  const places = (f.evidence ?? []).slice(0, 5).map((e) => {
+    const at = `\`${`${e.file}:${e.line}`.replace(/[`\r\n]/g, "'")}\``;
+    const addr = lineAddress(report.repository, report.commit.sha, e.file, e.line);
+    return addr ? `[${at}](${addr})` : at;
+  });
+  const more = (f.evidence?.length ?? 0) > 5 ? `, and ${f.evidence.length - 5} more in inspection.json` : "";
+  const from = !places.length && f.source?.length ? ` From ${mdText(f.source.map((s) => s.call).join("; "))}.` : "";
+  return `- ${level}**${mdText(f.title)}.** ${mdText(f.says)}${cats ? ` Category: ${cats}.` : ""}${places.length ? ` At ${places.join(", ")}${more}.` : ""}${from} (${f.id})`;
+}
+
+/** The whole report as Markdown: the same findings, in the same sections, with
+ *  each risk's level in words, sorted by level within its section. */
+export function markdownOf(report) {
+  const r = report; const sha = r.commit.sha;
+  const lv = byLevel(r.findings);
+  const sorted = (list) => [...list].sort((x, y) => levelRank(x) - levelRank(y) || r.findings.indexOf(x) - r.findings.indexOf(y));
+  const lines = [
+    `# Inspection of ${mdText(`${r.repository.owner}/${r.repository.name}`)}`,
+    "",
+    `Commit ${sha}${r.commit.date ? `, committed ${day(r.commit.date)}` : ""}. Inspected ${day(r.inspected_at)} by Inspect ${mdText(r.inspector.version)}, which read the code without running any of it and gives no verdict on bringing the agent in.`,
+    "",
+    `Repository: ${r.repository.url}`,
+    "",
+    "## At a glance",
+    "",
+    `Risks by level: ${lv.critical} critical, ${lv.high} high, ${lv.medium} medium and ${lv.low} low. ${plural(r.counts.findings, "finding")} in all.`,
+    "",
+  ];
+  const glance = r.findings.filter((f) => f.section === 1);
+  lines.push(...(glance.length ? glance.map((f) => findingLine(f, r)) : ["- Nothing was judged for this section."]), "");
+  for (const s of SECTIONS.filter((x) => x.number > 1)) {
+    const list = sorted(r.findings.filter((f) => f.section === s.number));
+    lines.push(`## ${s.number}. ${s.title}`, "", ...(list.length ? list.map((f) => findingLine(f, r)) : ["- Nothing was found for this section."]), "");
+  }
+  if (r.held_back?.length) {
+    lines.push("## Judgments held back", "", ...r.held_back.map((h) => `- Section ${h.section}, ${mdText(h.title)}: ${mdText(h.why)}`), "");
+  }
+  const u = r.usage ?? {};
+  const times = (n) => (Number(n) === 1 ? "once" : `${Number(n) || 0} times`);
+  lines.push(`The job asked GitHub ${times(u.code_host_calls)}, OSV ${times(u.vulnerability_database_calls)} and the model ${times(u.model_calls)}. The facts each finding rests on are in inspection.json, and the dependency list in sbom.cdx.json.`, "");
+  return lines.join("\n");
 }
 
 /** The reply: a header of named fields, section 1's findings, the counts. */
@@ -195,7 +339,7 @@ export function replyOf(report, { notes = [] } = {}) {
     "## Sections",
     ...SECTIONS.map((s) => `${s.number}. ${s.title}: ${plural(report.counts.by_section[String(s.number)] ?? 0, "finding")}`),
     "",
-    `The whole report is attached as inspection.json, and the dependency list as sbom.cdx.json. ${plural(report.counts.held_back, "judgment")} held back, each listed in the report with why.`,
+    `The whole report is attached as inspection.json and, to read, as inspection.md; the dependency list as sbom.cdx.json. ${plural(report.counts.held_back, "judgment")} held back, each listed in the report with why.`,
   ];
   return lines.join("\n");
 }

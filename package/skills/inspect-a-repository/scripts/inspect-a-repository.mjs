@@ -17,7 +17,8 @@
 //   node inspect-a-repository.mjs --job <job_dir> --records <records> --work <work> --text-file <message.txt>
 //
 // It prints one JSON object, {"reply": "..."}, and on an inspection writes
-// out/inspection.json and out/sbom.cdx.json and lists them in pieces.json.
+// out/inspection.json, out/inspection.md and out/sbom.cdx.json and lists them
+// in pieces.json.
 // Exit 0 when it answered (a report or a refusal), 1 when GitHub failed, 2
 // when --job is not given.
 //
@@ -38,18 +39,20 @@ import { addUvLock, checkWithOsv, lineOfComponent } from "./deps.mjs";
 import { createEmitter, liveUpdates } from "./emit.mjs";
 import { judge } from "./judge.mjs";
 import { checkDrafts, checkGlance } from "./checks.mjs";
-import { buildReport, notJudged, replyOf, scriptFindings } from "./report.mjs";
+import { buildReport, markdownOf, notJudged, replyOf, scriptFindings } from "./report.mjs";
 
-export const VERSION = "0.1.2";
+export const VERSION = "0.2.0";
 const DAY_MS = 24 * 60 * 60 * 1000;
 
 /**
  * One inspection: {code, reply, report?, bom?}. Every system is reached
  * through what is handed in: `fetchImpl` for GitHub and OSV, `ask` for the
- * model; `onFinding` hears each finding as it is emitted, and `onStatus`
- * a status line as each stage begins.
+ * model; `onFinding` hears each finding as it is emitted, `onStatus` a
+ * status line as each stage begins, and `onStart` the repository and the
+ * commit once the archive is read, before the first finding.
  */
-export async function inspect({ text, workDir, env = process.env, fetchImpl = fetch, ask, now = () => new Date(), onFinding, onStatus = () => {} } = {}) {
+export async function inspect({ text, workDir, env = process.env, fetchImpl = fetch, ask, now = () => new Date(), onFinding, onStatus = () => {}, onStart = () => {} } = {}) {
+  const startedAt = now().toISOString();
   const req = readRequest(text);
   if (!req.ok) return { code: 0, reply: req.refusal };
   const notes = [...(req.asks_to_run ? [RUN_REFUSAL] : []), ...(req.asks_verdict ? [VERDICT_REFUSAL] : [])];
@@ -81,6 +84,7 @@ export async function inspect({ text, workDir, env = process.env, fetchImpl = fe
     onStatus(`Unpacked ${files.length} files of ${owner}/${name} at ${sha.slice(0, 12)}; reading the facts by rule.`); // cut-ok: a short digest in a status line; the full one is in the report
     const collected = collectFacts({ files, read, bytesOf, archive, github: { repository, commit: commitRec, recent }, owner, name, sha });
     const { facts, byId, add } = collected;
+    onStart({ owner, name, url, sha, checked: archive.commit === sha, date: facts.find((f) => f.kind === "commit")?.data?.date ?? null, version: VERSION, started_at: startedAt });
 
     // The dependency list, and OSV.
     const made = makeSbom({ files, read, repository: url, commit: sha, tool: { name: "inspect", version: VERSION } });
@@ -144,13 +148,15 @@ export async function inspect({ text, workDir, env = process.env, fetchImpl = fe
   }
 }
 
-/** Write what a job hands back under its folder: the two pieces and pieces.json. */
+/** Write what a job hands back under its folder: the three pieces and pieces.json. */
 export function writeOutputs(jobDir, { report, bom }) {
   mkdirSync(join(jobDir, "out"), { recursive: true });
   writeFileSync(join(jobDir, "out", "inspection.json"), `${JSON.stringify(report, null, 2)}\n`);
+  writeFileSync(join(jobDir, "out", "inspection.md"), markdownOf(report));
   writeFileSync(join(jobDir, "out", "sbom.cdx.json"), `${JSON.stringify(bom, null, 2)}\n`);
   const pieces = [
     { name: "inspection", path: "out/inspection.json", media_type: "application/vnd.agentmesh.inspection-report+json" },
+    { name: "inspection-md", path: "out/inspection.md", media_type: "text/markdown" },
     { name: "sbom", path: "out/sbom.cdx.json", media_type: "application/vnd.cyclonedx+json" },
   ];
   writeFileSync(join(jobDir, "pieces.json"), `${JSON.stringify(pieces, null, 2)}\n`);
@@ -183,7 +189,8 @@ if (ranDirectly) {
     // Each finding and each stage goes to the running job as it happens,
     // through the job folder's updates file (emit.mjs liveUpdates).
     const live = liveUpdates(jobDir);
-    inspect({ text, workDir, onFinding: live.finding, onStatus: live.status }).then((out) => {
+    inspect({ text, workDir, onStart: live.start, onFinding: live.finding, onStatus: live.status }).then((out) => {
+      live.flush();
       if (out.report) writeOutputs(jobDir, out);
       rmSync(workDir, { recursive: true, force: true });
       process.stdout.write(`${JSON.stringify({ reply: out.reply })}\n`);

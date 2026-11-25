@@ -2,7 +2,7 @@
   "format": "spec-v1",
   "product": {
     "name": "inspect",
-    "version": "0.1.2",
+    "version": "0.2.0",
     "kind": "agent"
   },
   "purpose": "Inspect takes a public GitHub repository address and a commit, reads the agent's code at that commit without running any of it, and hands back an inspection report on what the agent does and how safe it is. The report is a list of findings in eight sections, each finding standing on its own and citing a file and line at the commit. Its reader is the person in charge of a department's agents, deciding whether to bring in an outside agent before anything is installed or given a credential. It judges no fit with anyone's plan, matches the agent to no catalog role and gives no bring-it-in-or-not verdict.",
@@ -596,7 +596,7 @@
         {
           "name": "inspection",
           "kind": "application/vnd.agentmesh.inspection-report+json",
-          "about": "The inspection report in the inspection-report-v1 format: the repository and commit, the eight sections, the findings in section order, the judgments held back with why, the facts the findings cite, and what the job used.",
+          "about": "The inspection report in the inspection-report-v1 format: the repository and commit, the eight sections, the findings in section order, the judgments held back with why, the facts the findings cite, and what the job used. While the job runs, a working copy of it with the findings so far is posted under the same name, marked partial.",
           "schema": {
             "$schema": "https://json-schema.org/draft/2020-12/schema",
             "title": "The inspection report (inspection-report-v1)",
@@ -617,6 +617,34 @@
             "properties": {
               "format": {
                 "const": "inspection-report-v1"
+              },
+              "partial": {
+                "type": "object",
+                "description": "only on the working copy posted while the job runs, never on the delivered report: the stage the job is at, how many findings so far, how many are left out of this copy to keep it one piece, and whether their words are",
+                "required": [
+                  "stage",
+                  "findings_so_far",
+                  "omitted",
+                  "says_left_out"
+                ],
+                "additionalProperties": false,
+                "properties": {
+                  "stage": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "findings_so_far": {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "omitted": {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "says_left_out": {
+                    "type": "boolean"
+                  }
+                }
               },
               "repository": {
                 "type": "object",
@@ -717,10 +745,7 @@
                 }
               },
               "findings": {
-                "type": "array",
-                "items": {
-                  "$ref": "#/$defs/Finding"
-                }
+                "type": "array"
               },
               "held_back": {
                 "type": "array",
@@ -802,6 +827,36 @@
                   "facts": {
                     "type": "integer",
                     "minimum": 0
+                  },
+                  "by_level": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "properties": {
+                      "critical": {
+                        "type": "integer",
+                        "minimum": 0
+                      },
+                      "high": {
+                        "type": "integer",
+                        "minimum": 0
+                      },
+                      "medium": {
+                        "type": "integer",
+                        "minimum": 0
+                      },
+                      "low": {
+                        "type": "integer",
+                        "minimum": 0
+                      },
+                      "none": {
+                        "type": "integer",
+                        "minimum": 0
+                      },
+                      "not_rated": {
+                        "type": "integer",
+                        "minimum": 0
+                      }
+                    }
                   }
                 }
               },
@@ -1088,9 +1143,156 @@
                     "type": "object"
                   }
                 }
+              },
+              "FindingSoFar": {
+                "type": "object",
+                "description": "a finding in the working copy: its id, place, title and level, the first place it cites, and its words where they fit",
+                "required": [
+                  "id",
+                  "section",
+                  "kind",
+                  "title",
+                  "by"
+                ],
+                "additionalProperties": false,
+                "properties": {
+                  "id": {
+                    "type": "string",
+                    "pattern": "^S[1-8]-[0-9]{3,}$"
+                  },
+                  "section": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 8
+                  },
+                  "kind": {
+                    "enum": [
+                      "glance",
+                      "repository",
+                      "commit",
+                      "publisher",
+                      "license",
+                      "built-on",
+                      "activity",
+                      "job",
+                      "skill",
+                      "part",
+                      "input",
+                      "output",
+                      "model",
+                      "how-it-runs",
+                      "memory",
+                      "human-step",
+                      "system",
+                      "credential",
+                      "spend",
+                      "tool",
+                      "autonomy",
+                      "risk",
+                      "least-access",
+                      "approval",
+                      "test",
+                      "test-gap",
+                      "could-not-tell",
+                      "question",
+                      "not-judged"
+                    ]
+                  },
+                  "title": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "says": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "by": {
+                    "enum": [
+                      "script",
+                      "model"
+                    ]
+                  },
+                  "level": {
+                    "enum": [
+                      "none",
+                      "low",
+                      "medium",
+                      "high",
+                      "critical"
+                    ]
+                  },
+                  "level_by": {
+                    "enum": [
+                      "source",
+                      "rule",
+                      "model"
+                    ],
+                    "description": "who set the level: the record it came from (OSV), a fixed rule of Inspect's (a committed credential is high), or the model"
+                  },
+                  "categories": {
+                    "type": "array",
+                    "items": {
+                      "$ref": "#/$defs/Category"
+                    }
+                  },
+                  "repeats": {
+                    "type": "string",
+                    "pattern": "^S[2-8]-[0-9]{3,}$"
+                  },
+                  "evidence": {
+                    "type": "array",
+                    "maxItems": 1,
+                    "items": {
+                      "$ref": "#/$defs/Evidence"
+                    }
+                  },
+                  "more_evidence": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "description": "how many more places the finding cites in the delivered report"
+                  },
+                  "source": {
+                    "type": "array",
+                    "maxItems": 1,
+                    "items": {
+                      "$ref": "#/$defs/Source"
+                    }
+                  }
+                }
               }
-            }
+            },
+            "anyOf": [
+              {
+                "description": "the delivered report",
+                "properties": {
+                  "findings": {
+                    "items": {
+                      "$ref": "#/$defs/Finding"
+                    }
+                  }
+                }
+              },
+              {
+                "description": "the working copy",
+                "required": [
+                  "partial"
+                ],
+                "properties": {
+                  "findings": {
+                    "items": {
+                      "$ref": "#/$defs/FindingSoFar"
+                    }
+                  }
+                }
+              }
+            ]
           }
+        },
+        {
+          "name": "inspection-md",
+          "kind": "text/markdown",
+          "presentation": "document",
+          "about": "The same report as Markdown, for a person to read: `# Inspection of <repository>`, then `## At a glance`, then `## <number>. <section title>` for sections 2 to 8, one line per finding with its level in words, its category and its file and line at the commit."
         }
       ],
       "requirements": [
@@ -1129,7 +1331,7 @@
           "kind": "interface",
           "priority": "must",
           "verify": "test",
-          "shall": "The agent shall pass every finding, from the scripts and from the model, through one function that emits a finding, in the order it is found and with the id it has in the report, and that function shall post each finding to the running job as a piece named by its id, with a status line as each stage of the inspection begins (adapter 0.102.0: lines of the job folder's updates.jsonl).",
+          "shall": "The agent shall pass every finding, from the scripts and from the model, through one function that emits a finding, in the order it is found and with the id it has in the report, and that function shall post each finding to the running job as a piece named by its id, with a status line as each stage of the inspection begins (adapter 0.102.0: lines of the job folder's updates.jsonl), written together once per turn of the event loop, each write ending with the working copy of the report: the report so far, under the report's own name inspection, marked partial with the stage it is at, whole in one piece of at most 60,000 characters.",
           "source": {
             "said": "Shape its code so that posting each finding as it is found is a small later change (one place that emits a finding)."
           }
@@ -1162,6 +1364,26 @@
           "shall": "The agent shall, when asked whether to bring the agent in or how it fits a plan or a catalog role, say in its reply that Inspect gives no verdict and judges no fit, and still deliver the report.",
           "source": {
             "said": "it does NOT judge fit with anyone's plan or match the agent to catalog roles"
+          }
+        },
+        {
+          "id": "F5.R8",
+          "kind": "output",
+          "priority": "must",
+          "verify": "test",
+          "shall": "The agent shall hand back the same report as Markdown, inspection.md, for a person to read where the report's view is not shown: a title naming the repository, then At a glance with the risks by level, then one heading per section from 2 to 8, one line per finding with its level in words, its category and its file and line at the commit as a link to that line on GitHub, with every character from the repository or the model that could start a link, an image or a tag made plain.",
+          "source": {
+            "said": "A second output, inspection.md: the same report as readable Markdown, so the plain page reads well without the view, as the spec requires."
+          }
+        },
+        {
+          "id": "F5.R9",
+          "kind": "interface",
+          "priority": "must",
+          "verify": "test",
+          "shall": "The agent's package shall carry a view of the report, views/report.html, declared in the descriptor's views[] by its digest for the output inspection (Common Agent Specification 6.13.6; DESCRIPTOR-UI 0.2.0 Section 9): one self-contained file that loads nothing, speaks only the bridge's methods, asks only for resize, copy-text and save-file, draws with the --ca-* tokens and a fallback for each in light and dark, opens on At a glance with the risks by level, then the eight sections one line per finding with its level, category and file and line, sorts risks by level, filters by section and by level, copies a finding with the address of its line at the commit, saves a plain summary for security, draws the working copy as the findings so far with the stage and the report's place in its lifecycle, and gives every level a word and a shape, never a color alone.",
+          "source": {
+            "said": "Package Inspect with a view, to the published Common Agent spec, as Inspect 0.2.0."
           }
         }
       ],
@@ -1227,6 +1449,13 @@
       "name": "sbom.cdx.json",
       "keep": false,
       "about": "The dependency list, a CycloneDX 1.5 bill of materials."
+    },
+    {
+      "id": "I26",
+      "kind": "file",
+      "name": "inspection.md",
+      "keep": false,
+      "about": "The inspection report as Markdown, for a person to read."
     },
     {
       "id": "I3",
@@ -1433,6 +1662,13 @@
       "declared_in": "agent-runtime-requirements.json job_seconds",
       "keep": true,
       "about": "The longest one inspection may take: one archive, a few OSV queries and up to three model calls over many facts."
+    },
+    {
+      "id": "I27",
+      "kind": "file",
+      "name": "views/report.html",
+      "keep": true,
+      "about": "The report's view, declared in the descriptor's views[] by its digest; its bridge methods and requests are DESCRIPTOR-UI Section 9.4's."
     }
   ],
   "constraints": [

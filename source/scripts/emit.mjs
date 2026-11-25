@@ -19,11 +19,17 @@
 // large for one piece goes as its title and words, with a note that the
 // whole of it is in inspection.json; nothing is cut without saying so.
 //
+//
+// The working copy (0.2.0): with each write, the report so far, posted under
+// the report's own name, inspection, so the report's view can draw it while
+// the job runs (see liveUpdates).
+//
 //   needs: node >= 22
-//   import { createEmitter, liveUpdates, UPDATES_FILE, PIECE_CHARS } from "./emit.mjs"
+//   import { createEmitter, liveUpdates, UPDATES_FILE, PIECE_CHARS, WORKING_COPY } from "./emit.mjs"
 import { appendFileSync } from "node:fs";
 import { join } from "node:path";
 import { deepScrub, scrub } from "./secrets.mjs";
+import { workingCopy } from "./report.mjs";
 
 /** The file in the job folder the adapter reads updates from. */
 export const UPDATES_FILE = "updates.jsonl";
@@ -69,23 +75,50 @@ export function pieceData(finding) {
   };
 }
 
+/** The name the working copy of the report is posted under: the report's own. */
+export const WORKING_COPY = "inspection";
+
 /**
  * The job's live updates, written to `<jobDir>/updates.jsonl`:
- * { finding(f), status(words) }. Each call appends one whole line, so the
- * adapter never reads half an update. A write that fails is said once and
- * never stops the inspection: the report still carries every finding.
+ * { start(about), finding(f), status(words), flush() }.
+ *
+ * Updates are kept and written together once per turn of the event loop
+ * (0.2.0), as whole lines in one append, so the adapter never reads half an
+ * update. On a worker the job folder is a mounted bucket, where every append
+ * uploads the whole file again: in 0.1.2 one append per finding made the
+ * scripts' findings take a minute to write. Now the scripts' findings are one
+ * write, and each answer of the model one more.
+ *
+ * Each write ends with the working copy of the report (report.mjs
+ * workingCopy), posted under the report's own name, so a page that draws the
+ * report can draw it while the job runs: it is posted again whenever a
+ * finding or a stage was added since the last, each post whole, replacing
+ * the one before. `start(about)` gives it the repository and the commit.
+ *
+ * A write that fails is said once and never stops the inspection: the report
+ * still carries every finding.
  */
-export function liveUpdates(jobDir, { append = appendFileSync, warn = (line) => process.stderr.write(`${line}\n`) } = {}) {
+export function liveUpdates(jobDir, { append = appendFileSync, warn = (line) => process.stderr.write(`${line}\n`), later = setImmediate } = {}) {
   const file = join(jobDir, UPDATES_FILE);
-  let failed = false;
-  const write = (update) => {
-    try { append(file, `${JSON.stringify(update)}\n`); } catch (e) {
+  let failed = false; let queued = []; let due = false; let about = null; let stage = ""; let changed = false;
+  const found = [];
+  const flush = () => {
+    due = false;
+    if (changed && about) queued.push({ piece: WORKING_COPY, data: workingCopy({ about, findings: found, stage }), last: true });
+    changed = false;
+    if (!queued.length) return;
+    const lines = queued.map((u) => `${JSON.stringify(u)}\n`).join("");
+    queued = [];
+    try { append(file, lines); } catch (e) {
       if (!failed) warn(`the live updates could not be written to ${UPDATES_FILE} (${e?.message ?? e}); the report still carries every finding`);
       failed = true;
     }
   };
+  const soon = () => { if (!due) { due = true; later(flush); } };
   return {
-    finding: (f) => write({ piece: f.id, data: pieceData(f), last: true }),
-    status: (words) => write({ progress: scrub(String(words)) }),
+    start: (a) => { about = deepScrub(a); changed = true; soon(); },
+    finding: (f) => { const clean = deepScrub(f); found.push(clean); queued.push({ piece: f.id, data: pieceData(clean), last: true }); changed = true; soon(); },
+    status: (words) => { stage = scrub(String(words)); queued.push({ progress: stage }); changed = true; soon(); },
+    flush,
   };
 }

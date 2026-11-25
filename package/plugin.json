@@ -1,7 +1,7 @@
 {
   "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
   "name": "inspect",
-  "version": "0.1.2",
+  "version": "0.2.0",
   "description": "Inspect reads an outside agent's code in a public GitHub repository at one commit, without running any of it, and hands back an inspection report on what the agent does and how safe it is: a list of findings in eight sections, each citing a file and line at the commit. Scripts collect the facts; a model writes only the judgments, and each judgment cites the facts it rests on. It gives no verdict on bringing the agent in and judges no fit with anyone's plan.",
   "author": {
     "name": "Agent Builder"
@@ -46,7 +46,7 @@
       },
       "descriptor": {
         "path": "agent-descriptor.json",
-        "sha256": "fa4f07d11e093d155707418a7c0b8909c8fd1b87929847dcfd7ae9c7a3472df7"
+        "sha256": "9dde42a80e815275ec7b7ede9792ba8a6f28fc3db92495d20cb44b97ebc8c7bd"
       },
       "runtime_requirements": {
         "path": "agent-runtime-requirements.json",

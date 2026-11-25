@@ -1,0 +1,651 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; img-src data: blob:; font-src data: blob:; media-src data: blob:; form-action 'none'; base-uri 'none'">
+<title>Inspection report</title>
+<!--
+  Inspect's view of its report (Common Agent Specification 6.13.6; the
+  Descriptor to user interface binding, Section 9). It draws one output, the
+  inspection report, from the bytes the host hands it in view/data, and from
+  nothing else: it loads nothing, opens nothing and acts on nothing. It asks
+  the host for three things only: a height (view/resize), words copied to the
+  clipboard (view/copy-text) and a file saved (view/save-file).
+
+  It draws the delivered report, and the working copy the job posts while it
+  runs (the same format, with "partial"), so a person sees the findings so
+  far and the stage the job is at. Colors and fonts come from the host's
+  --ca-* tokens, each with a fallback for light and for dark. A level is
+  always a word and a shape, never a color alone.
+-->
+<style>
+:root {
+  --fb-background: #ffffff; --fb-surface: #f5f6f8; --fb-text: #1c1f24; --fb-muted: #5d6471;
+  --fb-accent: #2f5bd3; --fb-border: #d8dce2; --fb-danger: #b3261e;
+  --bg: var(--ca-color-background, var(--fb-background));
+  --surface: var(--ca-color-surface, var(--fb-surface));
+  --text: var(--ca-color-text, var(--fb-text));
+  --muted: var(--ca-color-text-muted, var(--fb-muted));
+  --accent: var(--ca-color-accent, var(--fb-accent));
+  --border: var(--ca-color-border, var(--fb-border));
+  --danger: var(--ca-color-danger, var(--fb-danger));
+  --body: var(--ca-font-body, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif);
+  --mono: var(--ca-font-mono, ui-monospace, "SFMono-Regular", "Cascadia Mono", Consolas, "Liberation Mono", monospace);
+  --size: var(--ca-font-size, 15px);
+  --radius: var(--ca-radius, 8px);
+  --s: var(--ca-space, 8px);
+  color-scheme: light;
+}
+:root[data-scheme="dark"] {
+  --fb-background: #16181c; --fb-surface: #1f2228; --fb-text: #e7e9ec; --fb-muted: #a0a7b3;
+  --fb-accent: #8fb0ff; --fb-border: #353a43; --fb-danger: #ff8f86;
+  color-scheme: dark;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-scheme="light"]) {
+    --fb-background: #16181c; --fb-surface: #1f2228; --fb-text: #e7e9ec; --fb-muted: #a0a7b3;
+    --fb-accent: #8fb0ff; --fb-border: #353a43; --fb-danger: #ff8f86;
+    color-scheme: dark;
+  }
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; background: var(--bg); color: var(--text); font-family: var(--body); font-size: var(--size); line-height: 1.5; }
+body { padding: calc(var(--s) * 2.5) calc(var(--s) * 2); }
+h1, h2, h3, p { margin: 0; }
+button, select { font: inherit; color: inherit; }
+button { cursor: pointer; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 4px; }
+.muted { color: var(--muted); }
+.mono { font-family: var(--mono); font-size: 0.88em; }
+.sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+
+/* The head */
+.head { display: flex; gap: calc(var(--s) * 2); align-items: flex-start; justify-content: space-between; flex-wrap: wrap; }
+.eyebrow { font-size: 0.8em; letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); font-weight: 600; }
+h1 { font-size: 1.55em; line-height: 1.2; font-weight: 650; margin-top: calc(var(--s) * 0.5); overflow-wrap: anywhere; }
+.meta { margin-top: calc(var(--s) * 0.75); font-size: 0.9em; color: var(--muted); }
+.meta span + span::before { content: "\00B7"; padding: 0 0.45em; }
+.btn { border: 1px solid var(--border); background: var(--surface); border-radius: var(--radius); padding: calc(var(--s) * 0.75) calc(var(--s) * 1.5); font-size: 0.9em; font-weight: 550; display: inline-flex; gap: 0.5em; align-items: center; white-space: nowrap; }
+.btn:hover { border-color: var(--muted); }
+.btn[disabled] { opacity: 0.55; cursor: default; }
+
+/* Where the report is in its life */
+.track { list-style: none; padding: 0; margin: calc(var(--s) * 2) 0 0; display: flex; flex-wrap: wrap; gap: calc(var(--s) * 0.5) 0; font-size: 0.88em; }
+.track li { display: inline-flex; align-items: center; gap: 0.45em; color: var(--muted); }
+.track li + li::before { content: ""; width: calc(var(--s) * 3); height: 1px; background: var(--border); margin: 0 0.6em; }
+.track li[aria-current="step"] { color: var(--text); font-weight: 650; }
+.track li.done { color: var(--text); }
+.track svg { flex: none; }
+.now { margin-top: calc(var(--s) * 1); font-size: 0.92em; display: flex; gap: 0.55em; align-items: baseline; }
+.now .pulse { width: 0.55em; height: 0.55em; border-radius: 50%; background: var(--accent); flex: none; transform: translateY(-0.05em); animation: pulse 1.6s ease-in-out infinite; }
+@keyframes pulse { 50% { opacity: 0.3; } }
+@media (prefers-reduced-motion: reduce) { .now .pulse { animation: none; } }
+.stopped { margin-top: calc(var(--s) * 1.5); border: 1px solid var(--danger); border-radius: var(--radius); padding: calc(var(--s) * 1) calc(var(--s) * 1.5); display: flex; gap: 0.6em; align-items: flex-start; }
+.note { margin-top: calc(var(--s) * 1); font-size: 0.86em; color: var(--muted); }
+
+/* At a glance */
+.glance { margin-top: calc(var(--s) * 3); background: var(--surface); border: 1px solid var(--border); border-radius: calc(var(--radius) * 1.25); padding: calc(var(--s) * 2.25); }
+.glance h2 { font-size: 1.1em; font-weight: 650; }
+.tiles { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: calc(var(--s) * 1); margin-top: calc(var(--s) * 1.5); }
+.tile { background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius); padding: calc(var(--s) * 1.25) calc(var(--s) * 1.5); }
+.tile .n { font-size: 1.6em; font-weight: 650; line-height: 1.1; font-variant-numeric: tabular-nums; }
+.tile .w { display: flex; gap: 0.4em; align-items: center; font-size: 0.86em; margin-top: 0.25em; }
+.tile.zero .n, .tile.zero .w, .tile.zero .lv { color: var(--muted); font-weight: 500; }
+.matters { list-style: none; margin: calc(var(--s) * 2) 0 0; padding: 0; display: grid; gap: calc(var(--s) * 1.5); }
+.matters li { display: grid; grid-template-columns: 6.6em minmax(0, 1fr); gap: calc(var(--s) * 1.25); }
+.matters .t { font-weight: 620; }
+.matters .says { color: var(--text); margin-top: 0.15em; }
+.matters .see { margin-top: 0.3em; font-size: 0.86em; }
+.linkish { background: none; border: 0; padding: 0; color: var(--accent); text-decoration: underline; text-underline-offset: 2px; }
+.lead { margin-top: calc(var(--s) * 1.5); font-size: 0.9em; color: var(--muted); }
+
+/* Levels: a shape and a word */
+.lv { display: inline-flex; align-items: center; gap: 0.4em; font-size: 0.86em; font-weight: 600; white-space: nowrap; }
+.lv svg { flex: none; }
+.lv.critical, .lv.high { color: var(--danger); }
+.lv.medium { color: var(--text); }
+.lv.low, .lv.none { color: var(--muted); }
+.lv .word { color: var(--text); }
+.lv.unrated { color: var(--muted); font-weight: 400; }
+
+/* Filters */
+.filters { margin-top: calc(var(--s) * 3.5); display: flex; flex-wrap: wrap; gap: calc(var(--s) * 1.25) calc(var(--s) * 2.5); align-items: center; padding-bottom: calc(var(--s) * 1.5); border-bottom: 1px solid var(--border); }
+.filters label { display: inline-flex; gap: 0.6em; align-items: center; font-size: 0.9em; }
+select { background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius); padding: calc(var(--s) * 0.5) calc(var(--s) * 1); max-width: min(100%, 17em); }
+.chips { display: inline-flex; flex-wrap: wrap; gap: calc(var(--s) * 0.5); align-items: center; }
+.chips .lbl { font-size: 0.9em; margin-right: 0.2em; }
+.chip { border: 1px solid var(--border); background: var(--bg); border-radius: 999px; padding: 0.2em 0.75em; font-size: 0.85em; display: inline-flex; gap: 0.4em; align-items: center; }
+.chip[aria-pressed="true"] { border-color: var(--text); background: var(--surface); font-weight: 650; box-shadow: inset 0 0 0 1px var(--text); }
+.chip .c { color: var(--muted); font-variant-numeric: tabular-nums; }
+.showing { font-size: 0.86em; color: var(--muted); width: 100%; margin: calc(var(--s) * -0.25) 0 0; }
+
+/* The sections */
+section.sec { margin-top: calc(var(--s) * 3); }
+.sec-h { display: flex; align-items: baseline; gap: 0.75em; padding-bottom: calc(var(--s) * 0.75); }
+.sec-h .num { font-variant-numeric: tabular-nums; color: var(--muted); font-weight: 600; min-width: 1.2em; }
+.sec-h h2 { font-size: 1.05em; font-weight: 650; }
+.sec-h .count { font-size: 0.86em; color: var(--muted); }
+.rows { list-style: none; margin: 0; padding: 0; border-top: 1px solid var(--border); }
+.row { border-bottom: 1px solid var(--border); }
+.line { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; }
+.toggle { all: unset; box-sizing: border-box; cursor: pointer; display: grid; grid-template-columns: 6.6em minmax(0, 1fr) auto minmax(0, 15em); gap: calc(var(--s) * 1.25); align-items: center; padding: calc(var(--s) * 0.9) calc(var(--s) * 0.75); min-width: 0; border-radius: 4px; }
+.toggle:hover { background: var(--surface); }
+.toggle:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+.toggle .t { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.toggle .t .chev { display: inline-block; width: 0.9em; color: var(--muted); }
+.cat { font-family: var(--mono); font-size: 0.8em; border: 1px solid var(--border); border-radius: 4px; padding: 0.05em 0.4em; white-space: nowrap; color: var(--text); }
+.place { font-family: var(--mono); font-size: 0.82em; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; text-align: right; }
+.place.src { font-family: var(--body); font-size: 0.86em; }
+.copy { border: 0; background: none; color: var(--muted); font-size: 0.85em; padding: calc(var(--s) * 0.75) calc(var(--s) * 1); border-radius: 4px; white-space: nowrap; }
+.row:hover .copy, .copy:focus-visible { color: var(--accent); }
+.copy:hover { text-decoration: underline; text-underline-offset: 2px; }
+.rows.unrated .toggle { grid-template-columns: minmax(0, 1fr) auto minmax(0, 17em); }
+.detail { padding: 0 calc(var(--s) * 1) calc(var(--s) * 1.75) calc(var(--s) * 0.75 + 6.6em + var(--s) * 1.25); display: grid; gap: calc(var(--s) * 1); font-size: 0.93em; }
+.rows.unrated .detail { padding-left: calc(var(--s) * 2.2); }
+.detail .full-title { font-weight: 620; }
+.detail dl { display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: calc(var(--s) * 0.5) calc(var(--s) * 1.5); margin: 0; font-size: 0.92em; }
+.detail dt { color: var(--muted); }
+.detail dd { margin: 0; min-width: 0; }
+.detail ul { margin: 0; padding: 0; list-style: none; display: grid; gap: calc(var(--s) * 0.5); }
+.detail code { font-family: var(--mono); font-size: 0.86em; display: block; white-space: pre-wrap; overflow-wrap: anywhere; color: var(--muted); }
+.more { margin: calc(var(--s) * 1) 0 0 calc(var(--s) * 0.75); }
+.empty { padding: calc(var(--s) * 1.25) calc(var(--s) * 0.75); color: var(--muted); font-size: 0.92em; border-bottom: 1px solid var(--border); }
+.held { margin-top: calc(var(--s) * 3); font-size: 0.92em; }
+.held h2 { font-size: 1.05em; font-weight: 650; margin-bottom: calc(var(--s) * 1); }
+.held ul { margin: 0; padding-left: 1.2em; display: grid; gap: calc(var(--s) * 0.5); }
+.foot { margin-top: calc(var(--s) * 3); font-size: 0.86em; color: var(--muted); }
+.waiting { padding: calc(var(--s) * 4) 0; color: var(--muted); }
+.toast { position: fixed; right: calc(var(--s) * 2); bottom: calc(var(--s) * 2); background: var(--text); color: var(--bg); border-radius: var(--radius); padding: calc(var(--s) * 0.75) calc(var(--s) * 1.5); font-size: 0.88em; opacity: 0; transition: opacity 0.2s; pointer-events: none; }
+.toast.on { opacity: 1; }
+
+@media (max-width: 640px) {
+  .tiles { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .toggle { grid-template-columns: 6.2em minmax(0, 1fr); row-gap: calc(var(--s) * 0.4); }
+  .toggle .cat { grid-column: 2; justify-self: start; }
+  .toggle .place { grid-column: 2; text-align: left; }
+  .rows.unrated .toggle { grid-template-columns: minmax(0, 1fr); }
+  .rows.unrated .toggle .cat, .rows.unrated .toggle .place { grid-column: 1; }
+  .toggle .t { white-space: normal; }
+  .detail { padding-left: calc(var(--s) * 0.75); }
+  .matters li { grid-template-columns: 1fr; gap: calc(var(--s) * 0.5); }
+  .matters .nolv { display: none; }
+  .track li + li::before { display: none; }
+  .track { gap: calc(var(--s) * 0.75) calc(var(--s) * 2); }
+  .showing { margin-left: 0; width: 100%; }
+}
+</style>
+</head>
+<body>
+<main id="app"><p class="waiting">Waiting for the report.</p></main>
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+<script>
+"use strict";
+(() => {
+  // The bridge (DESCRIPTOR-UI Section 9.4): JSON-RPC 2.0 messages with the
+  // host, the page above this frame. Only the methods below, and only the
+  // requests this view declares.
+  const REQUESTS = ["resize", "copy-text", "save-file"];
+  const TOKENS = ["--ca-color-background", "--ca-color-surface", "--ca-color-text", "--ca-color-text-muted", "--ca-color-accent", "--ca-color-border", "--ca-color-danger", "--ca-font-body", "--ca-font-mono", "--ca-font-size", "--ca-radius", "--ca-space"];
+  const KIND = "application/vnd.agentmesh.inspection-report+json";
+  const LEVELS = ["critical", "high", "medium", "low", "none"];
+  const LEVEL_WORD = { critical: "Critical", high: "High", medium: "Medium", low: "Low", none: "No risk" };
+  const SYSTEM_WORD = { "code-host": "GitHub's records", "vulnerability-database": "OSV, the vulnerability database", "text-reasoning": "the model" };
+  const FOLD_AT = 12;
+
+  const root = document.documentElement;
+  const app = document.getElementById("app");
+  const state = { initialized: false, ready: false, locale: undefined, doc: null, params: null, section: "all", level: "all", open: new Set(), unfolded: new Set() };
+  let seq = 0;
+  const waiting = new Map();
+
+  const post = (msg) => window.parent.postMessage({ jsonrpc: "2.0", ...msg }, "*");
+  const notify = (method, params) => post({ method, ...(params ? { params } : {}) });
+  function ask(method, params) {
+    const id = `inspect-view-${++seq}`;
+    post({ id, method, params });
+    return new Promise((resolve) => {
+      const timer = setTimeout(() => { waiting.delete(id); resolve({ error: { message: "no answer" } }); }, 20000);
+      waiting.set(id, (m) => { clearTimeout(timer); resolve(m); });
+    });
+  }
+  const answer = (id, result) => post({ id, result });
+  const fail = (message) => notify("view/report-failure", { message });
+
+  window.addEventListener("message", (e) => {
+    if (e.source !== window.parent) return;
+    const m = e.data;
+    if (!m || typeof m !== "object" || m.jsonrpc !== "2.0") return;
+    if (typeof m.method !== "string") {
+      if (m.id !== undefined && waiting.has(m.id)) { const done = waiting.get(m.id); waiting.delete(m.id); done(m); }
+      return;
+    }
+    const p = m.params && typeof m.params === "object" ? m.params : {};
+    if (m.method === "view/initialize") {
+      host(p, true);
+      state.initialized = true;
+      answer(m.id, { requests: REQUESTS });
+      draw();
+      if (!state.ready) { state.ready = true; notify("view/ready"); }
+    } else if (m.method === "view/data") {
+      take(p);
+    } else if (m.method === "view/host-changed") {
+      host(p, false);
+      draw();
+    } else if (m.method === "view/teardown") {
+      answer(m.id, {});
+    } else if (m.id !== undefined) {
+      post({ id: m.id, error: { code: -32601, message: "This view does not take that method." } });
+    }
+  });
+
+  // The host's tokens, color scheme, locale and width.
+  function host(p, first) {
+    const scheme = p.color_scheme === "dark" || p.color_scheme === "light" ? p.color_scheme : null;
+    const schemeChanged = scheme && root.dataset.scheme !== scheme;
+    if (scheme) root.dataset.scheme = scheme;
+    if (typeof p.locale === "string" && p.locale) state.locale = p.locale;
+    if (p.tokens && typeof p.tokens === "object") {
+      for (const name of TOKENS) root.style.removeProperty(name);
+      for (const name of TOKENS) {
+        const v = p.tokens[name];
+        if (typeof v === "string" && v.length <= 300 && !/url\s*\(|image-set|expression\s*\(|@import|[;{}<>\\]/i.test(v)) root.style.setProperty(name, v);
+      }
+    } else if (!first && schemeChanged) {
+      for (const name of TOKENS) root.style.removeProperty(name);
+    }
+  }
+
+  // view/data: the output's bytes, its lifecycle, and the job's state.
+  function take(p) {
+    let text = typeof p.text === "string" ? p.text : null;
+    if (text === null && typeof p.base64 === "string") {
+      try { text = new TextDecoder("utf-8", { fatal: true }).decode(Uint8Array.from(atob(p.base64), (c) => c.charCodeAt(0))); } catch { text = null; }
+    }
+    const kind = String(p.media_type ?? "").split(";")[0].trim().toLowerCase();
+    let doc = null; let why = "";
+    if (kind && kind !== KIND && !kind.endsWith("+json") && kind !== "application/json") why = `it was handed ${kind}, not the inspection report`;
+    else if (text === null) why = "it was handed no bytes it could read as text";
+    else {
+      try { doc = JSON.parse(text); } catch { why = "the report it was handed does not parse as JSON"; }
+      if (doc && (doc.format !== "inspection-report-v1" || !Array.isArray(doc.findings) || !doc.repository || !doc.commit)) { doc = null; why = "what it was handed is not an inspection report"; }
+    }
+    state.params = p;
+    if (doc) { state.doc = doc; draw(); return; }
+    if (state.doc && running(p, state.doc)) { draw(); return; }
+    fail(`Inspect's report view cannot draw this: ${why}.`);
+  }
+
+  // ── Drawing ──
+  const el = (tag, attrs, ...kids) => {
+    const n = document.createElement(tag);
+    for (const [k, v] of Object.entries(attrs ?? {})) {
+      if (v === undefined || v === null || v === false) continue;
+      if (k === "class") n.className = v;
+      else if (k === "text") n.textContent = v;
+      else if (k.startsWith("on")) n.addEventListener(k.slice(2), v);
+      else n.setAttribute(k, v === true ? "" : String(v));
+    }
+    for (const kid of kids.flat()) if (kid !== null && kid !== undefined && kid !== false) n.append(kid instanceof Node ? kid : document.createTextNode(String(kid)));
+    return n;
+  };
+  // Each level's shape, drawn here and nowhere else, so a level never rests
+  // on its color: critical an octagon, high a triangle, medium a diamond, low
+  // a ring, no risk a bar.
+  const SHAPES = {
+    critical: '<polygon points="5,1 11,1 15,5 15,11 11,15 5,15 1,11 1,5" fill="currentColor"/>',
+    high: '<polygon points="8,1.5 15.2,14.5 0.8,14.5" fill="currentColor"/>',
+    medium: '<polygon points="8,1 15,8 8,15 1,8" fill="currentColor"/>',
+    low: '<circle cx="8" cy="8" r="5.6" fill="none" stroke="currentColor" stroke-width="2.4"/>',
+    none: '<rect x="2" y="6.8" width="12" height="2.4" fill="currentColor"/>',
+    done: '<path d="M2.5 8.5l3.5 3.5 7.5-8" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>',
+    current: '<circle cx="8" cy="8" r="6.5" fill="none" stroke="currentColor" stroke-width="1.6"/><circle cx="8" cy="8" r="3.4" fill="currentColor"/>',
+    stop: '<polygon points="5,1 11,1 15,5 15,11 11,15 5,15 1,11 1,5" fill="none" stroke="currentColor" stroke-width="1.6"/><rect x="7.1" y="4" width="1.8" height="5.5" fill="currentColor"/><rect x="7.1" y="10.8" width="1.8" height="1.8" fill="currentColor"/>',
+    todo: '<circle cx="8" cy="8" r="6.2" fill="none" stroke="currentColor" stroke-width="1.6"/>',
+  };
+  function shape(level, size = 13) {
+    const t = document.createElement("template");
+    t.innerHTML = `<svg width="${Number(size)}" height="${Number(size)}" viewBox="0 0 16 16" aria-hidden="true" focusable="false">${SHAPES[level] ?? SHAPES.todo}</svg>`;
+    return t.content.firstChild;
+  }
+  const levelOf = (f) => (LEVELS.includes(f?.level) ? f.level : null);
+  function badge(f) {
+    const l = levelOf(f);
+    if (!l) return el("span", { class: "lv unrated" }, el("span", { class: "sr", text: "No level" }));
+    return el("span", { class: `lv ${l}` }, shape(l), el("span", { class: "word", text: LEVEL_WORD[l] }));
+  }
+  const rank = (f) => { const l = levelOf(f); return l ? LEVELS.indexOf(l) : LEVELS.length; };
+  const plural = (n, one, many = `${one}s`) => `${n} ${n === 1 ? one : many}`;
+  const short = (sha) => String(sha ?? "").slice(0, 7);
+  const dateOf = (iso) => {
+    const t = Date.parse(iso);
+    if (!Number.isFinite(t)) return null;
+    try { return new Intl.DateTimeFormat(state.locale, { day: "numeric", month: "short", year: "numeric" }).format(new Date(t)); } catch { return String(iso).slice(0, 10); }
+  };
+  const repoName = (d) => `${d.repository?.owner ?? "?"}/${d.repository?.name ?? "?"}`;
+  function address(d, file, line) {
+    let u;
+    try { u = new URL(String(d.repository?.url ?? "")); } catch { return null; }
+    const sha = String(d.commit?.sha ?? "");
+    if (u.protocol !== "https:" || u.hostname !== "github.com" || !/^[0-9a-f]{40}$/.test(sha) || !file) return null;
+    const path = String(file).split("/").map((x) => encodeURIComponent(x)).join("/");
+    return `${u.origin}${u.pathname.replace(/\/+$/, "")}/blob/${sha}/${path}${Number(line) >= 1 ? `#L${Number(line)}` : ""}`;
+  }
+  // A long path keeps its first folder and its end, the file and the line,
+  // which are what a person looks for: skills/.../SKILL.md:2.
+  const fit = (path, max = 40) => {
+    if (path.length <= max) return path;
+    const parts = path.split("/");
+    let tail = parts.pop();
+    while (parts.length > 1 && `${parts[0]}/…/${parts.at(-1)}/${tail}`.length <= max) tail = `${parts.pop()}/${tail}`;
+    const out = parts.length > 1 ? `${parts[0]}/…/${tail}` : `${parts[0] ? `${parts[0]}/` : ""}${tail}`;
+    return out.length <= max ? out : `…${out.slice(out.length - max + 1)}`;
+  };
+  const placeOf = (f) => {
+    const ev = Array.isArray(f.evidence) ? f.evidence : [];
+    if (ev.length) { const more = ev.length - 1 + (Number(f.more_evidence) || 0); const at = `${ev[0].file}:${ev[0].line}`; return { text: `${fit(at, more ? 30 : 33)}${more ? ` +${more}` : ""}`, full: at, src: false }; }
+    const src = Array.isArray(f.source) ? f.source[0] : null;
+    return { text: src ? `from ${SYSTEM_WORD[src.system] ?? src.system}` : "", full: src ? `${src.call}` : "", src: true };
+  };
+  function running(p, d) {
+    const js = String(p?.job_state ?? "").toLowerCase();
+    if (["failed", "canceled", "cancelled", "rejected"].includes(js)) return false;
+    return Boolean(d?.partial) || js === "working" || js === "submitted" || js === "input_required";
+  }
+
+  // Where the report is: running, draft, accepted, published, or stopped.
+  function lifecycle(d, p) {
+    const js = String(p?.job_state ?? "").toLowerCase();
+    const life = typeof p?.lifecycle === "string" ? p.lifecycle.toLowerCase() : null;
+    if (["failed", "canceled", "cancelled", "rejected"].includes(js)) return { stopped: true, js };
+    if (running(p, d)) return { step: 0, asking: js === "input_required" };
+    if (life === "draft") return { step: 1 };
+    if (life === "accepted") return { step: 2 };
+    if (life === "published") return { step: 3 };
+    return { step: null };
+  }
+  function drawLife(d, p) {
+    const at = lifecycle(d, p);
+    const out = [];
+    if (at.stopped) {
+      out.push(el("div", { class: "stopped", role: "status" }, el("span", { class: "lv critical" }, shape("stop", 16)),
+        el("div", {}, el("strong", { text: at.js === "canceled" || at.js === "cancelled" ? "The job was canceled before the report was finished." : "The job stopped before the report was finished." }),
+          el("p", { class: "muted", text: "These are the findings it made before it stopped." }))));
+      return out;
+    }
+    const steps = ["Running", "Draft", "Accepted", "Published"];
+    const words = ["Running", "Draft, waiting for your review", "Accepted", "Published"];
+    out.push(el("ol", { class: "track", "aria-label": "Where this report is" }, steps.map((s, i) => {
+      const done = at.step !== null ? i < at.step : i === 0;
+      const now = at.step === i;
+      return el("li", { class: done ? "done" : "", "aria-current": now ? "step" : null }, shape(now ? "current" : done ? "done" : "todo", 14), el("span", { text: now ? words[i] : s }), done ? el("span", { class: "sr", text: "(done)" }) : null);
+    })));
+    if (at.step === 0) {
+      const stage = String(d.partial?.stage ?? "").trim();
+      out.push(el("p", { class: "now", role: "status" }, el("span", { class: "pulse", "aria-hidden": "true" }),
+        el("span", {}, el("strong", { text: at.asking ? "Waiting for your answer. " : "Now: " }), stage || "The inspection is under way.")));
+      const notes = [];
+      if (d.partial?.says_left_out) notes.push("This copy leaves out each finding's words to stay small; they arrive with the report.");
+      if (Number(d.partial?.omitted) > 0) notes.push(`${plural(Number(d.partial.omitted), "finding")} without a level are not in this copy yet; every one arrives with the report.`);
+      if (notes.length) out.push(el("p", { class: "note", text: notes.join(" ") }));
+    } else if (at.step === null) {
+      out.push(el("p", { class: "note", text: "Delivered. The host has not said whether it has been reviewed." }));
+    }
+    return out;
+  }
+
+  // Risks by level, each counted once: section 1 repeats findings of the
+  // other sections, so it is left out. A working copy never leaves out a
+  // finding that carries a level, so its counts are whole too.
+  function counts(d) {
+    const c = { critical: 0, high: 0, medium: 0, low: 0, none: 0, not_rated: 0 };
+    for (const f of d.findings) if (f.section !== 1 && !f.repeats) c[levelOf(f) ?? "not_rated"] += 1;
+    return c;
+  }
+  function drawGlance(d, p) {
+    const c = counts(d);
+    const tiles = el("div", { class: "tiles", role: "list", "aria-label": "Risks by level" }, ["critical", "high", "medium", "low"].map((l) => {
+      const n = Number(c[l]) || 0;
+      return el("div", { class: `tile${n ? "" : " zero"}`, role: "listitem" }, el("div", { class: "n", text: String(n) }),
+        el("div", { class: "w" }, el("span", { class: `lv ${l}` }, shape(l)), el("span", { text: `${LEVEL_WORD[l]} ${n === 1 ? "risk" : "risks"}` })));
+    }));
+    const firsts = d.findings.filter((f) => f.section === 1);
+    let list; let lead = null;
+    if (firsts.length) {
+      list = firsts;
+    } else {
+      list = d.findings.filter((f) => f.section !== 1 && levelOf(f) && levelOf(f) !== "none").sort((a, b) => rank(a) - rank(b)).slice(0, 3);
+      lead = running(p, d)
+        ? (list.length ? "This section is written last, once the other sections are judged. Until then, the highest risks found so far:" : "This section is written last, once the other sections are judged.")
+        : "Nothing was judged for this section.";
+    }
+    const items = list.map((f) => {
+      const target = f.repeats || f.id;
+      return el("li", {}, el("div", { class: levelOf(f) ? "" : "nolv" }, levelOf(f) ? badge(f) : null), el("div", {},
+        el("div", { class: "t", text: f.title }),
+        f.says ? el("p", { class: "says", text: f.says }) : null,
+        el("p", { class: "see" }, el("button", { class: "linkish", type: "button", onclick: () => reveal(target) , text: `See ${target}` }))));
+    });
+    return el("section", { class: "glance", "aria-labelledby": "glance-h" },
+      el("h2", { id: "glance-h", text: "At a glance" }), tiles,
+      lead ? el("p", { class: "lead", text: lead }) : null,
+      items.length ? el("ul", { class: "matters" }, items) : null);
+  }
+
+  function drawFilters(d, shown) {
+    const secs = (d.sections ?? []).filter((s) => s.number > 1);
+    const sel = el("select", { id: "sec", onchange: (e) => { state.section = e.target.value; draw(); } },
+      el("option", { value: "all", text: "All sections" }),
+      secs.map((s) => el("option", { value: String(s.number), selected: state.section === String(s.number), text: `${s.number}. ${s.title}` })));
+    const pool = d.findings.filter((f) => f.section !== 1);
+    const n = (l) => pool.filter((f) => (l === "unrated" ? !levelOf(f) : levelOf(f) === l)).length;
+    const chips = [["all", "All", pool.length], ...LEVELS.filter((l) => n(l)).map((l) => [l, LEVEL_WORD[l], n(l)]), ...(n("unrated") ? [["unrated", "No level", n("unrated")]] : [])];
+    return el("div", { class: "filters" },
+      el("label", { for: "sec" }, "Section", sel),
+      el("div", { class: "chips", role: "group", "aria-label": "Level" }, el("span", { class: "lbl", text: "Level" }),
+        chips.map(([key, word, count]) => el("button", { class: "chip", type: "button", "aria-pressed": state.level === key ? "true" : "false", onclick: () => { state.level = key; draw(); } },
+          LEVELS.includes(key) ? el("span", { class: `lv ${key}` }, shape(key, 11)) : null, el("span", { text: word }), el("span", { class: "c", text: String(count) })))),
+      el("p", { class: "showing", "aria-live": "polite", text: `Showing ${plural(shown, "finding")} of ${pool.length}` }));
+  }
+
+  function copyText(d, f) {
+    const l = levelOf(f);
+    const lines = [`${f.id}${l ? `, ${LEVEL_WORD[l].toLowerCase()}${l === "none" ? "" : " risk"}` : ""}: ${f.title}`];
+    if (f.says) lines.push(f.says);
+    const cats = (f.categories ?? []).map((c) => (c.name && c.name !== c.id ? `${c.id} ${c.name}` : c.id)).filter(Boolean);
+    if (cats.length) lines.push(`Category: ${cats.join("; ")}`);
+    for (const e of (f.evidence ?? []).slice(0, 10)) { const a = address(d, e.file, e.line); lines.push(`${e.file} line ${e.line}${a ? `: ${a}` : ""}`); }
+    const more = Math.max(0, (f.evidence?.length ?? 0) - 10) + (Number(f.more_evidence) || 0);
+    if (more) lines.push(`And ${plural(more, "more place")} in the report.`);
+    if (!f.evidence?.length && f.source?.length) lines.push(`From ${f.source.map((s) => `${SYSTEM_WORD[s.system] ?? s.system}, ${s.call}`).join("; ")}.`);
+    lines.push(`From Inspect's report on ${repoName(d)} at commit ${short(d.commit?.sha)}.`);
+    return lines.join("\n");
+  }
+  async function doCopy(d, f) {
+    const r = await ask("view/copy-text", { text: copyText(d, f) });
+    toast(r && !r.error ? `Copied ${f.id}.` : `${f.id} was not copied.`);
+  }
+  let toastTimer;
+  function toast(words) {
+    const t = document.getElementById("toast");
+    t.textContent = words; t.classList.add("on");
+    clearTimeout(toastTimer); toastTimer = setTimeout(() => t.classList.remove("on"), 2200);
+  }
+
+  function drawRow(d, f, rated) {
+    const open = state.open.has(f.id);
+    const cat = (f.categories ?? [])[0];
+    const detailId = `d-${f.id}`;
+    const place = placeOf(f);
+    const row = el("li", { class: "row", id: `f-${f.id}` },
+      el("div", { class: "line" },
+        el("button", { class: "toggle", type: "button", "aria-expanded": open ? "true" : "false", "aria-controls": detailId, onclick: () => { if (state.open.has(f.id)) state.open.delete(f.id); else state.open.add(f.id); draw(); } },
+          rated ? badge(f) : null,
+          el("span", { class: "t" }, el("span", { class: "chev", "aria-hidden": "true", text: open ? "▾" : "▸" }), f.title),
+          cat ? el("span", { class: "cat", title: cat.name || cat.id, text: `${cat.id}${(f.categories.length > 1) ? ` +${f.categories.length - 1}` : ""}` }) : el("span"),
+          el("span", { class: place.src ? "place src" : "place", title: place.full || null, text: place.text })),
+        el("button", { class: "copy", type: "button", "aria-label": `Copy ${f.id} with its address`, onclick: () => doCopy(d, f), text: "Copy" })));
+    if (open) row.append(drawDetail(d, f, detailId));
+    return row;
+  }
+  function drawDetail(d, f, id) {
+    const ev = Array.isArray(f.evidence) ? f.evidence : [];
+    const dl = el("dl", {});
+    const add = (k, v) => { if (v) dl.append(el("dt", { text: k }), el("dd", {}, v)); };
+    if (f.categories?.length) add(f.categories.length === 1 ? "Category" : "Categories", f.categories.map((c) => `${c.id}${c.name && c.name !== c.id ? ` ${c.name}` : ""}`).join("; "));
+    const l = levelOf(f);
+    if (l) add("Level", `${LEVEL_WORD[l]}, ${f.level_by === "source" ? "as its record gives it" : f.level_by === "rule" ? "by a fixed rule of Inspect's" : f.level_by === "model" ? "as the model judged it" : "set by Inspect"}`);
+    add("Written", f.by === "model" ? "by the model, from facts the scripts found" : "by Inspect's scripts, by rule");
+    if (ev.length) {
+      const more = Number(f.more_evidence) || 0;
+      add("Cites", el("ul", {}, ev.map((e) => el("li", {}, el("span", { class: "mono", text: `${e.file}:${e.line}` }), e.text ? el("code", { text: String(e.text).slice(0, 300) }) : null)),
+        more ? el("li", { class: "muted", text: `And ${plural(more, "more place")}, in the delivered report.` }) : null));
+    } else if (f.source?.length) {
+      add("From", f.source.map((s) => `${SYSTEM_WORD[s.system] ?? s.system}: ${s.call}`).join("; "));
+    }
+    return el("div", { class: "detail", id },
+      el("p", { class: "full-title", text: f.title }),
+      f.says ? el("p", { text: f.says }) : el("p", { class: "muted", text: "Its words arrive with the delivered report." }),
+      dl);
+  }
+
+  function drawSections(d) {
+    const out = [];
+    let shown = 0;
+    const secs = (d.sections ?? []).filter((s) => s.number > 1 && (state.section === "all" || String(s.number) === state.section));
+    for (const s of secs) {
+      const all = d.findings.filter((f) => f.section === s.number);
+      const list = all.filter((f) => state.level === "all" || (state.level === "unrated" ? !levelOf(f) : levelOf(f) === state.level))
+        .map((f, i) => [f, i]).sort((a, b) => rank(a[0]) - rank(b[0]) || a[1] - b[1]).map(([f]) => f);
+      if (state.level !== "all" && !list.length && state.section === "all") continue;
+      shown += list.length;
+      const folded = list.length > FOLD_AT && !state.unfolded.has(s.number);
+      const visible = folded ? list.slice(0, FOLD_AT) : list;
+      const live = running(state.params, d);
+      const rated = all.some((f) => levelOf(f));
+      const head = el("div", { class: "sec-h" }, el("span", { class: "num", text: String(s.number) }), el("h2", { id: `s-${s.number}`, text: s.title }),
+        el("span", { class: "count", text: state.level !== "all" ? `${list.length} of ${all.length}` : !all.length && live ? "none yet" : plural(all.length, "finding") }));
+      const body = list.length
+        ? el("ul", { class: rated ? "rows" : "rows unrated", "aria-labelledby": `s-${s.number}` }, visible.map((f) => drawRow(d, f, rated)))
+        : el("p", { class: "empty", text: state.level !== "all" ? "No finding of this level in this section." : live ? "Nothing yet for this section." : d.partial ? "The job stopped before this section was judged." : "Nothing was found for this section." });
+      out.push(el("section", { class: "sec" }, head, body,
+        folded ? el("button", { class: "btn more", type: "button", onclick: () => { state.unfolded.add(s.number); draw(); }, text: `Show all ${list.length}` }) : null));
+    }
+    if (!out.length) out.push(el("p", { class: "empty", text: "No finding of this level." }));
+    return { out, shown };
+  }
+
+  function draw() {
+    const d = state.doc;
+    if (!state.initialized && !d) return;
+    const keep = window.scrollY;
+    const focusId = document.activeElement?.closest?.(".row")?.id;
+    const focusCopy = document.activeElement?.classList?.contains("copy");
+    app.replaceChildren();
+    if (!d) { app.append(el("p", { class: "waiting", text: "Waiting for the report." })); resize(); return; }
+    const p = state.params ?? {};
+    const live = running(p, d);
+    const meta = el("p", { class: "meta" },
+      el("span", { text: `Commit ${short(d.commit?.sha)}` }),
+      d.commit?.date && dateOf(d.commit.date) ? el("span", { text: `committed ${dateOf(d.commit.date)}` }) : null,
+      dateOf(d.inspected_at) ? el("span", { text: `${d.partial ? "inspection started" : "inspected"} ${dateOf(d.inspected_at)}` }) : null,
+      el("span", { text: live ? `${plural(d.findings.length + (Number(d.partial?.omitted) || 0), "finding")} so far` : plural(d.findings.length, "finding") }));
+    const save = el("button", { class: "btn", type: "button", onclick: () => doSave(d), text: "Save a summary for security" });
+    app.append(el("header", {},
+      el("div", { class: "head" },
+        el("div", {}, el("p", { class: "eyebrow", text: live ? "Inspection report, so far" : "Inspection report" }), el("h1", { text: repoName(d) }), meta),
+        save),
+      drawLife(d, p)));
+    app.append(drawGlance(d, p));
+    const { out, shown } = drawSections(d);
+    if (d.findings.some((f) => f.section !== 1)) app.append(drawFilters(d, shown));
+    app.append(...out);
+    if (Array.isArray(d.held_back) && d.held_back.length) {
+      app.append(el("section", { class: "held" }, el("h2", { text: `${plural(d.held_back.length, "judgment")} held back` }),
+        el("ul", {}, d.held_back.map((h) => el("li", { text: `Section ${h.section}, ${h.title}: ${h.why}` })))));
+    }
+    app.append(el("p", { class: "foot", text: "Inspect read this code without running any of it. It gives no verdict on bringing the agent in; that decision is yours." }));
+    if (focusId) {
+      const back = document.getElementById(focusId)?.querySelector(focusCopy ? ".copy" : ".toggle");
+      if (back) back.focus({ preventScroll: true });
+    }
+    window.scrollTo(0, keep);
+    resize();
+  }
+
+  function reveal(id) {
+    const f = state.doc?.findings.find((x) => x.id === id);
+    if (!f) return;
+    state.section = "all"; state.level = "all"; state.open.add(id);
+    const idx = state.doc.findings.filter((x) => x.section === f.section).sort((a, b) => rank(a) - rank(b)).indexOf(f);
+    if (idx >= FOLD_AT) state.unfolded.add(f.section);
+    draw();
+    const row = document.getElementById(`f-${id}`);
+    if (row) { row.scrollIntoView({ block: "center" }); row.querySelector(".toggle")?.focus({ preventScroll: true }); }
+  }
+
+  // The summary for security, as plain text: the risks highest first, the
+  // credentials it reads, what it can do on its own and what Inspect could
+  // not tell, each with its file and line and the address of that line.
+  const one = (s) => String(s ?? "").replace(/\s+/g, " ").trim();
+  function summary(d) {
+    const c = counts(d); const p = state.params ?? {}; const at = lifecycle(d, p);
+    const findings = d.findings.filter((f) => f.section !== 1);
+    const risks = findings.filter((f) => levelOf(f) && levelOf(f) !== "none").sort((a, b) => rank(a) - rank(b));
+    const places = (f, indent) => (f.evidence ?? []).slice(0, 3).map((e) => { const a = address(d, e.file, e.line); return `${indent}${one(e.file)} line ${e.line}${a ? `: ${a}` : ""}`; });
+    const cat = (f) => (f.categories ?? []).map((x) => one(x.name && x.name !== x.id ? `${x.id} ${x.name}` : x.id)).join("; ");
+    const where = at.stopped ? "The job stopped before the report was finished; this summary is of the findings it made."
+      : at.step === 0 ? `The job is still running (${one(d.partial?.stage)}); this summary is of the findings so far.`
+      : at.step === 1 ? "Delivered, and waiting for review." : at.step === 2 ? "Delivered and accepted." : at.step === 3 ? "Delivered, accepted and published." : "Delivered.";
+    const lines = [
+      `Security summary: ${repoName(d)} at commit ${short(d.commit?.sha)}`, "",
+      `Inspect read the code of ${repoName(d)} at commit ${d.commit?.sha} without running any of it. It gives no verdict on bringing the agent in.`,
+      `Repository: ${one(d.repository?.url)}`, `Report: ${where}`, "",
+      "Risks by level", "",
+      `${c.critical ?? 0} critical, ${c.high ?? 0} high, ${c.medium ?? 0} medium and ${c.low ?? 0} low.`, "",
+      "Risks, highest first", "",
+    ];
+    if (!risks.length) lines.push("No risk was rated.", "");
+    risks.forEach((f, i) => {
+      lines.push(`${i + 1}. ${LEVEL_WORD[levelOf(f)]}: ${one(f.title)} (${f.id})`);
+      if (f.says) lines.push(`   ${one(f.says)}`);
+      if (cat(f)) lines.push(`   Category: ${cat(f)}`);
+      lines.push(...places(f, "   "), "");
+    });
+    const group = (title, list) => {
+      if (!list.length) return;
+      lines.push(title, "");
+      for (const f of list) { lines.push(`- ${one(f.title)} (${f.id})${f.says ? `: ${one(f.says)}` : ""}`, ...places(f, "  ").slice(0, 1)); }
+      lines.push("");
+    };
+    group("Credentials it reads", findings.filter((f) => f.kind === "credential"));
+    group("What it can do on its own", findings.filter((f) => f.section === 6));
+    group("What Inspect could not tell", findings.filter((f) => f.kind === "could-not-tell" || f.kind === "not-judged"));
+    lines.push(`From Inspect ${one(d.inspector?.version)}'s inspection report. The whole report, with the facts each finding rests on, is inspection.json.`, "");
+    return lines.join("\n");
+  }
+  async function doSave(d) {
+    const name = `security-summary-${repoName(d).replace(/[^A-Za-z0-9._-]+/g, "-")}-${short(d.commit?.sha)}.txt`;
+    const r = await ask("view/save-file", { name, media_type: "text/plain", text: summary(d) });
+    toast(r && !r.error ? "The summary was handed over to save." : "The summary was not saved.");
+  }
+
+  // The height the frame needs, asked for only when it changes.
+  let lastHeight = 0; let pendingResize = false;
+  function resize() {
+    if (!state.initialized || pendingResize) return;
+    pendingResize = true;
+    requestAnimationFrame(() => {
+      pendingResize = false;
+      // The content's own height: the document's would never shrink below
+      // the frame's, so a filter that shortens the page would leave a gap.
+      const h = Math.ceil(document.body.getBoundingClientRect().height);
+      if (h && h !== lastHeight) { lastHeight = h; ask("view/resize", { height: h }); }
+    });
+  }
+  if (typeof ResizeObserver === "function") new ResizeObserver(() => resize()).observe(document.body);
+  window.addEventListener("error", (e) => fail(`Inspect's report view failed while drawing: ${e.message || "an error"}.`));
+})();
+</script>
+</body>
+</html>

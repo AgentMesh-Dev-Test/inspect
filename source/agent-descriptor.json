@@ -1,26 +1,28 @@
 {
   "format": "agent-descriptor-v1",
-  "agent_version": "0.1.2",
+  "agent_version": "0.2.0",
+  "name": "Inspect",
+  "summary": "Reads an outside agent's code on GitHub at one commit, without running any of it, and reports what it does and how safe it is.",
   "does": "Inspect reads an outside agent's code in a public GitHub repository at one commit, without running any of it, and hands back an inspection report on what the agent does and how safe it is: a list of findings in eight sections, each citing a file and line at the commit. Scripts collect the facts; a model writes only the judgments, and each judgment cites the facts it rests on. It gives no verdict on bringing the agent in and judges no fit with anyone's plan.",
   "offerings": [
     {
       "id": "inspect-a-repository",
       "name": "Inspect a repository",
-      "does": "Inspects one public GitHub repository at one commit and hands back the inspection report, the dependency list and a short summary.",
+      "does": "Inspects one public GitHub repository at one commit and hands back the inspection report, a copy of it to read, the dependency list and a short summary.",
       "inputs": [
         {
           "name": "repository",
           "kind": "url",
           "required": true,
           "given_by": "either",
-          "about": "The public GitHub repository, as github.com<owner>/<name> or <owner>/<name>, on a line of the message (repository: ...) or anywhere in it."
+          "about": "The public GitHub repository to inspect, as its address or as owner and name, such as langchain-ai/design-agent."
         },
         {
           "name": "commit",
           "kind": "identifier",
           "required": true,
           "given_by": "either",
-          "about": "The commit's digest, 7 to 40 hexadecimal characters, on a line of the message (commit: ...), or as the last part of a github.com<owner>/<name>/commit/<digest> or /tree/<digest> address that names the repository too."
+          "about": "The commit to inspect, as its digest of 7 to 40 characters, such as 86d8f66; a commit's address on GitHub gives the repository and the commit at once."
         }
       ],
       "outputs": [
@@ -34,7 +36,7 @@
           "name": "inspection",
           "kind": "application/vnd.agentmesh.inspection-report+json",
           "when": "per_task",
-          "about": "The inspection report in the inspection-report-v1 format: the repository and commit, the eight sections, the findings in section order, the judgments held back with why, the facts the findings cite, and what the job used.",
+          "about": "The inspection report in the inspection-report-v1 format: the repository and commit, the eight sections, the findings in section order, the judgments held back with why, the facts the findings cite, and what the job used. While the job runs, a working copy of it with the findings so far is posted under the same name, marked partial.",
           "schema": {
             "title": "The inspection report (inspection-report-v1)",
             "type": "object",
@@ -54,6 +56,34 @@
             "properties": {
               "format": {
                 "const": "inspection-report-v1"
+              },
+              "partial": {
+                "type": "object",
+                "description": "only on the working copy posted while the job runs, never on the delivered report: the stage the job is at, how many findings so far, how many are left out of this copy to keep it one piece, and whether their words are",
+                "required": [
+                  "stage",
+                  "findings_so_far",
+                  "omitted",
+                  "says_left_out"
+                ],
+                "additionalProperties": false,
+                "properties": {
+                  "stage": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "findings_so_far": {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "omitted": {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "says_left_out": {
+                    "type": "boolean"
+                  }
+                }
               },
               "repository": {
                 "type": "object",
@@ -154,10 +184,7 @@
                 }
               },
               "findings": {
-                "type": "array",
-                "items": {
-                  "$ref": "#/$defs/Finding"
-                }
+                "type": "array"
               },
               "held_back": {
                 "type": "array",
@@ -239,6 +266,36 @@
                   "facts": {
                     "type": "integer",
                     "minimum": 0
+                  },
+                  "by_level": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "properties": {
+                      "critical": {
+                        "type": "integer",
+                        "minimum": 0
+                      },
+                      "high": {
+                        "type": "integer",
+                        "minimum": 0
+                      },
+                      "medium": {
+                        "type": "integer",
+                        "minimum": 0
+                      },
+                      "low": {
+                        "type": "integer",
+                        "minimum": 0
+                      },
+                      "none": {
+                        "type": "integer",
+                        "minimum": 0
+                      },
+                      "not_rated": {
+                        "type": "integer",
+                        "minimum": 0
+                      }
+                    }
                   }
                 }
               },
@@ -525,9 +582,157 @@
                     "type": "object"
                   }
                 }
+              },
+              "FindingSoFar": {
+                "type": "object",
+                "description": "a finding in the working copy: its id, place, title and level, the first place it cites, and its words where they fit",
+                "required": [
+                  "id",
+                  "section",
+                  "kind",
+                  "title",
+                  "by"
+                ],
+                "additionalProperties": false,
+                "properties": {
+                  "id": {
+                    "type": "string",
+                    "pattern": "^S[1-8]-[0-9]{3,}$"
+                  },
+                  "section": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 8
+                  },
+                  "kind": {
+                    "enum": [
+                      "glance",
+                      "repository",
+                      "commit",
+                      "publisher",
+                      "license",
+                      "built-on",
+                      "activity",
+                      "job",
+                      "skill",
+                      "part",
+                      "input",
+                      "output",
+                      "model",
+                      "how-it-runs",
+                      "memory",
+                      "human-step",
+                      "system",
+                      "credential",
+                      "spend",
+                      "tool",
+                      "autonomy",
+                      "risk",
+                      "least-access",
+                      "approval",
+                      "test",
+                      "test-gap",
+                      "could-not-tell",
+                      "question",
+                      "not-judged"
+                    ]
+                  },
+                  "title": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "says": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "by": {
+                    "enum": [
+                      "script",
+                      "model"
+                    ]
+                  },
+                  "level": {
+                    "enum": [
+                      "none",
+                      "low",
+                      "medium",
+                      "high",
+                      "critical"
+                    ]
+                  },
+                  "level_by": {
+                    "enum": [
+                      "source",
+                      "rule",
+                      "model"
+                    ],
+                    "description": "who set the level: the record it came from (OSV), a fixed rule of Inspect's (a committed credential is high), or the model"
+                  },
+                  "categories": {
+                    "type": "array",
+                    "items": {
+                      "$ref": "#/$defs/Category"
+                    }
+                  },
+                  "repeats": {
+                    "type": "string",
+                    "pattern": "^S[2-8]-[0-9]{3,}$"
+                  },
+                  "evidence": {
+                    "type": "array",
+                    "maxItems": 1,
+                    "items": {
+                      "$ref": "#/$defs/Evidence"
+                    }
+                  },
+                  "more_evidence": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "description": "how many more places the finding cites in the delivered report"
+                  },
+                  "source": {
+                    "type": "array",
+                    "maxItems": 1,
+                    "items": {
+                      "$ref": "#/$defs/Source"
+                    }
+                  }
+                }
               }
-            }
+            },
+            "anyOf": [
+              {
+                "description": "the delivered report",
+                "properties": {
+                  "findings": {
+                    "items": {
+                      "$ref": "#/$defs/Finding"
+                    }
+                  }
+                }
+              },
+              {
+                "description": "the working copy",
+                "required": [
+                  "partial"
+                ],
+                "properties": {
+                  "findings": {
+                    "items": {
+                      "$ref": "#/$defs/FindingSoFar"
+                    }
+                  }
+                }
+              }
+            ]
           }
+        },
+        {
+          "name": "inspection-md",
+          "kind": "text/markdown",
+          "when": "per_task",
+          "presentation": "document",
+          "about": "The same report as Markdown, for a person to read: `# Inspection of <repository>`, then `## At a glance`, then `## <number>. <section title>` for sections 2 to 8, one line per finding with its level in words, its category and its file and line at the commit."
         }
       ],
       "how": {
@@ -535,6 +740,13 @@
         "intelligence": "called",
         "cost": "metered",
         "contract": "full"
+      },
+      "example": {
+        "inputs": {
+          "repository": "https://github.com/langchain-ai/design-agent",
+          "commit": "86d8f667796890eb6d3612dbd1b9e941782fe03f"
+        },
+        "good_result": "A report in eight sections on what the agent does and how safe it is, each finding citing a file and line at that commit, with its risks rated by level."
       }
     }
   ],
@@ -594,6 +806,22 @@
       "required": false,
       "does": "writes in the organization's voice, tone and spelling, and uses the words it prefers in place of the ones it avoids",
       "without": "writes in a plain, neutral voice in the spelling of the words it was given, and says that no style guide was given"
+    }
+  ],
+  "views": [
+    {
+      "id": "report",
+      "for": {
+        "offering": "inspect-a-repository",
+        "output": "inspection"
+      },
+      "file": "views/report.html",
+      "digest": "sha256:c61e8f8d1966a80a6ed8be76f13022e00e8ad1d8896bc3c85f8fc3b018c957d9",
+      "requests": [
+        "resize",
+        "copy-text",
+        "save-file"
+      ]
     }
   ]
 }

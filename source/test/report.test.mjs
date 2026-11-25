@@ -17,9 +17,10 @@ import assert from "node:assert/strict";
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { inspect, writeOutputs } from "../scripts/inspect-a-repository.mjs";
-import { createEmitter, liveUpdates, pieceData, PIECE_CHARS, UPDATES_FILE } from "../scripts/emit.mjs";
+import { createEmitter, liveUpdates, pieceData, PIECE_CHARS, UPDATES_FILE, WORKING_COPY } from "../scripts/emit.mjs";
+import { markdownOf, workingCopy, WORKING_COPY_CHARS } from "../scripts/report.mjs";
 import { checkDelivered } from "./delivered-formats.test.mjs";
-import { ENV, inTemp, world, model, smallAgent, reportSchema, schemaProblems } from "./helpers.mjs";
+import { ENV, SHA, inTemp, world, model, smallAgent, reportSchema, schemaProblems } from "./helpers.mjs";
 
 const glanceOf = (ids) => (prompt) => ({ text: JSON.stringify({ glance: ids.filter((id) => prompt.includes(id)).map((id) => ({ repeats: id, says: `Finding ${id} matters.` })) }) });
 const run = (text, { files = smallAgent(), answers = [], onFinding, ...w } = {}) => inTemp(async (at) => ({ at, ...(await inspect({ text, workDir: at, env: ENV, fetchImpl: world({ files, ...w }).fetchImpl, ask: model(answers).ask, onFinding })) }));
@@ -68,18 +69,78 @@ test("[F5.A3] every finding passes the one emitter once, with the id it has in t
   assert.deepEqual(e.findings().map((f) => f.id), ["S2-001", "S7-001", "S7-002"]);
 });
 
-test("[F5.R4] the one emitter posts each finding to the job folder's updates.jsonl as a piece named by its id, and each stage as a status line", async () => {
+const ABOUT = { owner: "acme", name: "helper", url: "https://github.com/acme/helper", sha: SHA, checked: true, date: "2026-11-23T21:25:23Z", version: "0.2.0", started_at: "2026-11-25T15:00:00.000Z" };
+
+test("[F5.R4] the one emitter posts each finding to the job folder's updates.jsonl as a piece named by its id, each stage as a status line, and then the working copy", async () => {
   await inTemp(async (job) => {
-    const live = liveUpdates(job);
+    const live = liveUpdates(job, { later: () => {} });
+    live.start(ABOUT);
     live.status("Reading GitHub's records.");
     live.finding({ id: "S2-004", section: 2, kind: "license", title: "The license", says: "Licensed Apache-2.0.", by: "script", based_on: ["F0001"], evidence: [{ file: "LICENSE", line: 1 }] });
+    live.flush();
     const lines = readFileSync(join(job, UPDATES_FILE), "utf8").split("\n").filter(Boolean).map((l) => JSON.parse(l));
     assert.deepEqual(lines[0], { progress: "Reading GitHub's records." });
     assert.equal(lines[1].piece, "S2-004");
     assert.equal(lines[1].last, true);
     assert.equal(lines[1].data.title, "The license");
-    assert.match(lines[1].piece, /^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$/, "a name the adapter takes for a piece");
+    for (const l of lines.filter((x) => x.piece)) assert.match(l.piece, /^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$/, "a name the adapter takes for a piece");
+    assert.equal(lines[2].piece, WORKING_COPY);
+    assert.equal(lines[2].data.partial.stage, "Reading GitHub's records.");
+    assert.deepEqual(lines[2].data.findings.map((f) => f.id), ["S2-004"]);
+    assert.equal(lines.length, 3);
   });
+});
+
+test("[F5.R4] the updates of one turn of the event loop are one write, so the scripts' findings reach the bucket in one upload", async () => {
+  const writes = [];
+  const live = liveUpdates("job", { append: (file, text) => writes.push(text) });
+  live.start(ABOUT);
+  for (let i = 1; i <= 120; i++) live.finding({ id: `S3-${String(i).padStart(3, "0")}`, section: 3, kind: "skill", title: `skill ${i}`, says: "A skill.", by: "script", based_on: ["F0001"], evidence: [{ file: `skills/s${i}/SKILL.md`, line: 2 }] });
+  live.status("Asking the model for the judgments of sections 3, 4 and 5.");
+  await new Promise((r) => setImmediate(r));
+  assert.equal(writes.length, 1, "one append for the whole batch");
+  const lines = writes[0].split("\n").filter(Boolean).map((l) => JSON.parse(l));
+  assert.equal(lines.length, 122, "120 pieces, the status line and the working copy");
+  assert.equal(lines.at(-1).data.partial.findings_so_far, 120);
+  live.flush();
+  assert.equal(writes.length, 1, "nothing changed, so nothing more is written");
+});
+
+test("[F5.R4] the working copy fits the report's schema and one piece, keeps every finding with a level, and says what it leaves out", () => {
+  const small = workingCopy({ about: ABOUT, findings: [{ id: "S7-001", section: 7, kind: "risk", title: "A risk", says: "It is risky.", by: "model", based_on: ["F0002"], level: "high", level_by: "model", evidence: [{ file: "a.py", line: 3, text: "x" }, { file: "b.py", line: 4 }] }], stage: "Asking the model." });
+  assert.deepEqual(schemaProblems(small, reportSchema()), []);
+  assert.equal(small.partial.says_left_out, false);
+  assert.deepEqual(small.findings[0].evidence, [{ file: "a.py", line: 3 }]);
+  assert.equal(small.findings[0].more_evidence, 1);
+  const many = [];
+  for (let i = 1; i <= 3000; i++) many.push({ id: `S3-${String(i).padStart(4, "0")}`, section: 3, kind: "skill", title: `a skill with a name of some length ${i}`, says: "A skill that does a thing, described in a sentence of ordinary length for a skill.", by: "script", based_on: ["F0001"], evidence: [{ file: `skills/skill-number-${i}/SKILL.md`, line: 2 }] });
+  for (let i = 1; i <= 30; i++) many.push({ id: `S7-${String(i).padStart(3, "0")}`, section: 7, kind: "risk", title: `risk ${i}`, says: "Risky.", by: "model", based_on: ["F0002"], level: "medium", level_by: "model", evidence: [{ file: "c.py", line: i }] });
+  const big = workingCopy({ about: ABOUT, findings: many, stage: "Writing section 1." });
+  assert.ok(JSON.stringify(big).length <= WORKING_COPY_CHARS);
+  assert.equal(big.partial.says_left_out, true);
+  assert.ok(big.partial.omitted > 0);
+  assert.equal(big.findings.filter((f) => f.level).length, 30, "every finding with a level is kept");
+  assert.equal(big.partial.findings_so_far, 3030);
+  assert.equal(big.counts.by_level.medium, 30);
+  assert.deepEqual(schemaProblems(big, reportSchema()), []);
+  const delivered = { ...big, partial: undefined };
+  delete delivered.partial;
+  assert.ok(schemaProblems(delivered, reportSchema()).length > 0, "a report without partial is held to the full finding");
+});
+
+test("[F5.R8] inspection.md is the report as Markdown: its headings, each level in words, each place a link to its line, and nothing from the repository that could start a link or an image", async () => {
+  const out = await run("repository: acme/helper\ncommit: 86d8f66", { answers: [undefined, undefined, glanceOf(["S2-004"])] });
+  const text = markdownOf(out.report);
+  assert.match(text, /^# Inspection of acme\/helper$/m);
+  assert.match(text, /^## At a glance$/m);
+  for (const n of [2, 3, 4, 5, 6, 7, 8]) assert.match(text, new RegExp(`^## ${n}\\. `, "m"));
+  assert.match(text, /\[`LICENSE:1`\]\(https:\/\/github\.com\/acme\/helper\/blob\/86d8f667796890eb6d3612dbd1b9e941782fe03f\/LICENSE#L1\)/);
+  const evil = { ...out.report, findings: [{ id: "S7-001", section: 7, kind: "risk", title: "![x](https://evil.test/p.png) <img src=x>", says: "[click](https://evil.test) `code`", by: "model", based_on: ["F0001"], level: "high", level_by: "model", evidence: [{ file: "a(b).py", line: 2 }] }] };
+  const e = markdownOf(evil);
+  assert.match(e, /\*\*High risk\.\*\*/);
+  assert.ok(!/(^|[^\\])!\[x/.test(e) && !/(^|[^\\])<img/.test(e) && !/(^|[^\\])\[click/.test(e), e);
+  assert.match(e, /Risks by level: 0 critical, 1 high,/, "counted from the findings");
+  assert.match(e, /a%28b%29\.py#L2\)/);
 });
 
 test("[F5.R4] a finding larger than one piece goes as its title and words, with a note saying the rest is in inspection.json", () => {
@@ -109,8 +170,12 @@ test("[F5.R4] in an inspection the stages are said in order, and sections 3 to 5
 test("[C2] a live piece takes out anything that looks like a credential, as the report does", async () => {
   await inTemp(async (job) => {
     const token = ["sk", "-", "abcdefghijklmnopqrstuvwx"].join("");
-    liveUpdates(job).finding({ id: "S5-001", section: 5, kind: "credential", title: "A key", says: `It reads ${token}.`, by: "script", based_on: [] });
-    assert.ok(!readFileSync(join(job, UPDATES_FILE), "utf8").includes(token));
+    const live = liveUpdates(job, { later: () => {} });
+    live.start(ABOUT);
+    live.finding({ id: "S5-001", section: 5, kind: "credential", title: "A key", says: `It reads ${token}.`, by: "script", based_on: [] });
+    live.flush();
+    const written = readFileSync(join(job, UPDATES_FILE), "utf8");
+    assert.ok(written.includes("S5-001") && !written.includes(token), "neither the piece nor the working copy repeats it");
   });
 });
 
@@ -126,9 +191,9 @@ test("[F5.A4] the reply opens with its header, gives section 1's findings one to
   assert.match(out.reply, /\d+ judgments? held back/);
   await inTemp(async (job) => {
     writeOutputs(job, out);
-    assert.ok(existsSync(join(job, "out", "inspection.json")) && existsSync(join(job, "out", "sbom.cdx.json")));
+    assert.ok(existsSync(join(job, "out", "inspection.json")) && existsSync(join(job, "out", "inspection.md")) && existsSync(join(job, "out", "sbom.cdx.json")));
     const pieces = JSON.parse(readFileSync(join(job, "pieces.json"), "utf8"));
-    assert.deepEqual(pieces.map((p) => p.name), ["inspection", "sbom"]);
+    assert.deepEqual(pieces.map((p) => p.name), ["inspection", "inspection-md", "sbom"]);
     assert.deepEqual(checkDelivered(job), []);
   });
 });
