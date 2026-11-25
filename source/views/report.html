@@ -87,7 +87,9 @@ h1 { font-size: 1.55em; line-height: 1.2; font-weight: 650; margin-top: calc(var
 
 /* At a glance */
 .glance { margin-top: calc(var(--s) * 3); background: var(--surface); border: 1px solid var(--border); border-radius: calc(var(--radius) * 1.25); padding: calc(var(--s) * 2.25); }
+.glance-h { display: flex; flex-wrap: wrap; align-items: baseline; gap: 0.25em 0.75em; }
 .glance h2 { font-size: 1.1em; font-weight: 650; }
+.glance-h .count { font-size: 0.86em; color: var(--muted); }
 .tiles { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: calc(var(--s) * 1); margin-top: calc(var(--s) * 1.5); }
 .tile { background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius); padding: calc(var(--s) * 1.25) calc(var(--s) * 1.5); }
 .tile .n { font-size: 1.6em; font-weight: 650; line-height: 1.1; font-variant-numeric: tabular-nums; }
@@ -108,7 +110,8 @@ h1 { font-size: 1.55em; line-height: 1.2; font-weight: 650; margin-top: calc(var
 .lv.medium { color: var(--text); }
 .lv.low, .lv.none { color: var(--muted); }
 .lv .word { color: var(--text); }
-.lv.unrated { color: var(--muted); font-weight: 400; }
+.lv.unrated { color: var(--muted); font-weight: 500; }
+.lv.unrated .word { color: var(--muted); }
 
 /* Filters */
 .filters { margin-top: calc(var(--s) * 3.5); display: flex; flex-wrap: wrap; gap: calc(var(--s) * 1.25) calc(var(--s) * 2.5); align-items: center; padding-bottom: calc(var(--s) * 1.5); border-bottom: 1px solid var(--border); }
@@ -129,22 +132,28 @@ section.sec { margin-top: calc(var(--s) * 3); }
 .sec-h .count { font-size: 0.86em; color: var(--muted); }
 .rows { list-style: none; margin: 0; padding: 0; border-top: 1px solid var(--border); }
 .row { border-bottom: 1px solid var(--border); }
-.line { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; }
-.toggle { all: unset; box-sizing: border-box; cursor: pointer; display: grid; grid-template-columns: 6.6em minmax(0, 1fr) auto minmax(0, 15em); gap: calc(var(--s) * 1.25); align-items: center; padding: calc(var(--s) * 0.9) calc(var(--s) * 0.75); min-width: 0; border-radius: 4px; }
+/* A row: the level, then the whole title with the file and line under it,
+   then the category. The title wraps; it is never cut. */
+.line { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: start; }
+.toggle { all: unset; box-sizing: border-box; cursor: pointer; display: grid; grid-template-columns: 6.6em minmax(0, 1fr) auto; grid-template-areas: "lv t cat"; gap: calc(var(--s) * 0.5) calc(var(--s) * 1.25); align-items: baseline; padding: calc(var(--s) * 0.9) calc(var(--s) * 0.75); min-width: 0; border-radius: 4px; }
 .toggle:hover { background: var(--surface); }
 .toggle:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
-.toggle .t { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.toggle .t .chev { display: inline-block; width: 0.9em; color: var(--muted); }
-.cat { font-family: var(--mono); font-size: 0.8em; border: 1px solid var(--border); border-radius: 4px; padding: 0.05em 0.4em; white-space: nowrap; color: var(--text); }
-.place { font-family: var(--mono); font-size: 0.82em; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; text-align: right; }
-.place.src { font-family: var(--body); font-size: 0.86em; }
-.copy { border: 0; background: none; color: var(--muted); font-size: 0.85em; padding: calc(var(--s) * 0.75) calc(var(--s) * 1); border-radius: 4px; white-space: nowrap; }
+.toggle > .lv { grid-area: lv; }
+.toggle > .t { grid-area: t; min-width: 0; display: grid; gap: 0.2em; }
+.toggle > .cat { grid-area: cat; justify-self: end; }
+.toggle .tt { overflow-wrap: anywhere; padding-left: 0.9em; text-indent: -0.9em; }
+.toggle .tt .chev { display: inline-block; width: 0.9em; text-indent: 0; color: var(--muted); }
+.cat { font-family: var(--mono); font-size: 0.8em; border: 1px solid var(--border); border-radius: 4px; padding: 0.05em 0.4em; white-space: nowrap; color: var(--text); display: inline-flex; max-width: 24ch; min-width: 0; }
+.cat .id { overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+.cat .n-more { flex: none; color: var(--muted); }
+.place { font-family: var(--mono); font-size: 0.82em; color: var(--muted); overflow-wrap: anywhere; padding-left: calc(0.9em / 0.82); }
+.place.src { font-family: var(--body); font-size: 0.86em; padding-left: calc(0.9em / 0.86); }
+.copy { border: 0; background: none; color: var(--muted); font-size: 0.85em; padding: calc(var(--s) * 0.95) calc(var(--s) * 1); border-radius: 4px; white-space: nowrap; }
 .row:hover .copy, .copy:focus-visible { color: var(--accent); }
 .copy:hover { text-decoration: underline; text-underline-offset: 2px; }
-.rows.unrated .toggle { grid-template-columns: minmax(0, 1fr) auto minmax(0, 17em); }
+.rows.unrated .toggle { grid-template-columns: minmax(0, 1fr) auto; grid-template-areas: "t cat"; }
 .detail { padding: 0 calc(var(--s) * 1) calc(var(--s) * 1.75) calc(var(--s) * 0.75 + 6.6em + var(--s) * 1.25); display: grid; gap: calc(var(--s) * 1); font-size: 0.93em; }
 .rows.unrated .detail { padding-left: calc(var(--s) * 2.2); }
-.detail .full-title { font-weight: 620; }
 .detail dl { display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: calc(var(--s) * 0.5) calc(var(--s) * 1.5); margin: 0; font-size: 0.92em; }
 .detail dt { color: var(--muted); }
 .detail dd { margin: 0; min-width: 0; }
@@ -162,15 +171,11 @@ section.sec { margin-top: calc(var(--s) * 3); }
 
 @media (max-width: 640px) {
   .tiles { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  .toggle { grid-template-columns: 6.2em minmax(0, 1fr); row-gap: calc(var(--s) * 0.4); }
-  .toggle .cat { grid-column: 2; justify-self: start; }
-  .toggle .place { grid-column: 2; text-align: left; }
-  .rows.unrated .toggle { grid-template-columns: minmax(0, 1fr); }
-  .rows.unrated .toggle .cat, .rows.unrated .toggle .place { grid-column: 1; }
-  .toggle .t { white-space: normal; }
+  .toggle { grid-template-columns: auto minmax(0, 1fr); grid-template-areas: "lv cat" "t t"; align-items: center; }
+  .toggle > .cat { justify-self: start; }
+  .rows.unrated .toggle { grid-template-columns: minmax(0, 1fr); grid-template-areas: "t" "cat"; }
   .detail { padding-left: calc(var(--s) * 0.75); }
   .matters li { grid-template-columns: 1fr; gap: calc(var(--s) * 0.5); }
-  .matters .nolv { display: none; }
   .track li + li::before { display: none; }
   .track { gap: calc(var(--s) * 0.75) calc(var(--s) * 2); }
   .showing { margin-left: 0; width: 100%; }
@@ -191,6 +196,9 @@ section.sec { margin-top: calc(var(--s) * 3); }
   const KIND = "application/vnd.agentmesh.inspection-report+json";
   const LEVELS = ["critical", "high", "medium", "low", "none"];
   const LEVEL_WORD = { critical: "Critical", high: "High", medium: "Medium", low: "Low", none: "No risk" };
+  // A finding the report gives no level: said in words and with a shape of
+  // its own, like every level, so it never reads as an empty column.
+  const NOT_RATED = "Not rated";
   const SYSTEM_WORD = { "code-host": "GitHub's records", "vulnerability-database": "OSV, the vulnerability database", "text-reasoning": "the model" };
   const FOLD_AT = 12;
 
@@ -292,13 +300,14 @@ section.sec { margin-top: calc(var(--s) * 3); }
   };
   // Each level's shape, drawn here and nowhere else, so a level never rests
   // on its color: critical an octagon, high a triangle, medium a diamond, low
-  // a ring, no risk a bar.
+  // a ring, no risk a bar, not rated an open square.
   const SHAPES = {
     critical: '<polygon points="5,1 11,1 15,5 15,11 11,15 5,15 1,11 1,5" fill="currentColor"/>',
     high: '<polygon points="8,1.5 15.2,14.5 0.8,14.5" fill="currentColor"/>',
     medium: '<polygon points="8,1 15,8 8,15 1,8" fill="currentColor"/>',
     low: '<circle cx="8" cy="8" r="5.6" fill="none" stroke="currentColor" stroke-width="2.4"/>',
     none: '<rect x="2" y="6.8" width="12" height="2.4" fill="currentColor"/>',
+    unrated: '<rect x="2.6" y="2.6" width="10.8" height="10.8" rx="1" fill="none" stroke="currentColor" stroke-width="1.8"/>',
     done: '<path d="M2.5 8.5l3.5 3.5 7.5-8" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>',
     current: '<circle cx="8" cy="8" r="6.5" fill="none" stroke="currentColor" stroke-width="1.6"/><circle cx="8" cy="8" r="3.4" fill="currentColor"/>',
     stop: '<polygon points="5,1 11,1 15,5 15,11 11,15 5,15 1,11 1,5" fill="none" stroke="currentColor" stroke-width="1.6"/><rect x="7.1" y="4" width="1.8" height="5.5" fill="currentColor"/><rect x="7.1" y="10.8" width="1.8" height="1.8" fill="currentColor"/>',
@@ -312,7 +321,7 @@ section.sec { margin-top: calc(var(--s) * 3); }
   const levelOf = (f) => (LEVELS.includes(f?.level) ? f.level : null);
   function badge(f) {
     const l = levelOf(f);
-    if (!l) return el("span", { class: "lv unrated" }, el("span", { class: "sr", text: "No level" }));
+    if (!l) return el("span", { class: "lv unrated" }, shape("unrated"), el("span", { class: "word", text: NOT_RATED }));
     return el("span", { class: `lv ${l}` }, shape(l), el("span", { class: "word", text: LEVEL_WORD[l] }));
   }
   const rank = (f) => { const l = levelOf(f); return l ? LEVELS.indexOf(l) : LEVELS.length; };
@@ -342,9 +351,11 @@ section.sec { margin-top: calc(var(--s) * 3); }
     const out = parts.length > 1 ? `${parts[0]}/…/${tail}` : `${parts[0] ? `${parts[0]}/` : ""}${tail}`;
     return out.length <= max ? out : `…${out.slice(out.length - max + 1)}`;
   };
+  // A path may break after each folder, so a narrow row splits no name.
+  const breakable = (s) => String(s).split(/(?<=\/)/).flatMap((part, i) => (i ? [el("wbr"), part] : [part]));
   const placeOf = (f) => {
     const ev = Array.isArray(f.evidence) ? f.evidence : [];
-    if (ev.length) { const more = ev.length - 1 + (Number(f.more_evidence) || 0); const at = `${ev[0].file}:${ev[0].line}`; return { text: `${fit(at, more ? 30 : 33)}${more ? ` +${more}` : ""}`, full: at, src: false }; }
+    if (ev.length) { const more = ev.length - 1 + (Number(f.more_evidence) || 0); const at = `${ev[0].file}:${ev[0].line}`; return { text: `${fit(at, more ? 56 : 60)}${more ? ` +${more}` : ""}`, full: at, src: false }; }
     const src = Array.isArray(f.source) ? f.source[0] : null;
     return { text: src ? `from ${SYSTEM_WORD[src.system] ?? src.system}` : "", full: src ? `${src.call}` : "", src: true };
   };
@@ -415,6 +426,23 @@ section.sec { margin-top: calc(var(--s) * 3); }
     for (const f of d.findings) if (f.section !== 1 && !f.repeats) c[levelOf(f) ?? "not_rated"] += 1;
     return c;
   }
+  // What the counts count. The report's total, as its counts and its reply
+  // give it, holds section 1 too, whose findings repeat ones of sections 2
+  // to 8; the sections and the filter list sections 2 to 8. So every count
+  // says which it is, and they add up.
+  function tally(d) {
+    const glance = d.findings.filter((f) => f.section === 1);
+    const omitted = Number(d.partial?.omitted) || 0;
+    const rest = d.findings.length - glance.length + omitted;
+    return { all: glance.length + rest, glance: glance.length, repeats: glance.length > 0 && glance.every((f) => f.repeats), rest, omitted };
+  }
+  function tallyWords(d, live) {
+    const t = tally(d);
+    const all = `${plural(t.all, "finding")}${live ? " so far" : ""}`;
+    if (!t.glance) return all;
+    return `${all}: ${t.rest} in sections 2 to 8, and ${t.glance} at a glance${t.repeats ? ` that ${t.glance === 1 ? "repeats one" : "repeat them"}` : ""}`;
+  }
+
   function drawGlance(d, p) {
     const c = counts(d);
     const tiles = el("div", { class: "tiles", role: "list", "aria-label": "Risks by level" }, ["critical", "high", "medium", "low"].map((l) => {
@@ -432,15 +460,20 @@ section.sec { margin-top: calc(var(--s) * 3); }
         ? (list.length ? "This section is written last, once the other sections are judged. Until then, the highest risks found so far:" : "This section is written last, once the other sections are judged.")
         : "Nothing was judged for this section.";
     }
+    // Every item shows a level: its own, else the level of the finding it
+    // repeats, else Not rated, each a word and a shape.
     const items = list.map((f) => {
       const target = f.repeats || f.id;
-      return el("li", {}, el("div", { class: levelOf(f) ? "" : "nolv" }, levelOf(f) ? badge(f) : null), el("div", {},
+      const rated = levelOf(f) ? f : d.findings.find((x) => x.id === f.repeats && x.section !== 1) ?? f;
+      return el("li", {}, el("div", {}, badge(rated)), el("div", {},
         el("div", { class: "t", text: f.title }),
         f.says ? el("p", { class: "says", text: f.says }) : null,
         el("p", { class: "see" }, el("button", { class: "linkish", type: "button", onclick: () => reveal(target) , text: `See ${target}` }))));
     });
+    const t = tally(d);
+    const said = !firsts.length ? null : t.repeats ? `${plural(t.glance, "finding")}, ${t.glance === 1 ? "repeated" : "each repeated"} from sections 2 to 8` : plural(t.glance, "finding");
     return el("section", { class: "glance", "aria-labelledby": "glance-h" },
-      el("h2", { id: "glance-h", text: "At a glance" }), tiles,
+      el("div", { class: "glance-h" }, el("h2", { id: "glance-h", text: "At a glance" }), said ? el("span", { class: "count", text: said }) : null), tiles,
       lead ? el("p", { class: "lead", text: lead }) : null,
       items.length ? el("ul", { class: "matters" }, items) : null);
   }
@@ -452,13 +485,14 @@ section.sec { margin-top: calc(var(--s) * 3); }
       secs.map((s) => el("option", { value: String(s.number), selected: state.section === String(s.number), text: `${s.number}. ${s.title}` })));
     const pool = d.findings.filter((f) => f.section !== 1);
     const n = (l) => pool.filter((f) => (l === "unrated" ? !levelOf(f) : levelOf(f) === l)).length;
-    const chips = [["all", "All", pool.length], ...LEVELS.filter((l) => n(l)).map((l) => [l, LEVEL_WORD[l], n(l)]), ...(n("unrated") ? [["unrated", "No level", n("unrated")]] : [])];
+    const chips = [["all", "All", pool.length], ...LEVELS.filter((l) => n(l)).map((l) => [l, LEVEL_WORD[l], n(l)]), ...(n("unrated") ? [["unrated", NOT_RATED, n("unrated")]] : [])];
+    const omitted = tally(d).omitted;
     return el("div", { class: "filters" },
       el("label", { for: "sec" }, "Section", sel),
       el("div", { class: "chips", role: "group", "aria-label": "Level" }, el("span", { class: "lbl", text: "Level" }),
         chips.map(([key, word, count]) => el("button", { class: "chip", type: "button", "aria-pressed": state.level === key ? "true" : "false", onclick: () => { state.level = key; draw(); } },
-          LEVELS.includes(key) ? el("span", { class: `lv ${key}` }, shape(key, 11)) : null, el("span", { text: word }), el("span", { class: "c", text: String(count) })))),
-      el("p", { class: "showing", "aria-live": "polite", text: `Showing ${plural(shown, "finding")} of ${pool.length}` }));
+          key !== "all" ? el("span", { class: `lv ${key}` }, shape(key, 11)) : null, el("span", { text: word }), el("span", { class: "c", text: String(count) })))),
+      el("p", { class: "showing", "aria-live": "polite", text: `Showing ${shown} of the ${plural(pool.length, "finding")} in sections 2 to 8${omitted ? `; ${omitted} more ${omitted === 1 ? "arrives" : "arrive"} with the report` : ""}` }));
   }
 
   function copyText(d, f) {
@@ -494,9 +528,11 @@ section.sec { margin-top: calc(var(--s) * 3); }
       el("div", { class: "line" },
         el("button", { class: "toggle", type: "button", "aria-expanded": open ? "true" : "false", "aria-controls": detailId, onclick: () => { if (state.open.has(f.id)) state.open.delete(f.id); else state.open.add(f.id); draw(); } },
           rated ? badge(f) : null,
-          el("span", { class: "t" }, el("span", { class: "chev", "aria-hidden": "true", text: open ? "▾" : "▸" }), f.title),
-          cat ? el("span", { class: "cat", title: cat.name || cat.id, text: `${cat.id}${(f.categories.length > 1) ? ` +${f.categories.length - 1}` : ""}` }) : el("span"),
-          el("span", { class: place.src ? "place src" : "place", title: place.full || null, text: place.text })),
+          el("span", { class: "t" },
+            el("span", { class: "tt" }, el("span", { class: "chev", "aria-hidden": "true", text: open ? "▾" : "▸" }), f.title),
+            place.text ? el("span", { class: place.src ? "place src" : "place", title: place.full || null }, breakable(place.text)) : null),
+          cat ? el("span", { class: "cat", title: cat.name || cat.id }, el("span", { class: "id", text: cat.id }),
+            f.categories.length > 1 ? el("span", { class: "n-more", text: ` +${f.categories.length - 1}` }) : null) : null),
         el("button", { class: "copy", type: "button", "aria-label": `Copy ${f.id} with its address`, onclick: () => doCopy(d, f), text: "Copy" })));
     if (open) row.append(drawDetail(d, f, detailId));
     return row;
@@ -517,7 +553,6 @@ section.sec { margin-top: calc(var(--s) * 3); }
       add("From", f.source.map((s) => `${SYSTEM_WORD[s.system] ?? s.system}: ${s.call}`).join("; "));
     }
     return el("div", { class: "detail", id },
-      el("p", { class: "full-title", text: f.title }),
       f.says ? el("p", { text: f.says }) : el("p", { class: "muted", text: "Its words arrive with the delivered report." }),
       dl);
   }
@@ -562,7 +597,7 @@ section.sec { margin-top: calc(var(--s) * 3); }
       el("span", { text: `Commit ${short(d.commit?.sha)}` }),
       d.commit?.date && dateOf(d.commit.date) ? el("span", { text: `committed ${dateOf(d.commit.date)}` }) : null,
       dateOf(d.inspected_at) ? el("span", { text: `${d.partial ? "inspection started" : "inspected"} ${dateOf(d.inspected_at)}` }) : null,
-      el("span", { text: live ? `${plural(d.findings.length + (Number(d.partial?.omitted) || 0), "finding")} so far` : plural(d.findings.length, "finding") }));
+      el("span", { class: "tally", text: tallyWords(d, live) }));
     const save = el("button", { class: "btn", type: "button", onclick: () => doSave(d), text: "Save a summary for security" });
     app.append(el("header", {},
       el("div", { class: "head" },

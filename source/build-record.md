@@ -155,3 +155,41 @@ The 0.2.1 install and proof on dev:
   - Its answer carries the job manifest with all three pieces, each with step inspect-a-repository: inspection (1,024,391 bytes), inspection-md (179,075 bytes) and sbom (175,405 bytes). Their files are on the answer for the sender.
   - The 0.2.0 proof's answer, read the same way, carried the words alone.
 - GET /v1/agents/:key/views/:digest on dev now serves views/report.html for sha256:e8d075de783125c609b0a85569056f6046b3853d33b248c9ec004ed54bc3a3e5, and the bytes hash to it.
+
+## 0.2.2: three flaws in the report's view
+
+A run from the Next app on dev showed them, drawing the delivered design-agent report of 225 findings (job 01a213f4-c082-7000-8420-b9df3a0654ba, Inspect 0.2.1). Only views/report.html changed, with its tests, its digest and the version.
+
+- **Every item At a glance shows its level.**
+  - "Which tools run without an OK" (S1-001) drew an empty level column.
+  - It repeats S6-011, a finding of kind autonomy. Only risks carry a level, so it has none.
+  - The view now draws a finding with no level as "Not rated", with a shape of its own, an open square.
+  - An item At a glance takes its own level, else the level of the finding it repeats.
+  - The level filter says Not rated too, with the square. So does a row with no level in a section that has levels (S7-027 and S7-028 here).
+- **The counts say what they count.**
+  - The report's total, 225, holds section 1's five findings, which repeat findings of sections 2 to 8. The filter counts sections 2 to 8: 220.
+  - The head now says "225 findings: 220 in sections 2 to 8, and 5 at a glance that repeat them".
+  - At a glance says "5 findings, each repeated from sections 2 to 8".
+  - The filter says "Showing 220 of the 220 findings in sections 2 to 8".
+  - The total stays the report's own, as inspection.md and the reply give it.
+  - A working copy that leaves findings out says how many more arrive with the report.
+- **Section 7's titles are whole.**
+  - A row held the level, the title, the category and the file and line on one line. The title, kept to that line, got what was left: a few characters in a 690-pixel frame.
+  - A row is now the level, then the whole title, wrapping, with the file and line under it, then the category.
+  - At a phone's width, the level and the category share the first line, and the title takes the row's whole width under them.
+  - A path may break after each folder. The category keeps its +N however long its first id is.
+  - The open row no longer repeats the title, which the row now shows whole.
+
+The tests:
+- test/view-draw.test.mjs runs the view's own script against a stand-in page in a vm context, with no browser, and holds the three fixes.
+- Each of its four tests fails on 0.2.1's view.
+- The suite: 77 tests, 76 pass, one skipped.
+
+How it was checked in a browser:
+- A stand-in host like 0.2.0's, made again for this: the Section 9.3 policy, a sandboxed srcdoc frame, the host's side of the bridge.
+- It ran in headless Edge, started hidden.
+- It drew the 225-finding report, delivered, with lifecycle draft: at a 1440 window with a 690-pixel frame, and at a 400 window with a 368-pixel frame, each in light and in dark.
+- In each the view said ready, asked only for resize, reported no failure and scrolled nothing sideways.
+- The screenshots show each item At a glance with its level, the three counts agreeing, and every title of section 7 whole, folded and unfolded.
+
+It was made in the agent repository directly. The build folder in adlc-plugin-proof still holds 0.2.1's view.
