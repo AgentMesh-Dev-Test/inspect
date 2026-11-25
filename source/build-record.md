@@ -199,3 +199,42 @@ The 0.2.2 install and proof on dev:
 - Dev's Descriptor for it, GET /v1/agents/:key/descriptor, gives agent_version 0.2.2 and names views/report.html at sha256:476fb1bdf933f94b7ee7f8fe308d3fb5f688961053090a27062080f570a8f803.
 - GET /v1/agents/:key/views/:digest serves the view for that digest, 46,037 bytes, and the bytes hash to it.
 - No live run was made: the view draws the report as 0.2.1 delivers it, and the stand-in host drew a delivered one.
+
+## 0.2.3: the report's view in five tabs
+
+The owner approved the design on 2026-11-25 ("Go do it"). The report was one long page; it is now five tabs under its head. Only views/report.html changed, with its tests, its digest and the version.
+
+- **The tabs.** Overview (sections 1 and 2), What it does (3 and 4), What it reaches (5 and 6), Risks (7), and Tests and gaps (8).
+  - The head (the repository, the commit, the dates, the counts) and the status line (Running, Draft, Accepted, Published) stay above the tabs, so every tab shows them.
+  - Each tab's label gives the prefix its findings' ids carry (S7 for S7-010), its name and its count of findings. The five counts add up to the report's total.
+  - Risks also names the highest level in section 7, as a word and its shape ("25 · ▲ High"). A level is never a color alone.
+  - Overview holds At a glance (the risks by level and the judgments it repeats), then What was inspected, then "Save a summary for security", which moved there from the head.
+  - The level filter is on Risks and counts section 7. The tabs take the place of 0.2.2's section filter.
+  - A judgment held back is listed on the tab that holds its section.
+- **While the job runs.**
+  - A tab none of whose sections has arrived says "Nothing here yet", names its sections as waiting, and shows "…" in place of a count, with a dotted rule under it.
+  - A tab with some findings and more to come shows its count so far with a live dot and the dotted rule. Each section still to come says that more findings arrive once the model has judged it.
+  - The view knows what is still to come from the findings themselves: the scripts' findings arrive at once, and a call of the model has answered once one finding of its sections (3 to 5, or 6 to 8) is the model's or says the judgment was not made. Section 1 comes last.
+  - A count includes the findings a working copy leaves out to stay small (the report's counts by section), and the section says how many more arrive with the report.
+  - New data never changes the tab. Focus is put back where it was after each redraw, on a tab, a row, a filter or a button.
+- **"See S7-010".** It opens the tab that holds the finding, lets go of a level filter that would hide it, unfolds its section if it is past the first twelve, opens it, and brings it into sight once the host has fitted the frame to the tab.
+- **The ARIA tabs pattern.** A tablist of five tabs, each controlling its tabpanel; only the open tab is in the page's tab order; the arrow keys, Home and End move between the tabs and open the one moved to; a tab has a focus ring of its own.
+- **At a phone's width** the tab strip scrolls sideways inside itself, with a fading edge where more tabs lie, and keeps the open tab in sight. The page never scrolls sideways.
+- **The frame.** After every change of tab the view sends view/resize, even when the height has not changed.
+- The frame keeps nothing between visits, so the view always starts on Overview.
+- Everything 0.2.2 drew is kept: Not rated with the open square, the count wording, section 7's whole titles, Copy, the summary for security, and light and dark through the host's --ca-* tokens.
+
+The tests:
+- test/view-draw.test.mjs holds 0.2.2's four tests, moved onto the tabs, and six new ones: the five tabs and their counts in the ARIA pattern; a See link opening another tab, and one past the fold; a tab waiting while the job runs, with the counts climbing as the model answers; the tab staying put, with its focus, when new data arrives; and the keys, each change asking the frame to fit.
+- Each of the ten fails on 0.2.2's view.
+- The suite: 83 tests, 82 pass, one skipped.
+
+How it was checked in a browser:
+- test/view-host.html is now kept in the repository: a stand-in for Next's host (app-next/src/view-frame.ts) with an iframe sandboxed with allow-scripts alone, Section 9.3's policy laid into the view's document, the host's side of the bridge, and the twelve tokens read from Next's own light and dark values.
+- test/view-shots.mjs opens it in headless Edge, started hidden, and saves a screenshot of each case with what the host heard.
+- The cases: the report delivered by the 0.2.2 run on design-agent at 86d8f66 (223 findings) and that run's working copy after the model's first answer (178 findings), each on Overview and on Risks, at a 1440 window with a 690-pixel frame and at a 400 window with a 368-pixel frame, in light and in dark; and the working copy with no findings yet, on What it does.
+- In all 17 the view said ready within 30 ms, asked only for resize, sent nothing outside the bridge and scrolled nothing sideways. At 400 the tab strip scrolled inside itself.
+- The design pass, made from the screenshots, fixed three things:
+  - a dotted rule under the open tab while it filled, which read as broken (the open tab now always has its solid rule);
+  - waiting tabs 160 pixels tall: their class shared the name of the page's own "waiting" line and took its padding;
+  - three signals for one fact on a waiting tab (the live dot is now only on tabs that are filling).

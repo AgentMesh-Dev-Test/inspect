@@ -18,6 +18,12 @@
   far and the stage the job is at. Colors and fonts come from the host's
   --ca-* tokens, each with a fallback for light and for dark. A level is
   always a word and a shape, never a color alone.
+
+  Since 0.2.3 the report is five tabs under its head: Overview (sections 1
+  and 2), What it does (3 and 4), What it reaches (5 and 6), Risks (7) and
+  Tests and gaps (8). Each tab's label counts its findings, and Risks names
+  its highest level. The view starts on Overview, since the frame keeps
+  nothing between visits, and only the person moves it to another tab.
 -->
 <style>
 :root {
@@ -52,6 +58,7 @@
 * { box-sizing: border-box; }
 html, body { margin: 0; background: var(--bg); color: var(--text); font-family: var(--body); font-size: var(--size); line-height: 1.5; }
 body { padding: calc(var(--s) * 2.5) calc(var(--s) * 2); }
+#app { min-width: 0; }
 h1, h2, h3, p { margin: 0; }
 button, select { font: inherit; color: inherit; }
 button { cursor: pointer; }
@@ -78,12 +85,47 @@ h1 { font-size: 1.55em; line-height: 1.2; font-weight: 650; margin-top: calc(var
 .track li.done { color: var(--text); }
 .track svg { flex: none; }
 .now { margin-top: calc(var(--s) * 1); font-size: 0.92em; display: flex; gap: 0.55em; align-items: baseline; }
-.now .pulse { width: 0.55em; height: 0.55em; border-radius: 50%; background: var(--accent); flex: none; transform: translateY(-0.05em); animation: pulse 1.6s ease-in-out infinite; }
+.pulse { display: inline-block; width: 0.55em; height: 0.55em; border-radius: 50%; background: var(--accent); flex: none; transform: translateY(-0.05em); animation: pulse 1.6s ease-in-out infinite; }
 @keyframes pulse { 50% { opacity: 0.3; } }
-@media (prefers-reduced-motion: reduce) { .now .pulse { animation: none; } }
+@media (prefers-reduced-motion: reduce) { .pulse, .tab .live { animation: none; } }
 .stopped.notice { border-color: var(--border); background: var(--surface); }
 .stopped { margin-top: calc(var(--s) * 1.5); border: 1px solid var(--danger); border-radius: var(--radius); padding: calc(var(--s) * 1) calc(var(--s) * 1.5); display: flex; gap: 0.6em; align-items: flex-start; }
 .note { margin-top: calc(var(--s) * 1); font-size: 0.86em; color: var(--muted); }
+
+/* The tabs: an index of the report. Each tab names the sections it holds by
+   the prefix their findings carry (S7 for S7-010), then its name, then how
+   many findings it holds. The tab the person is on is raised and underlined;
+   a tab still filling has a dotted rule under it, never a color alone. */
+.tabs-wrap { margin-top: calc(var(--s) * 2.25); border-bottom: 1px solid var(--border); min-width: 0; }
+.tabs { position: relative; display: flex; gap: calc(var(--s) * 0.35); overflow-x: auto; overflow-y: hidden; scrollbar-width: none; overscroll-behavior-x: contain; margin-bottom: -1px; }
+.tabs::-webkit-scrollbar { display: none; }
+.tabs.more-right { -webkit-mask-image: linear-gradient(to right, #000 calc(100% - 3.5em), transparent); mask-image: linear-gradient(to right, #000 calc(100% - 3.5em), transparent); }
+.tabs.more-left { -webkit-mask-image: linear-gradient(to right, transparent, #000 3.5em); mask-image: linear-gradient(to right, transparent, #000 3.5em); }
+.tabs.more-left.more-right { -webkit-mask-image: linear-gradient(to right, transparent, #000 3.5em, #000 calc(100% - 3.5em), transparent); mask-image: linear-gradient(to right, transparent, #000 3.5em, #000 calc(100% - 3.5em), transparent); }
+.tab { all: unset; box-sizing: border-box; flex: none; cursor: pointer; display: grid; align-content: start; gap: calc(var(--s) * 0.15); min-width: 7.2em; padding: calc(var(--s) * 0.9) calc(var(--s) * 1.35) calc(var(--s) * 0.85); border: 1px solid transparent; border-bottom: 0; border-radius: calc(var(--radius) * 0.75) calc(var(--radius) * 0.75) 0 0; color: var(--muted); position: relative; }
+.tab::after { content: ""; position: absolute; left: calc(var(--s) * 0.6); right: calc(var(--s) * 0.6); bottom: 0; border-bottom: 3px solid transparent; }
+.tab:hover { color: var(--text); }
+.tab:hover::after { border-bottom-color: var(--border); }
+.tab[aria-selected="true"] { color: var(--text); background: var(--surface); border-color: var(--border); }
+.tab[aria-selected="true"]::after { left: -1px; right: -1px; border-bottom-color: var(--accent); }
+.tab:not([aria-selected="true"]).tab-filling::after, .tab:not([aria-selected="true"]).tab-waiting::after { border-bottom: 2px dotted var(--muted); opacity: 0.7; }
+.tab:focus-visible { outline: 2px solid var(--accent); outline-offset: -3px; }
+.tab-key { font-family: var(--mono); font-size: 0.68em; letter-spacing: 0.04em; color: var(--muted); white-space: nowrap; }
+.tab-name { font-size: 0.86em; font-weight: 600; white-space: nowrap; }
+.tab[aria-selected="true"] .tab-name { font-weight: 700; }
+.tab-sub { display: flex; align-items: center; gap: 0.5em; white-space: nowrap; min-height: 1.7em; }
+.tab-n { font-size: 1.32em; font-weight: 650; line-height: 1.2; font-variant-numeric: tabular-nums; color: var(--text); letter-spacing: -0.01em; }
+.tab:not([aria-selected="true"]) .tab-n { font-weight: 560; }
+.tab-n.wait { color: var(--muted); font-weight: 500; letter-spacing: 0.08em; }
+.tab .sep { color: var(--muted); }
+.tab .lv { font-size: 0.8em; }
+.tab .live { width: 0.5em; height: 0.5em; border-radius: 50%; background: var(--accent); flex: none; animation: live 1.6s ease-in-out infinite; }
+@keyframes live { 50% { opacity: 0.55; } }
+
+/* A tab's panel */
+.panel { padding-top: calc(var(--s) * 2.5); }
+.panel:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; border-radius: 4px; }
+.panel > :first-child { margin-top: 0; }
 
 /* At a glance */
 .glance { margin-top: calc(var(--s) * 3); background: var(--surface); border: 1px solid var(--border); border-radius: calc(var(--radius) * 1.25); padding: calc(var(--s) * 2.25); }
@@ -103,6 +145,12 @@ h1 { font-size: 1.55em; line-height: 1.2; font-weight: 650; margin-top: calc(var
 .linkish { background: none; border: 0; padding: 0; color: var(--accent); text-decoration: underline; text-underline-offset: 2px; }
 .lead { margin-top: calc(var(--s) * 1.5); font-size: 0.9em; color: var(--muted); }
 
+/* For security, on Overview */
+.forsec { margin-top: calc(var(--s) * 3); display: flex; gap: calc(var(--s) * 1.5) calc(var(--s) * 2.5); align-items: center; justify-content: space-between; flex-wrap: wrap; border: 1px solid var(--border); border-radius: calc(var(--radius) * 1.25); padding: calc(var(--s) * 1.75) calc(var(--s) * 2); }
+.forsec > div { flex: 1 1 18em; min-width: 0; }
+.forsec h2 { font-size: 1em; font-weight: 650; }
+.forsec p { font-size: 0.88em; color: var(--muted); margin-top: 0.2em; max-width: 52ch; }
+
 /* Levels: a shape and a word */
 .lv { display: inline-flex; align-items: center; gap: 0.4em; font-size: 0.86em; font-weight: 600; white-space: nowrap; }
 .lv svg { flex: none; }
@@ -113,10 +161,8 @@ h1 { font-size: 1.55em; line-height: 1.2; font-weight: 650; margin-top: calc(var
 .lv.unrated { color: var(--muted); font-weight: 500; }
 .lv.unrated .word { color: var(--muted); }
 
-/* Filters */
-.filters { margin-top: calc(var(--s) * 3.5); display: flex; flex-wrap: wrap; gap: calc(var(--s) * 1.25) calc(var(--s) * 2.5); align-items: center; padding-bottom: calc(var(--s) * 1.5); border-bottom: 1px solid var(--border); }
-.filters label { display: inline-flex; gap: 0.6em; align-items: center; font-size: 0.9em; }
-select { background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius); padding: calc(var(--s) * 0.5) calc(var(--s) * 1); max-width: min(100%, 17em); }
+/* The level filter, on Risks */
+.filters { margin-top: 0; display: flex; flex-wrap: wrap; gap: calc(var(--s) * 1.25) calc(var(--s) * 2.5); align-items: center; padding-bottom: calc(var(--s) * 1.5); border-bottom: 1px solid var(--border); }
 .chips { display: inline-flex; flex-wrap: wrap; gap: calc(var(--s) * 0.5); align-items: center; }
 .chips .lbl { font-size: 0.9em; margin-right: 0.2em; }
 .chip { border: 1px solid var(--border); background: var(--bg); border-radius: 999px; padding: 0.2em 0.75em; font-size: 0.85em; display: inline-flex; gap: 0.4em; align-items: center; }
@@ -126,10 +172,10 @@ select { background: var(--bg); border: 1px solid var(--border); border-radius: 
 
 /* The sections */
 section.sec { margin-top: calc(var(--s) * 3); }
-.sec-h { display: flex; align-items: baseline; gap: 0.75em; padding-bottom: calc(var(--s) * 0.75); }
+.sec-h { display: flex; flex-wrap: wrap; align-items: baseline; gap: 0 0.75em; padding-bottom: calc(var(--s) * 0.75); }
 .sec-h .num { font-variant-numeric: tabular-nums; color: var(--muted); font-weight: 600; min-width: 1.2em; }
 .sec-h h2 { font-size: 1.05em; font-weight: 650; }
-.sec-h .count { font-size: 0.86em; color: var(--muted); }
+.sec-h .count { font-size: 0.86em; color: var(--muted); white-space: nowrap; }
 .rows { list-style: none; margin: 0; padding: 0; border-top: 1px solid var(--border); }
 .row { border-bottom: 1px solid var(--border); }
 /* A row: the level, then the whole title with the file and line under it,
@@ -161,6 +207,19 @@ section.sec { margin-top: calc(var(--s) * 3); }
 .detail code { font-family: var(--mono); font-size: 0.86em; display: block; white-space: pre-wrap; overflow-wrap: anywhere; color: var(--muted); }
 .more { margin: calc(var(--s) * 1) 0 0 calc(var(--s) * 0.75); }
 .empty { padding: calc(var(--s) * 1.25) calc(var(--s) * 0.75); color: var(--muted); font-size: 0.92em; border-bottom: 1px solid var(--border); }
+.coming { display: flex; gap: 0.6em; align-items: baseline; padding: calc(var(--s) * 1) calc(var(--s) * 0.75); color: var(--muted); font-size: 0.9em; border-bottom: 1px solid var(--border); }
+
+/* A tab whose sections have not arrived yet */
+.waitcard { border: 1px dashed var(--border); border-radius: calc(var(--radius) * 1.25); padding: calc(var(--s) * 2) calc(var(--s) * 2.25); }
+.waitcard .msg { display: flex; gap: 0.75em; align-items: baseline; }
+.waitcard .msg strong { font-weight: 650; }
+.waitcard .msg p { margin-top: 0.2em; font-size: 0.92em; }
+.waitcard ul { list-style: none; margin: calc(var(--s) * 1.75) 0 0; padding: 0; border-top: 1px solid var(--border); }
+.waitcard li { display: grid; grid-template-columns: 1.6em minmax(0, 1fr) auto; gap: calc(var(--s) * 1); align-items: baseline; padding: calc(var(--s) * 0.9) 0; border-bottom: 1px solid var(--border); }
+.waitcard li:last-child { border-bottom: 0; }
+.waitcard .num { color: var(--muted); font-weight: 600; font-variant-numeric: tabular-nums; }
+.waitcard .st { display: inline-flex; gap: 0.4em; align-items: center; color: var(--muted); font-size: 0.86em; white-space: nowrap; }
+
 .held { margin-top: calc(var(--s) * 3); font-size: 0.92em; }
 .held h2 { font-size: 1.05em; font-weight: 650; margin-bottom: calc(var(--s) * 1); }
 .held ul { margin: 0; padding-left: 1.2em; display: grid; gap: calc(var(--s) * 0.5); }
@@ -178,7 +237,9 @@ section.sec { margin-top: calc(var(--s) * 3); }
   .matters li { grid-template-columns: 1fr; gap: calc(var(--s) * 0.5); }
   .track li + li::before { display: none; }
   .track { gap: calc(var(--s) * 0.75) calc(var(--s) * 2); }
-  .showing { margin-left: 0; width: 100%; }
+  .tab { min-width: 6.4em; padding: calc(var(--s) * 0.75) calc(var(--s) * 1.1) calc(var(--s) * 0.75); }
+  .forsec { padding: calc(var(--s) * 1.5); }
+  .waitcard { padding: calc(var(--s) * 1.5); }
 }
 </style>
 </head>
@@ -201,10 +262,23 @@ section.sec { margin-top: calc(var(--s) * 3); }
   const NOT_RATED = "Not rated";
   const SYSTEM_WORD = { "code-host": "GitHub's records", "vulnerability-database": "OSV, the vulnerability database", "text-reasoning": "the model" };
   const FOLD_AT = 12;
+  // The five tabs, each holding whole sections, in the report's own order.
+  const TABS = [
+    { id: "overview", name: "Overview", sections: [1, 2] },
+    { id: "does", name: "What it does", sections: [3, 4] },
+    { id: "reaches", name: "What it reaches", sections: [5, 6] },
+    { id: "risks", name: "Risks", sections: [7] },
+    { id: "tests", name: "Tests and gaps", sections: [8] },
+  ];
+  const RISKS = 7;
+  // How a job's findings arrive: the scripts' findings all at once (section
+  // 2 among them), then the model's judgments of sections 3 to 5 in one
+  // call, of 6 to 8 in the next, and section 1 last.
+  const CALLS = [[3, 4, 5], [6, 7, 8]];
 
   const root = document.documentElement;
   const app = document.getElementById("app");
-  const state = { initialized: false, ready: false, locale: undefined, doc: null, params: null, section: "all", level: "all", open: new Set(), unfolded: new Set() };
+  const state = { initialized: false, ready: false, locale: undefined, doc: null, params: null, tab: TABS[0].id, level: "all", open: new Set(), unfolded: new Set() };
   let seq = 0;
   const waiting = new Map();
 
@@ -265,7 +339,8 @@ section.sec { margin-top: calc(var(--s) * 3); }
     }
   }
 
-  // view/data: the output's bytes, its lifecycle, and the job's state.
+  // view/data: the output's bytes, its lifecycle, and the job's state. A new
+  // report never moves the person to another tab.
   function take(p) {
     let text = typeof p.text === "string" ? p.text : null;
     if (text === null && typeof p.base64 === "string") {
@@ -286,6 +361,9 @@ section.sec { margin-top: calc(var(--s) * 3); }
   }
 
   // ── Drawing ──
+  // Elements that take focus carry a data-k key, so a redraw (new findings
+  // every few seconds while the job runs) puts focus back where it was.
+  let keyed = new Map();
   const el = (tag, attrs, ...kids) => {
     const n = document.createElement(tag);
     for (const [k, v] of Object.entries(attrs ?? {})) {
@@ -295,6 +373,7 @@ section.sec { margin-top: calc(var(--s) * 3); }
       else if (k.startsWith("on")) n.addEventListener(k.slice(2), v);
       else n.setAttribute(k, v === true ? "" : String(v));
     }
+    if (attrs?.["data-k"]) keyed.set(String(attrs["data-k"]), n);
     for (const kid of kids.flat()) if (kid !== null && kid !== undefined && kid !== false) n.append(kid instanceof Node ? kid : document.createTextNode(String(kid)));
     return n;
   };
@@ -428,8 +507,8 @@ section.sec { margin-top: calc(var(--s) * 3); }
   }
   // What the counts count. The report's total, as its counts and its reply
   // give it, holds section 1 too, whose findings repeat ones of sections 2
-  // to 8; the sections and the filter list sections 2 to 8. So every count
-  // says which it is, and they add up.
+  // to 8; the other sections hold sections 2 to 8. So every count says which
+  // it is, and they add up.
   function tally(d) {
     const glance = d.findings.filter((f) => f.section === 1);
     const omitted = Number(d.partial?.omitted) || 0;
@@ -441,6 +520,96 @@ section.sec { margin-top: calc(var(--s) * 3); }
     const all = `${plural(t.all, "finding")}${live ? " so far" : ""}`;
     if (!t.glance) return all;
     return `${all}: ${t.rest} in sections 2 to 8, and ${t.glance} at a glance${t.repeats ? ` that ${t.glance === 1 ? "repeats one" : "repeat them"}` : ""}`;
+  }
+
+  // ── The tabs ──
+  const ofSection = (d, n) => d.findings.filter((f) => f.section === n);
+  const tabOf = (n) => TABS.find((t) => t.sections.includes(n)) ?? TABS[0];
+  const titleOf = (d, n) => (d.sections ?? []).find((s) => s.number === n)?.title ?? `Section ${n}`;
+  // How many findings a section holds: the report's own count, which a
+  // working copy keeps whole when it leaves findings out to stay small.
+  function sectionCount(d, n) {
+    const here = ofSection(d, n).length;
+    const c = Number(d.counts?.by_section?.[String(n)]);
+    return Number.isFinite(c) && c > here ? c : here;
+  }
+  // While the job runs, the sections still to come. A call of the model has
+  // answered once one finding of its sections is the model's, or says the
+  // judgment was not made.
+  function pendingOf(d, p) {
+    const out = new Set();
+    if (!running(p, d)) return out;
+    if (!ofSection(d, 2).length) out.add(2);
+    for (const call of CALLS) {
+      if (!d.findings.some((f) => call.includes(f.section) && (f.by === "model" || f.kind === "not-judged"))) for (const s of call) out.add(s);
+    }
+    if (!ofSection(d, 1).length) out.add(1);
+    return out;
+  }
+  function tabStatus(d, t, pending) {
+    const n = t.sections.reduce((a, s) => a + sectionCount(d, s), 0);
+    const coming = t.sections.some((s) => pending.has(s));
+    return { n, waiting: coming && n === 0, filling: coming && n > 0 };
+  }
+  // The highest level a risk in section 7 carries, for the Risks tab's label.
+  function highestRisk(d) {
+    const here = new Set(ofSection(d, RISKS).map(levelOf).filter(Boolean));
+    return LEVELS.find((l) => here.has(l)) ?? null;
+  }
+  const keyOf = (t) => t.sections.map((s) => `S${s}`).join(" ");
+  function drawTabs(d, pending) {
+    return el("div", { class: "tabs-wrap" },
+      el("div", { class: "tabs", role: "tablist", "aria-label": "Parts of the report", onkeydown: onTabKey, onscroll: (e) => edges(e.currentTarget) },
+        TABS.map((t) => {
+          const on = state.tab === t.id;
+          const s = tabStatus(d, t, pending);
+          const top = t.id === "risks" && s.n ? highestRisk(d) : null;
+          const said = s.waiting ? "nothing yet, still to come" : `${plural(s.n, "finding")}${s.filling ? " so far, more to come" : ""}${top ? `, the highest ${LEVEL_WORD[top]}` : ""}`;
+          return el("button", { class: `tab${s.waiting ? " tab-waiting" : s.filling ? " tab-filling" : ""}`, type: "button", role: "tab", id: `tab-${t.id}`, "aria-selected": on ? "true" : "false", "aria-controls": `panel-${t.id}`, tabindex: on ? "0" : "-1", "aria-label": `${t.name}, ${t.sections.length > 1 ? "sections" : "section"} ${t.sections.join(" and ")}: ${said}`, "data-k": `tab:${t.id}`, onclick: () => setTab(t.id, true) },
+            el("span", { class: "tab-key", "aria-hidden": "true", text: keyOf(t) }),
+            el("span", { class: "tab-name", text: t.name }),
+            el("span", { class: "tab-sub", "aria-hidden": "true" },
+              s.waiting ? el("span", { class: "tab-n wait", text: "…" }) : el("span", { class: "tab-n", text: String(s.n) }),
+              top ? [el("span", { class: "sep", text: "·" }), badge({ level: top })] : null,
+              s.filling ? el("span", { class: "live" }) : null));
+        })));
+  }
+  // Arrow keys, Home and End move between the tabs, and the tab moved to
+  // opens at once (the ARIA tabs pattern, with selection following focus).
+  function onTabKey(e) {
+    const i = Math.max(0, TABS.findIndex((t) => t.id === state.tab));
+    const j = e.key === "ArrowRight" ? (i + 1) % TABS.length : e.key === "ArrowLeft" ? (i + TABS.length - 1) % TABS.length : e.key === "Home" ? 0 : e.key === "End" ? TABS.length - 1 : -1;
+    if (j < 0) return;
+    e.preventDefault();
+    setTab(TABS[j].id, true);
+  }
+  // The person's choice of tab, and nothing else, changes the tab. The frame
+  // is then made to fit it.
+  function setTab(id, focus = false) {
+    state.tab = id;
+    draw();
+    const strip = app.querySelector(".tabs");
+    const tab = keyed.get(`tab:${id}`);
+    showTab(strip, tab);
+    if (focus && tab) tab.focus({ preventScroll: true });
+    return resize(true);
+  }
+  // At a phone's width the strip scrolls sideways inside itself: the tab
+  // moved to is kept in sight, and a fading edge says more lies that way.
+  function showTab(strip, tab) {
+    const w = Number(strip?.clientWidth) || 0;
+    if (!w || !tab) return;
+    const l = Number(tab.offsetLeft) || 0; const r = l + (Number(tab.offsetWidth) || 0);
+    if (l < strip.scrollLeft + 8) strip.scrollLeft = Math.max(0, l - 32);
+    else if (r > strip.scrollLeft + w - 8) strip.scrollLeft = r - w + 32;
+    edges(strip);
+  }
+  function edges(strip) {
+    if (!strip) return;
+    const left = Number(strip.scrollLeft) || 0;
+    const room = (Number(strip.scrollWidth) || 0) - (Number(strip.clientWidth) || 0);
+    strip.classList[left > 2 ? "add" : "remove"]("more-left");
+    strip.classList[room - left > 2 ? "add" : "remove"]("more-right");
   }
 
   function drawGlance(d, p) {
@@ -468,7 +637,7 @@ section.sec { margin-top: calc(var(--s) * 3); }
       return el("li", {}, el("div", {}, badge(rated)), el("div", {},
         el("div", { class: "t", text: f.title }),
         f.says ? el("p", { class: "says", text: f.says }) : null,
-        el("p", { class: "see" }, el("button", { class: "linkish", type: "button", onclick: () => reveal(target) , text: `See ${target}` }))));
+        el("p", { class: "see" }, el("button", { class: "linkish", type: "button", "data-k": `see:${f.id}`, onclick: () => reveal(target), text: `See ${target}` }))));
     });
     const t = tally(d);
     const said = !firsts.length ? null : t.repeats ? `${plural(t.glance, "finding")}, ${t.glance === 1 ? "repeated" : "each repeated"} from sections 2 to 8` : plural(t.glance, "finding");
@@ -478,21 +647,18 @@ section.sec { margin-top: calc(var(--s) * 3); }
       items.length ? el("ul", { class: "matters" }, items) : null);
   }
 
-  function drawFilters(d, shown) {
-    const secs = (d.sections ?? []).filter((s) => s.number > 1);
-    const sel = el("select", { id: "sec", onchange: (e) => { state.section = e.target.value; draw(); } },
-      el("option", { value: "all", text: "All sections" }),
-      secs.map((s) => el("option", { value: String(s.number), selected: state.section === String(s.number), text: `${s.number}. ${s.title}` })));
-    const pool = d.findings.filter((f) => f.section !== 1);
-    const n = (l) => pool.filter((f) => (l === "unrated" ? !levelOf(f) : levelOf(f) === l)).length;
+  // Section 7's filter by level, on the Risks tab.
+  const keeps = (f, level) => level === "all" || (level === "unrated" ? !levelOf(f) : levelOf(f) === level);
+  function drawLevelFilter(d, shown) {
+    const pool = ofSection(d, RISKS);
+    const n = (l) => pool.filter((f) => keeps(f, l)).length;
     const chips = [["all", "All", pool.length], ...LEVELS.filter((l) => n(l)).map((l) => [l, LEVEL_WORD[l], n(l)]), ...(n("unrated") ? [["unrated", NOT_RATED, n("unrated")]] : [])];
-    const omitted = tally(d).omitted;
+    const more = sectionCount(d, RISKS) - pool.length;
     return el("div", { class: "filters" },
-      el("label", { for: "sec" }, "Section", sel),
       el("div", { class: "chips", role: "group", "aria-label": "Level" }, el("span", { class: "lbl", text: "Level" }),
-        chips.map(([key, word, count]) => el("button", { class: "chip", type: "button", "aria-pressed": state.level === key ? "true" : "false", onclick: () => { state.level = key; draw(); } },
+        chips.map(([key, word, count]) => el("button", { class: "chip", type: "button", "aria-pressed": state.level === key ? "true" : "false", "data-k": `lv:${key}`, onclick: () => { state.level = key; draw(); } },
           key !== "all" ? el("span", { class: `lv ${key}` }, shape(key, 11)) : null, el("span", { text: word }), el("span", { class: "c", text: String(count) })))),
-      el("p", { class: "showing", "aria-live": "polite", text: `Showing ${shown} of the ${plural(pool.length, "finding")} in sections 2 to 8${omitted ? `; ${omitted} more ${omitted === 1 ? "arrives" : "arrive"} with the report` : ""}` }));
+      el("p", { class: "showing", "aria-live": "polite", text: `Showing ${shown} of the ${plural(pool.length, "finding")} in section 7${more > 0 ? `; ${more} more ${more === 1 ? "arrives" : "arrive"} with the report` : ""}` }));
   }
 
   function copyText(d, f) {
@@ -526,14 +692,14 @@ section.sec { margin-top: calc(var(--s) * 3); }
     const place = placeOf(f);
     const row = el("li", { class: "row", id: `f-${f.id}` },
       el("div", { class: "line" },
-        el("button", { class: "toggle", type: "button", "aria-expanded": open ? "true" : "false", "aria-controls": detailId, onclick: () => { if (state.open.has(f.id)) state.open.delete(f.id); else state.open.add(f.id); draw(); } },
+        el("button", { class: "toggle", type: "button", "aria-expanded": open ? "true" : "false", "aria-controls": detailId, "data-k": `row:${f.id}`, onclick: () => { if (state.open.has(f.id)) state.open.delete(f.id); else state.open.add(f.id); draw(); } },
           rated ? badge(f) : null,
           el("span", { class: "t" },
             el("span", { class: "tt" }, el("span", { class: "chev", "aria-hidden": "true", text: open ? "▾" : "▸" }), f.title),
             place.text ? el("span", { class: place.src ? "place src" : "place", title: place.full || null }, breakable(place.text)) : null),
           cat ? el("span", { class: "cat", title: cat.name || cat.id }, el("span", { class: "id", text: cat.id }),
-            f.categories.length > 1 ? el("span", { class: "n-more", text: ` +${f.categories.length - 1}` }) : null) : null),
-        el("button", { class: "copy", type: "button", "aria-label": `Copy ${f.id} with its address`, onclick: () => doCopy(d, f), text: "Copy" })));
+            f.categories.length > 1 ? el("span", { class: "n-more", text: ` +${f.categories.length - 1}` }) : null) : null),
+        el("button", { class: "copy", type: "button", "aria-label": `Copy ${f.id} with its address`, "data-k": `copy:${f.id}`, onclick: () => doCopy(d, f), text: "Copy" })));
     if (open) row.append(drawDetail(d, f, detailId));
     return row;
   }
@@ -557,77 +723,121 @@ section.sec { margin-top: calc(var(--s) * 3); }
       dl);
   }
 
-  function drawSections(d) {
+  // A section's rows in the order drawn: the highest level first, else the
+  // report's order; on Risks, only the level the filter keeps.
+  function rowsOf(d, s) {
+    const level = s === RISKS ? state.level : "all";
+    return ofSection(d, s).map((f, i) => [f, i]).filter(([f]) => keeps(f, level)).sort((a, b) => rank(a[0]) - rank(b[0]) || a[1] - b[1]).map(([f]) => f);
+  }
+  function drawSection(d, p, s, pending) {
+    const all = ofSection(d, s);
+    const list = rowsOf(d, s);
+    const filtered = s === RISKS && state.level !== "all";
+    const coming = pending.has(s);
+    const n = sectionCount(d, s);
+    const missing = n - all.length;
+    const folded = list.length > FOLD_AT && !state.unfolded.has(s);
+    const visible = folded ? list.slice(0, FOLD_AT) : list;
+    const rated = all.some((f) => levelOf(f));
+    const count = filtered ? `${list.length} of ${all.length}` : !n && coming ? "none yet" : `${plural(n, "finding")}${coming ? " so far" : ""}`;
+    const head = el("div", { class: "sec-h" }, el("span", { class: "num", text: String(s) }), el("h2", { id: `s-${s}`, text: titleOf(d, s) }), el("span", { class: "count", text: count }));
+    const body = !list.length && missing > 0 && !filtered ? null : list.length
+      ? el("ul", { class: rated ? "rows" : "rows unrated", "aria-labelledby": `s-${s}` }, visible.map((f) => drawRow(d, f, rated)))
+      : el("p", { class: "empty", text: filtered ? "No finding of this level in this section." : coming ? "Nothing yet. This section fills in while Inspect runs." : d.partial && !running(p, d) ? "Nothing was posted for this section before the job ended." : "Nothing was found for this section." });
+    const notes = [];
+    if (missing > 0 && !filtered) notes.push(el("p", { class: "coming", text: `${plural(missing, "more finding")} without a level ${missing === 1 ? "is" : "are"} not in this copy yet; ${missing === 1 ? "it arrives" : "they arrive"} with the report.` }));
+    if (coming && list.length) notes.push(el("p", { class: "coming" }, el("span", { class: "pulse", "aria-hidden": "true" }), el("span", { text: "More findings for this section arrive once the model has judged it." })));
+    return { node: el("section", { class: "sec" }, head, body, notes,
+      folded ? el("button", { class: "btn more", type: "button", "data-k": `more:${s}`, onclick: () => { state.unfolded.add(s); draw(); }, text: `Show all ${list.length}` }) : null), shown: list.length };
+  }
+  // A tab none of whose sections has arrived: it says so, and names them.
+  function drawWaiting(d, t) {
+    return el("div", { class: "waitcard" },
+      el("div", { class: "msg" }, el("span", { class: "pulse", "aria-hidden": "true" }),
+        el("div", {}, el("strong", { text: "Nothing here yet." }),
+          el("p", { class: "muted", text: "Inspect posts these sections as it reads the code. This tab fills in by itself; you can read the others in the meantime." }))),
+      el("ul", { "aria-label": "Still to come" }, t.sections.map((s) => el("li", {}, el("span", { class: "num", text: String(s) }), el("span", { text: titleOf(d, s) }),
+        el("span", { class: "st" }, shape("todo", 12), el("span", { text: "Waiting" }))))));
+  }
+  function drawForSecurity(d) {
+    return el("section", { class: "forsec", "aria-labelledby": "forsec-h" },
+      el("div", {}, el("h2", { id: "forsec-h", text: "For your security team" }),
+        el("p", { text: "One plain-text file: the risks, highest first, the credentials it reads, what it can do on its own and what Inspect couldn't tell, each with its file and line." })),
+      el("button", { class: "btn", type: "button", "data-k": "save", onclick: () => doSave(d), text: "Save a summary for security" }));
+  }
+  function drawPanel(d, p, t, pending) {
     const out = [];
-    let shown = 0;
-    const secs = (d.sections ?? []).filter((s) => s.number > 1 && (state.section === "all" || String(s.number) === state.section));
-    for (const s of secs) {
-      const all = d.findings.filter((f) => f.section === s.number);
-      const list = all.filter((f) => state.level === "all" || (state.level === "unrated" ? !levelOf(f) : levelOf(f) === state.level))
-        .map((f, i) => [f, i]).sort((a, b) => rank(a[0]) - rank(b[0]) || a[1] - b[1]).map(([f]) => f);
-      if (state.level !== "all" && !list.length && state.section === "all") continue;
-      shown += list.length;
-      const folded = list.length > FOLD_AT && !state.unfolded.has(s.number);
-      const visible = folded ? list.slice(0, FOLD_AT) : list;
-      const live = running(state.params, d);
-      const rated = all.some((f) => levelOf(f));
-      const head = el("div", { class: "sec-h" }, el("span", { class: "num", text: String(s.number) }), el("h2", { id: `s-${s.number}`, text: s.title }),
-        el("span", { class: "count", text: state.level !== "all" ? `${list.length} of ${all.length}` : !all.length && live ? "none yet" : plural(all.length, "finding") }));
-      const body = list.length
-        ? el("ul", { class: rated ? "rows" : "rows unrated", "aria-labelledby": `s-${s.number}` }, visible.map((f) => drawRow(d, f, rated)))
-        : el("p", { class: "empty", text: state.level !== "all" ? "No finding of this level in this section." : live ? "Nothing yet for this section." : d.partial ? "Nothing was posted for this section before the job ended." : "Nothing was found for this section." });
-      out.push(el("section", { class: "sec" }, head, body,
-        folded ? el("button", { class: "btn more", type: "button", onclick: () => { state.unfolded.add(s.number); draw(); }, text: `Show all ${list.length}` }) : null));
+    if (t.id === "overview") {
+      out.push(drawGlance(d, p), drawSection(d, p, 2, pending).node, drawForSecurity(d));
+    } else if (tabStatus(d, t, pending).waiting) {
+      out.push(drawWaiting(d, t));
+    } else {
+      const drawn = t.sections.map((s) => drawSection(d, p, s, pending));
+      if (t.sections.includes(RISKS) && ofSection(d, RISKS).length) out.push(drawLevelFilter(d, drawn[t.sections.indexOf(RISKS)].shown));
+      out.push(...drawn.map((x) => x.node));
     }
-    if (!out.length) out.push(el("p", { class: "empty", text: "No finding of this level." }));
-    return { out, shown };
+    const held = (Array.isArray(d.held_back) ? d.held_back : []).filter((h) => t.sections.includes(Number(h.section)));
+    if (held.length) {
+      out.push(el("section", { class: "held" }, el("h2", { text: `${plural(held.length, "judgment")} held back` }),
+        el("ul", {}, held.map((h) => el("li", { text: `Section ${h.section}, ${h.title}: ${h.why}` })))));
+    }
+    return out;
+  }
+
+  function focusKey() {
+    for (let n = document.activeElement; n && n !== document.body && typeof n.getAttribute === "function"; n = n.parentNode) {
+      const k = n.getAttribute("data-k");
+      if (k) return k;
+    }
+    return null;
   }
 
   function draw() {
     const d = state.doc;
     if (!state.initialized && !d) return;
     const keep = window.scrollY;
-    const focusId = document.activeElement?.closest?.(".row")?.id;
-    const focusCopy = document.activeElement?.classList?.contains("copy");
+    const focused = focusKey();
+    const stripLeft = Number(app.querySelector(".tabs")?.scrollLeft) || 0;
+    keyed = new Map();
     app.replaceChildren();
     if (!d) { app.append(el("p", { class: "waiting", text: "Waiting for the report." })); resize(); return; }
     const p = state.params ?? {};
     const live = running(p, d);
+    const pending = pendingOf(d, p);
     const meta = el("p", { class: "meta" },
       el("span", { text: `Commit ${short(d.commit?.sha)}` }),
       d.commit?.date && dateOf(d.commit.date) ? el("span", { text: `committed ${dateOf(d.commit.date)}` }) : null,
       dateOf(d.inspected_at) ? el("span", { text: `${d.partial ? "inspection started" : "inspected"} ${dateOf(d.inspected_at)}` }) : null,
       el("span", { class: "tally", text: tallyWords(d, live) }));
-    const save = el("button", { class: "btn", type: "button", onclick: () => doSave(d), text: "Save a summary for security" });
     app.append(el("header", {},
       el("div", { class: "head" },
-        el("div", {}, el("p", { class: "eyebrow", text: live ? "Inspection report, so far" : d.partial ? "Inspection report, as posted while it ran" : "Inspection report" }), el("h1", { text: repoName(d) }), meta),
-        save),
+        el("div", {}, el("p", { class: "eyebrow", text: live ? "Inspection report, so far" : d.partial ? "Inspection report, as posted while it ran" : "Inspection report" }), el("h1", { text: repoName(d) }), meta)),
       drawLife(d, p)));
-    app.append(drawGlance(d, p));
-    const { out, shown } = drawSections(d);
-    if (d.findings.some((f) => f.section !== 1)) app.append(drawFilters(d, shown));
-    app.append(...out);
-    if (Array.isArray(d.held_back) && d.held_back.length) {
-      app.append(el("section", { class: "held" }, el("h2", { text: `${plural(d.held_back.length, "judgment")} held back` }),
-        el("ul", {}, d.held_back.map((h) => el("li", { text: `Section ${h.section}, ${h.title}: ${h.why}` })))));
-    }
+    const tabs = drawTabs(d, pending);
+    app.append(tabs);
+    app.append(...TABS.map((t) => {
+      const on = state.tab === t.id;
+      return el("div", { class: "panel", role: "tabpanel", id: `panel-${t.id}`, "aria-labelledby": `tab-${t.id}`, tabindex: "0", hidden: !on, "data-k": `panel:${t.id}` }, on ? drawPanel(d, p, t, pending) : null);
+    }));
     app.append(el("p", { class: "foot", text: "Inspect read this code without running any of it. It gives no verdict on bringing the agent in; that decision is yours." }));
-    if (focusId) {
-      const back = document.getElementById(focusId)?.querySelector(focusCopy ? ".copy" : ".toggle");
-      if (back) back.focus({ preventScroll: true });
-    }
+    const strip = app.querySelector(".tabs");
+    if (strip) { strip.scrollLeft = stripLeft; edges(strip); }
+    if (focused && keyed.has(focused)) keyed.get(focused).focus({ preventScroll: true });
     window.scrollTo(0, keep);
     resize();
   }
 
-  function reveal(id) {
-    const f = state.doc?.findings.find((x) => x.id === id);
+  // "See S7-010": the tab that holds the finding, then the finding itself,
+  // in sight and open, once the frame has been made to fit the tab.
+  async function reveal(id) {
+    const d = state.doc;
+    const f = d?.findings.find((x) => x.id === id);
     if (!f) return;
-    state.section = "all"; state.level = "all"; state.open.add(id);
-    const idx = state.doc.findings.filter((x) => x.section === f.section).sort((a, b) => rank(a) - rank(b)).indexOf(f);
-    if (idx >= FOLD_AT) state.unfolded.add(f.section);
-    draw();
+    if (f.section === RISKS && !keeps(f, state.level)) state.level = "all";
+    state.open.add(id);
+    if (rowsOf(d, f.section).indexOf(f) >= FOLD_AT) state.unfolded.add(f.section);
+    const fitted = setTab(tabOf(f.section).id);
+    await Promise.race([fitted, new Promise((r) => setTimeout(r, 600))]);
     const row = document.getElementById(`f-${id}`);
     if (row) { row.scrollIntoView({ block: "center" }); row.querySelector(".toggle")?.focus({ preventScroll: true }); }
   }
@@ -679,17 +889,30 @@ section.sec { margin-top: calc(var(--s) * 3); }
     toast(r && !r.error ? "The summary was handed over to save." : "The summary was not saved.");
   }
 
-  // The height the frame needs, asked for only when it changes.
-  let lastHeight = 0; let pendingResize = false;
-  function resize() {
-    if (!state.initialized || pendingResize) return;
-    pendingResize = true;
-    requestAnimationFrame(() => {
-      pendingResize = false;
-      // The content's own height: the document's would never shrink below
-      // the frame's, so a filter that shortens the page would leave a gap.
-      const h = Math.ceil(document.body.getBoundingClientRect().height);
-      if (h && h !== lastHeight) { lastHeight = h; ask("view/resize", { height: h }); }
+  // The height the frame needs: asked for when it changes, and after every
+  // change of tab even when it has not. The promise settles once the host
+  // has answered, so a finding is scrolled to only in a frame that fits.
+  let lastHeight = 0; let queued = false; let forceNext = false; let settle = [];
+  function resize(force = false) {
+    return new Promise((done) => {
+      if (!state.initialized) { done(); return; }
+      if (force) forceNext = true;
+      settle.push(done);
+      if (queued) return;
+      queued = true;
+      requestAnimationFrame(() => {
+        queued = false;
+        const waiters = settle.splice(0);
+        edges(app.querySelector(".tabs"));
+        // The content's own height: the document's would never shrink below
+        // the frame's, so a shorter tab would leave a gap.
+        const h = Math.ceil(document.body.getBoundingClientRect().height);
+        const send = h && (h !== lastHeight || forceNext);
+        forceNext = false;
+        if (!send) { for (const w of waiters) w(); return; }
+        lastHeight = h;
+        ask("view/resize", { height: h }).then(() => { for (const w of waiters) w(); });
+      });
     });
   }
   if (typeof ResizeObserver === "function") new ResizeObserver(() => resize()).observe(document.body);

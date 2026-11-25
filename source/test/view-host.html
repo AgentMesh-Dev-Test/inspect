@@ -1,0 +1,125 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; frame-src 'self' about: data:; img-src data:">
+<title>Stand-in host for Inspect's report view</title>
+<!--
+  A stand-in for the Next app's view host (app-next/src/view-frame.ts at
+  AgentMesh 857f8fb9c; the Descriptor to user interface binding 0.2.0,
+  Section 9), for drawing views/report.html in a real browser without the
+  platform. test/view-shots.mjs opens it in headless Edge and drives it.
+
+  Like Next's host it puts the view in an iframe sandboxed with allow-scripts
+  alone (an opaque origin: no network, no storage), lays the binding's
+  content security policy into the view's document, answers the bridge's
+  JSON-RPC 2.0 messages, and hands the view the twelve --ca-* tokens read
+  from Next's own custom properties, light and dark, with Next's fixed size,
+  radius and space. It loads nothing. Everything it hears is kept in
+  window.host.log, and a request the view did not declare, or a message
+  outside the bridge, is kept in window.host.broken.
+-->
+<style>
+:root {
+  --bg: #F3F4F0; --surface: #FBFBF8; --fg: #0D1B1E; --muted: #475556; --line: #D4DAD3;
+  --accent-ink: #8A4F00; --warn: #8A4F00;
+  --body: 'Instrument Sans', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  --mono: 'Martian Mono', ui-monospace, 'SFMono-Regular', Menlo, Consolas, monospace;
+  --box: 690px;
+}
+:root[data-theme="dark"] {
+  --bg: #0A1417; --surface: #0F1D22; --fg: #E7EFEC; --muted: #97AAA5; --line: #1C2E33;
+  --accent-ink: #F5BC64; --warn: #F5BC64;
+}
+html, body { margin: 0; background: var(--bg); color: var(--fg); font-family: var(--body); }
+.page { padding: 24px 16px 48px; }
+.box { width: var(--box); max-width: 100%; margin: 0 auto; }
+.box h2 { font-size: 15px; font-weight: 650; margin: 0 0 10px; }
+iframe { width: 100%; height: 240px; border: 0; display: block; background: transparent; }
+iframe.loading { visibility: hidden; height: 0 !important; }
+</style>
+</head>
+<body>
+<div class="page"><div class="box" id="box"><h2>What came back</h2></div></div>
+<script>
+"use strict";
+(() => {
+  const DECLARED = ["resize", "copy-text", "save-file"];
+  const FROM_VIEW = { "view/ready": null, "view/report-failure": null, "view/resize": "resize", "view/propose-inputs": "propose-inputs", "view/save-file": "save-file", "view/copy-text": "copy-text" };
+  const TOKEN_SOURCES = { "--ca-color-background": "--bg", "--ca-color-surface": "--surface", "--ca-color-text": "--fg", "--ca-color-text-muted": "--muted", "--ca-color-accent": "--accent-ink", "--ca-color-border": "--line", "--ca-color-danger": "--warn", "--ca-font-body": "--body", "--ca-font-mono": "--mono" };
+  const TOKEN_FIXED = { "--ca-font-size": "15px", "--ca-radius": "12px", "--ca-space": "12px" };
+  const VIEW_CSP = ["default-src 'none'", "script-src 'unsafe-inline'", "style-src 'unsafe-inline'", "img-src data: blob:", "media-src data: blob:", "font-src data: blob:", "connect-src 'none'", "frame-src 'none'", "child-src 'none'", "worker-src 'none'", "object-src 'none'", "manifest-src 'none'", "form-action 'none'", "base-uri 'none'"].join("; ");
+  const box = document.getElementById("box");
+  const host = { log: [], broken: [], ready: false, live: false, saved: [], copied: [], heights: [] };
+  window.host = host;
+  let frame = null; let nextId = 1; let initId = null; let pending = null;
+
+  const tokens = () => {
+    const cs = getComputedStyle(document.documentElement);
+    const out = {};
+    for (const [ca, own] of Object.entries(TOKEN_SOURCES)) { const v = cs.getPropertyValue(own).trim(); if (v) out[ca] = v; }
+    return { ...out, ...TOKEN_FIXED };
+  };
+  const scheme = () => (document.documentElement.dataset.theme === "dark" ? "dark" : "light");
+  const post = (m) => frame.contentWindow.postMessage(m, "*");
+  const reply = (id, result) => { if (id !== undefined) post({ jsonrpc: "2.0", id, result }); };
+
+  function frameDocument(html) {
+    const meta = `<meta http-equiv="Content-Security-Policy" content="${VIEW_CSP}">`;
+    if (/<head(\s[^>]*)?>/i.test(html)) return html.replace(/<head(\s[^>]*)?>/i, (h) => `${h}${meta}`);
+    return `${meta}${html}`;
+  }
+
+  window.addEventListener("message", (e) => {
+    if (!frame || e.source !== frame.contentWindow) return;
+    const m = e.data;
+    host.log.push(m);
+    if (!m || m.jsonrpc !== "2.0") { host.broken.push({ why: "outside the bridge", m }); return; }
+    if (m.method === undefined) {
+      if (m.id === initId && Array.isArray(m.result?.requests)) {
+        const outside = m.result.requests.filter((r) => !DECLARED.includes(r));
+        if (outside.length) host.broken.push({ why: "undeclared requests", outside });
+        host.live = true;
+        if (pending) { const d = pending; pending = null; host.data(d.text, d.o); }
+      }
+      return;
+    }
+    if (!(m.method in FROM_VIEW)) { host.broken.push({ why: "unknown method", m: m.method }); return; }
+    const needs = FROM_VIEW[m.method];
+    if (needs && !DECLARED.includes(needs)) { host.broken.push({ why: "undeclared request", m: m.method }); return; }
+    const p = m.params ?? {};
+    if (m.method === "view/ready") { host.ready = true; host.readyAt = performance.now(); frame.classList.remove("loading"); }
+    else if (m.method === "view/report-failure") host.broken.push({ why: "the view reported a failure", message: p.message });
+    else if (m.method === "view/resize") { const h = Math.round(Math.min(20000, Math.max(40, Number(p.height)))); frame.style.height = `${h}px`; host.heights.push(h); reply(m.id, { height: h }); }
+    else if (m.method === "view/copy-text") { host.copied.push(p.text); reply(m.id, { copied: true }); }
+    else if (m.method === "view/save-file") { host.saved.push({ name: p.name, media_type: p.media_type, chars: String(p.text ?? "").length }); reply(m.id, { saved: true }); }
+  });
+
+  /** Put the view's bytes in a frame, as Next does, and initialize it. */
+  host.start = (html, o = {}) => {
+    document.documentElement.dataset.theme = o.scheme === "dark" ? "dark" : "light";
+    if (o.box) document.documentElement.style.setProperty("--box", `${Number(o.box)}px`);
+    frame = document.createElement("iframe");
+    frame.setAttribute("sandbox", "allow-scripts");
+    frame.setAttribute("referrerpolicy", "no-referrer");
+    frame.title = "Inspect's report";
+    frame.className = "loading";
+    host.startedAt = performance.now();
+    frame.addEventListener("load", () => {
+      initId = nextId++;
+      post({ jsonrpc: "2.0", id: initId, method: "view/initialize", params: { version: "descriptor-view-v1", view: { id: "report", for: { offering: "inspect-a-repository", output: "inspection" } }, tokens: tokens(), color_scheme: scheme(), locale: "en-US", width: Math.round(box.clientWidth) } });
+    }, { once: true });
+    frame.srcdoc = frameDocument(html);
+    box.appendChild(frame);
+  };
+  /** view/data: the report's text, its lifecycle and the job's state. */
+  host.data = (text, o = {}) => {
+    const d = { text, o };
+    if (!host.live) { pending = d; return; }
+    post({ jsonrpc: "2.0", method: "view/data", params: { name: "inspection", media_type: "application/vnd.agentmesh.inspection-report+json", text, about: null, lifecycle: o.lifecycle ?? null, job_state: o.job_state ?? "completed", descriptor: null } });
+  };
+})();
+</script>
+</body>
+</html>
