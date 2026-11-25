@@ -1,6 +1,6 @@
 {
   "format": "agent-descriptor-v1",
-  "agent_version": "0.2.0",
+  "agent_version": "0.2.1",
   "name": "Inspect",
   "summary": "Reads an outside agent's code on GitHub at one commit, without running any of it, and reports what it does and how safe it is.",
   "does": "Inspect reads an outside agent's code in a public GitHub repository at one commit, without running any of it, and hands back an inspection report on what the agent does and how safe it is: a list of findings in eight sections, each citing a file and line at the commit. Scripts collect the facts; a model writes only the judgments, and each judgment cites the facts it rests on. It gives no verdict on bringing the agent in and judges no fit with anyone's plan.",
@@ -816,7 +816,7 @@
         "output": "inspection"
       },
       "file": "views/report.html",
-      "digest": "sha256:c61e8f8d1966a80a6ed8be76f13022e00e8ad1d8896bc3c85f8fc3b018c957d9",
+      "digest": "sha256:e8d075de783125c609b0a85569056f6046b3853d33b248c9ec004ed54bc3a3e5",
       "requests": [
         "resize",
         "copy-text",

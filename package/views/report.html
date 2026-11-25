@@ -81,6 +81,7 @@ h1 { font-size: 1.55em; line-height: 1.2; font-weight: 650; margin-top: calc(var
 .now .pulse { width: 0.55em; height: 0.55em; border-radius: 50%; background: var(--accent); flex: none; transform: translateY(-0.05em); animation: pulse 1.6s ease-in-out infinite; }
 @keyframes pulse { 50% { opacity: 0.3; } }
 @media (prefers-reduced-motion: reduce) { .now .pulse { animation: none; } }
+.stopped.notice { border-color: var(--border); background: var(--surface); }
 .stopped { margin-top: calc(var(--s) * 1.5); border: 1px solid var(--danger); border-radius: var(--radius); padding: calc(var(--s) * 1) calc(var(--s) * 1.5); display: flex; gap: 0.6em; align-items: flex-start; }
 .note { margin-top: calc(var(--s) * 1); font-size: 0.86em; color: var(--muted); }
 
@@ -347,13 +348,18 @@ section.sec { margin-top: calc(var(--s) * 3); }
     const src = Array.isArray(f.source) ? f.source[0] : null;
     return { text: src ? `from ${SYSTEM_WORD[src.system] ?? src.system}` : "", full: src ? `${src.call}` : "", src: true };
   };
+  // The job's state, when the host gives it, says whether the job runs; a
+  // working copy alone says so only when the host gives no state.
   function running(p, d) {
     const js = String(p?.job_state ?? "").toLowerCase();
-    if (["failed", "canceled", "cancelled", "rejected"].includes(js)) return false;
-    return Boolean(d?.partial) || js === "working" || js === "submitted" || js === "input_required";
+    if (js) return js === "working" || js === "submitted" || js === "input_required";
+    return Boolean(d?.partial);
   }
 
-  // Where the report is: running, draft, accepted, published, or stopped.
+  // Where the report is: running, draft, accepted, published; stopped; or
+  // finished without its report, when the job ended and only the working
+  // copy arrived (DESCRIPTOR-UI Section 6, rule 1: answered without its
+  // deliverable, so never shown as a draft).
   function lifecycle(d, p) {
     const js = String(p?.job_state ?? "").toLowerCase();
     const life = typeof p?.lifecycle === "string" ? p.lifecycle.toLowerCase() : null;
@@ -362,6 +368,7 @@ section.sec { margin-top: calc(var(--s) * 3); }
     if (life === "draft") return { step: 1 };
     if (life === "accepted") return { step: 2 };
     if (life === "published") return { step: 3 };
+    if (d?.partial) return { short: true };
     return { step: null };
   }
   function drawLife(d, p) {
@@ -371,6 +378,12 @@ section.sec { margin-top: calc(var(--s) * 3); }
       out.push(el("div", { class: "stopped", role: "status" }, el("span", { class: "lv critical" }, shape("stop", 16)),
         el("div", {}, el("strong", { text: at.js === "canceled" || at.js === "cancelled" ? "The job was canceled before the report was finished." : "The job stopped before the report was finished." }),
           el("p", { class: "muted", text: "These are the findings it made before it stopped." }))));
+      return out;
+    }
+    if (at.short) {
+      out.push(el("div", { class: "stopped notice", role: "status" }, el("span", { class: "lv none" }, shape("todo", 16)),
+        el("div", {}, el("strong", { text: "Finished, but the full report did not arrive." }),
+          el("p", { class: "muted", text: "These are the findings it posted while it ran. The whole report, with the facts behind each finding, was not delivered." }))));
       return out;
     }
     const steps = ["Running", "Draft", "Accepted", "Published"];
@@ -527,7 +540,7 @@ section.sec { margin-top: calc(var(--s) * 3); }
         el("span", { class: "count", text: state.level !== "all" ? `${list.length} of ${all.length}` : !all.length && live ? "none yet" : plural(all.length, "finding") }));
       const body = list.length
         ? el("ul", { class: rated ? "rows" : "rows unrated", "aria-labelledby": `s-${s.number}` }, visible.map((f) => drawRow(d, f, rated)))
-        : el("p", { class: "empty", text: state.level !== "all" ? "No finding of this level in this section." : live ? "Nothing yet for this section." : d.partial ? "The job stopped before this section was judged." : "Nothing was found for this section." });
+        : el("p", { class: "empty", text: state.level !== "all" ? "No finding of this level in this section." : live ? "Nothing yet for this section." : d.partial ? "Nothing was posted for this section before the job ended." : "Nothing was found for this section." });
       out.push(el("section", { class: "sec" }, head, body,
         folded ? el("button", { class: "btn more", type: "button", onclick: () => { state.unfolded.add(s.number); draw(); }, text: `Show all ${list.length}` }) : null));
     }
@@ -553,7 +566,7 @@ section.sec { margin-top: calc(var(--s) * 3); }
     const save = el("button", { class: "btn", type: "button", onclick: () => doSave(d), text: "Save a summary for security" });
     app.append(el("header", {},
       el("div", { class: "head" },
-        el("div", {}, el("p", { class: "eyebrow", text: live ? "Inspection report, so far" : "Inspection report" }), el("h1", { text: repoName(d) }), meta),
+        el("div", {}, el("p", { class: "eyebrow", text: live ? "Inspection report, so far" : d.partial ? "Inspection report, as posted while it ran" : "Inspection report" }), el("h1", { text: repoName(d) }), meta),
         save),
       drawLife(d, p)));
     app.append(drawGlance(d, p));
@@ -595,6 +608,7 @@ section.sec { margin-top: calc(var(--s) * 3); }
     const places = (f, indent) => (f.evidence ?? []).slice(0, 3).map((e) => { const a = address(d, e.file, e.line); return `${indent}${one(e.file)} line ${e.line}${a ? `: ${a}` : ""}`; });
     const cat = (f) => (f.categories ?? []).map((x) => one(x.name && x.name !== x.id ? `${x.id} ${x.name}` : x.id)).join("; ");
     const where = at.stopped ? "The job stopped before the report was finished; this summary is of the findings it made."
+      : at.short ? "The job finished, but the full report did not arrive; this summary is of the findings it posted while it ran."
       : at.step === 0 ? `The job is still running (${one(d.partial?.stage)}); this summary is of the findings so far.`
       : at.step === 1 ? "Delivered, and waiting for review." : at.step === 2 ? "Delivered and accepted." : at.step === 3 ? "Delivered, accepted and published." : "Delivered.";
     const lines = [

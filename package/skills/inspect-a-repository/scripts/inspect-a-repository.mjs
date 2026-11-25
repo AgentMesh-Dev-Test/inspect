@@ -41,7 +41,7 @@ import { judge } from "./judge.mjs";
 import { checkDrafts, checkGlance } from "./checks.mjs";
 import { buildReport, markdownOf, notJudged, replyOf, scriptFindings } from "./report.mjs";
 
-export const VERSION = "0.2.0";
+export const VERSION = "0.2.1";
 const DAY_MS = 24 * 60 * 60 * 1000;
 
 /**
@@ -148,16 +148,23 @@ export async function inspect({ text, workDir, env = process.env, fetchImpl = fe
   }
 }
 
-/** Write what a job hands back under its folder: the three pieces and pieces.json. */
+/** The step every piece comes from: the offering's own id, as the adapter's
+ *  collector needs on each entry of pieces.json. An entry without one is
+ *  dropped from the delivery, which is how 0.1.0 to 0.2.0 delivered nothing. */
+export const STEP = "inspect-a-repository";
+
+/** Write what a job hands back under its folder: the three pieces and
+ *  pieces.json, each entry with its name, step, path, media type and one
+ *  sentence saying what it is. */
 export function writeOutputs(jobDir, { report, bom }) {
   mkdirSync(join(jobDir, "out"), { recursive: true });
   writeFileSync(join(jobDir, "out", "inspection.json"), `${JSON.stringify(report, null, 2)}\n`);
   writeFileSync(join(jobDir, "out", "inspection.md"), markdownOf(report));
   writeFileSync(join(jobDir, "out", "sbom.cdx.json"), `${JSON.stringify(bom, null, 2)}\n`);
   const pieces = [
-    { name: "inspection", path: "out/inspection.json", media_type: "application/vnd.agentmesh.inspection-report+json" },
-    { name: "inspection-md", path: "out/inspection.md", media_type: "text/markdown" },
-    { name: "sbom", path: "out/sbom.cdx.json", media_type: "application/vnd.cyclonedx+json" },
+    { name: "inspection", step: STEP, path: "out/inspection.json", media_type: "application/vnd.agentmesh.inspection-report+json", about: "The inspection report: the findings in eight sections, each citing a file and line at the commit, with the facts they rest on." },
+    { name: "inspection-md", step: STEP, path: "out/inspection.md", media_type: "text/markdown", about: "The same report as Markdown, for a person to read." },
+    { name: "sbom", step: STEP, path: "out/sbom.cdx.json", media_type: "application/vnd.cyclonedx+json", about: "The dependency list as a CycloneDX bill of materials, made by rule." },
   ];
   writeFileSync(join(jobDir, "pieces.json"), `${JSON.stringify(pieces, null, 2)}\n`);
 }

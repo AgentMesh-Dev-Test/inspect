@@ -2,7 +2,7 @@
   "format": "spec-v1",
   "product": {
     "name": "inspect",
-    "version": "0.2.0",
+    "version": "0.2.1",
     "kind": "agent"
   },
   "purpose": "Inspect takes a public GitHub repository address and a commit, reads the agent's code at that commit without running any of it, and hands back an inspection report on what the agent does and how safe it is. The report is a list of findings in eight sections, each finding standing on its own and citing a file and line at the commit. Its reader is the person in charge of a department's agents, deciding whether to bring in an outside agent before anything is installed or given a credential. It judges no fit with anyone's plan, matches the agent to no catalog role and gives no bring-it-in-or-not verdict.",
@@ -1381,9 +1381,19 @@
           "kind": "interface",
           "priority": "must",
           "verify": "test",
-          "shall": "The agent's package shall carry a view of the report, views/report.html, declared in the descriptor's views[] by its digest for the output inspection (Common Agent Specification 6.13.6; DESCRIPTOR-UI 0.2.0 Section 9): one self-contained file that loads nothing, speaks only the bridge's methods, asks only for resize, copy-text and save-file, draws with the --ca-* tokens and a fallback for each in light and dark, opens on At a glance with the risks by level, then the eight sections one line per finding with its level, category and file and line, sorts risks by level, filters by section and by level, copies a finding with the address of its line at the commit, saves a plain summary for security, draws the working copy as the findings so far with the stage and the report's place in its lifecycle, and gives every level a word and a shape, never a color alone.",
+          "shall": "The agent's package shall carry a view of the report, views/report.html, declared in the descriptor's views[] by its digest for the output inspection (Common Agent Specification 6.13.6; DESCRIPTOR-UI 0.2.0 Section 9): one self-contained file that loads nothing, speaks only the bridge's methods, asks only for resize, copy-text and save-file, draws with the --ca-* tokens and a fallback for each in light and dark, opens on At a glance with the risks by level, then the eight sections one line per finding with its level, category and file and line, sorts risks by level, filters by section and by level, copies a finding with the address of its line at the commit, saves a plain summary for security, draws the working copy as the findings so far with the stage and the report's place in its lifecycle, and, when the job has ended and only the working copy arrived, says the job finished but the full report did not arrive, and gives every level a word and a shape, never a color alone.",
           "source": {
             "said": "Package Inspect with a view, to the published Common Agent spec, as Inspect 0.2.0."
+          }
+        },
+        {
+          "id": "F5.R10",
+          "kind": "interface",
+          "priority": "must",
+          "verify": "test",
+          "shall": "The agent shall list each delivered piece in pieces.json with its name, its step (the offering's id, inspect-a-repository), its path under out/, its media type and one sentence saying what it is, as the adapter's collector needs to put the piece on the reply.",
+          "source": {
+            "said": "The delivery never landed: the platform got the answer text but no job manifest and no pieces."
           }
         }
       ],

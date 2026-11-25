@@ -20,7 +20,7 @@ import { inspect, writeOutputs } from "../scripts/inspect-a-repository.mjs";
 import { createEmitter, liveUpdates, pieceData, PIECE_CHARS, UPDATES_FILE, WORKING_COPY } from "../scripts/emit.mjs";
 import { markdownOf, workingCopy, WORKING_COPY_CHARS } from "../scripts/report.mjs";
 import { checkDelivered } from "./delivered-formats.test.mjs";
-import { ENV, SHA, inTemp, world, model, smallAgent, reportSchema, schemaProblems } from "./helpers.mjs";
+import { ENV, SHA, descriptor, inTemp, world, model, smallAgent, reportSchema, schemaProblems } from "./helpers.mjs";
 
 const glanceOf = (ids) => (prompt) => ({ text: JSON.stringify({ glance: ids.filter((id) => prompt.includes(id)).map((id) => ({ repeats: id, says: `Finding ${id} matters.` })) }) });
 const run = (text, { files = smallAgent(), answers = [], onFinding, ...w } = {}) => inTemp(async (at) => ({ at, ...(await inspect({ text, workDir: at, env: ENV, fetchImpl: world({ files, ...w }).fetchImpl, ask: model(answers).ask, onFinding })) }));
@@ -194,6 +194,15 @@ test("[F5.A4] the reply opens with its header, gives section 1's findings one to
     assert.ok(existsSync(join(job, "out", "inspection.json")) && existsSync(join(job, "out", "inspection.md")) && existsSync(join(job, "out", "sbom.cdx.json")));
     const pieces = JSON.parse(readFileSync(join(job, "pieces.json"), "utf8"));
     assert.deepEqual(pieces.map((p) => p.name), ["inspection", "inspection-md", "sbom"]);
+    // The adapter's collector (jobCollect) drops an entry that names no piece
+    // and no step, or whose path leaves the job folder: until 0.2.1 every
+    // entry lacked its step, and the sender got the answer with no files.
+    for (const p of pieces) {
+      assert.equal(typeof p.name, "string");
+      assert.equal(p.step, descriptor().offerings[0].id, `${p.name} names the offering as its step`);
+      assert.match(p.path, /^out\/[^/]+$/, `${p.name} is in out/`);
+      assert.ok(p.about, `${p.name} says what it is`);
+    }
     assert.deepEqual(checkDelivered(job), []);
   });
 });

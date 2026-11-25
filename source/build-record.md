@@ -134,3 +134,15 @@ The design-agent proof, sent at 9:14 am Mountain time, Task 01a2137c-d5b8-7000-8
 | 182.3 s | the answer reaches the sender, with inspection.json, inspection.md and sbom.cdx.json |
 
 The delivered report fits its schema. The answer came 85 seconds sooner than in the 0.1.2 proof, because the scripts' findings are now one upload.
+
+## 0.2.1: the delivery reaches the sender, and the view says when it did not
+
+- **The delivery.** From 0.1.0 to 0.2.0, the job's files never reached the sender. The adapter's collector (jobCollect) drops every pieces.json entry that names no step, and Inspect's entries named none. So the answer went out with no job manifest and no files: no inspection.json, no inspection.md, no sbom.cdx.json.
+  - The proofs above read the report from the job folder on the bucket, not from the delivery, so they did not show it.
+  - The views-host work found it: a run from the Next app on dev ended answered with no versions.
+  - Each entry now names its step, the offering's id inspect-a-repository, as the channel packages do, with one sentence saying what the piece is.
+  - test/report.test.mjs [F5.A4] holds every entry to what the collector needs.
+- **The view, when the job ended and only the working copy arrived.**
+  - The host sends view/data once more with job_state completed and lifecycle null: answered without its deliverable (DESCRIPTOR-UI Section 6, rule 1).
+  - 0.2.0 still drew Running, because the working copy says partial.
+  - 0.2.1 reads the job's state first. It draws "Finished, but the full report did not arrive", with the findings that were posted. A failed or canceled job still draws as stopped.
