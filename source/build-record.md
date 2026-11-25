@@ -193,3 +193,9 @@ How it was checked in a browser:
 - The screenshots show each item At a glance with its level, the three counts agreeing, and every title of section 7 whole, folded and unfolded.
 
 It was made in the agent repository directly. The build folder in adlc-plugin-proof still holds 0.2.1's view.
+
+The 0.2.2 install and proof on dev:
+- Filed through the deploy ticket at 11:50 am Mountain time on 2026-11-25 and approved as asking for nothing new. It has been running as inspect.platform@agentmesh.ai since 11:54 am.
+- Dev's Descriptor for it, GET /v1/agents/:key/descriptor, gives agent_version 0.2.2 and names views/report.html at sha256:476fb1bdf933f94b7ee7f8fe308d3fb5f688961053090a27062080f570a8f803.
+- GET /v1/agents/:key/views/:digest serves the view for that digest, 46,037 bytes, and the bytes hash to it.
+- No live run was made: the view draws the report as 0.2.1 delivers it, and the stand-in host drew a delivered one.
