@@ -30,3 +30,15 @@ The build folder is agents/inspect on branch adlc/inspect of AgentMesh-Dev-Test/
 ## Dev
 
 - OSV's address is the setting OSV_API, bound in dev's env/dev.json (AgentMesh PR 1035, merged; dev services deployed with deploy.sh) and in the dev fleet host's /opt/fleet/env/dev.json (backup dev.json.bak-osv-20261125T133731Z). Production has no binding yet.
+- 0.1.0 was filed at 7:18 am Mountain time on 2026-11-25 (deploy request dr_bHQNgH4wvfdYbPbkjUk08yOl), approved by the platform's deploy key and running as inspect.platform@agentmesh.ai at 7:21. Its conformance check came back inconclusive (7 cases inconclusive, 1 flagged for review, none failed).
+- 0.1.1 (the human-step facts from a skill's instructions and from a question offering an approval, found missing by the first proof) was filed as an update through the same ticket (dr_gXLdCrSNZvnXCgwCertOK5yS), approved as asking for nothing new, and running at 7:32.
+
+## The proof on dev: langchain-ai/design-agent at 86d8f66
+
+0.1.1 answered in about four minutes (job 01a21320-1e86-7000-9a83-38addc5c2ae4): 224 findings in the eight sections, none held back, 1,116 facts, 4 GitHub calls, 9 OSV calls, 3 model calls. The report fits its own schema, and the commit is marked checked. Against what was read by hand:
+
+- 35 skills: the report counts 36 of the agent's own, and 15 more kept for coding assistants under .agents/skills (S3-001, one SKILL.md for each under skills/). The repository's own docs/architecture/context-and-failures.md line 16 says 36 skills, so the hand count was one short.
+- 5 systems: the report finds 10 (S5-010 to S5-019): Slack, LangSmith, the model providers, Google Gemini audio and grounding, HeyGen (skills/media-use/audio/scripts/lib/heygen.mjs:16), ElevenLabs (lib/tts.mjs:31), PostHog telemetry (skills/media-use/scripts/lib/telemetry.mjs:13), GitHub, Paper and MCP servers, and run-time downloads. The hand count missed the skill scripts' services.
+- 2 steps that need a person: confirmed. The plan approval (S4-009, skills/faceless-explainer/SKILL.md:94) and the approval before the final render (S4-010, skills/hyperframes-cli/SKILL.md:27; S4-011, src/design_agent/pipelines/launch_film.py:178). No tool call waits for a person in code: interrupt_on is an empty mapping (S4-012, src/design_agent/assembly.py:362).
+- Apache-2.0: confirmed (S2-004, LICENSE:1, and GitHub's record).
+- Two skills that can be lifted out, brand-lint.mjs and contrast-report.mjs: brand-lint.mjs is confirmed, with workspace/tools/toolchain.mjs, which it imports from its own folder, reading two settings with defaults (S3-103; toolchain.mjs:39 and :40). contrast-report.mjs cannot be lifted out on its own: its package-loader.mjs loads a package whose name it works out at run time (S3-112; package-loader.mjs:54) and installs it with npm when it is missing. In all, the report finds 59 scripts that can be lifted out.
