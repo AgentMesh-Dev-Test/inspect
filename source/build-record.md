@@ -56,7 +56,7 @@ What the dev fleet needed, dev only, each change backed up:
   - Its last read before the reply could miss the end of the file: the first proof put 179 of 226 findings on the Task.
   - The host's reads now and then get ESTALE (-116) while the worker rewrites the file. The adapter reads again the next second, and nothing is lost.
 
-The proof, on the sender's Task as the core holds it: langchain-ai/design-agent at 86d8f66, sent 15:36:02 UTC on 2026-11-25, Task 01a21359-827b-7000-b162-bad4902a3d13.
+The proof, on the sender's Task as the core holds it: langchain-ai/design-agent at 86d8f66, sent at 8:36 am Mountain time on 2026-11-25, Task 01a21359-827b-7000-b162-bad4902a3d13.
 
 | After the send | On the sender's Task |
 |---|---|
@@ -116,11 +116,11 @@ What it found:
 
 The 0.2.0 install and proof on dev:
 
-- 0.2.0 was filed as an update through the deploy ticket and approved as asking for nothing new. It has been running since 16:14 UTC on 2026-11-25.
+- 0.2.0 was filed as an update through the deploy ticket and approved as asking for nothing new. It has been running since 9:14 am Mountain time on 2026-11-25.
 - The installed package holds views/report.html at its declared digest, sha256:c61e8f8d1966a80a6ed8be76f13022e00e8ad1d8896bc3c85f8fc3b018c957d9.
 - The route a view host will read it from, GET /v1/agents/:key/views/:digest, is being added by the views-host work. It answered 404 on dev at the time of the proof.
 
-The design-agent proof, sent 16:14:37 UTC, Task 01a2137c-d5b8-7000-8b47-27ecefdfb11e:
+The design-agent proof, sent at 9:14 am Mountain time, Task 01a2137c-d5b8-7000-8b47-27ecefdfb11e:
 
 | After the send | On the sender's Task |
 |---|---|
