@@ -820,7 +820,7 @@
         "output": "inspection"
       },
       "file": "views/report.html",
-      "digest": "sha256:82f9594aaba922d26643c970228b32aa6eed1553b168c31c0e01b1a1064d03f5",
+      "digest": "sha256:f21740062774ff937b58c3024f73cbe9a5c4a6521a359cebb97bc7fe789d5c29",
       "requests": [
         "resize",
         "copy-text",

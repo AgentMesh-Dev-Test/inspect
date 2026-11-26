@@ -805,9 +805,15 @@ button { font: inherit; color: inherit; cursor: pointer; }
     const creds = d.findings.filter((f) => f.section === 5 && f.kind === "credential" && f.detail?.read_by_code !== false && !named.has(f.detail?.env));
     const needOfCred = (f) => (f.detail?.how === "fails" ? "required" : f.detail?.how === "guard" || f.detail?.how === "default" ? "optional" : "unclear");
     const order = ["required", "optional", "unclear"];
+    // The credentials no system names, one row per system they open: "Google
+    // API key" and "Google application credentials" are Google's.
+    const systemWord = (t) => t.replace(/\s+(?:api\s+)?(?:application credentials|access token|service account|keys?|tokens?|secrets?|credentials|password)$/i, "").trim() || t;
+    const byName = new Map();
+    for (const f of creds) { const n = systemWord(displayTitle(f)); byName.set(n, [...(byName.get(n) ?? []), f]); }
+    const and = (xs) => (xs.length < 2 ? xs.join("") : `${xs.slice(0, -1).join(", ")} and ${xs.at(-1)}`);
     return [
       ...sys.map((f) => ({ finding: f, name: one(f.detail?.system) || displayTitle(f).split(":")[0], need: order.includes(f.detail?.need) ? f.detail.need : "unclear", supply: one(f.detail?.supply) })),
-      ...creds.map((f) => ({ finding: f, name: displayTitle(f), need: needOfCred(f), supply: `Your ${displayTitle(f)}` })),
+      ...[...byName].map(([name, group]) => ({ finding: group[0], group, name, title: name, need: order.find((n) => group.some((f) => needOfCred(f) === n)), supply: `Your ${and(group.map((f) => displayTitle(f)))}` })),
     ].map((x, i) => ({ ...x, i })).sort((a, b) => order.indexOf(a.need) - order.indexOf(b.need) || a.i - b.i);
   }
   function needBadge(need) {
@@ -825,16 +831,20 @@ button { font: inherit; color: inherit; cursor: pointer; }
       const byFinding = new Map(systems.map((x) => [x.finding, x]));
       out.push(drawRows(d, systems.map((x) => x.finding), { cls: "system", per: (f) => {
         const x = byFinding.get(f);
-        return { under: x.supply || (x.need === "unclear" ? "Not clear from the code" : ""), side: needBadge(x.need) };
+        return { title: x.title, under: x.supply || (x.need === "unclear" ? "Not clear from the code" : ""), side: needBadge(x.need) };
       }, detail: (f) => {
         const x = byFinding.get(f);
-        const users = skillsOf(f);
+        const users = [...new Set((x.group ?? [f]).flatMap((c) => skillsOf(c)))];
         const pairs = [];
         if (users.length) pairs.push(["Used by", refs(users.map((s) => skillButton(s, "used-by")))]);
         if (one(f.detail?.without)) pairs.push(["Without it", prose(f.detail.without)]);
         if (one(f.detail?.sends)) pairs.push(["What goes to it", prose(f.detail.sends)]);
         if (x.need === "unclear" && !x.supply) pairs.push(["What you supply", "Not clear from the code"]);
-        return [f.says ? el("p", {}, prose(f.says)) : null, pairs.length ? pairsOf(pairs) : null];
+        // A credential no system names says how the code reads it, in words:
+        // its words name the setting as the code writes it.
+        const HOW = { fails: "The code stops without it.", guard: "The code leaves out a feature without it.", default: "The code has a default for it.", plain: "The code reads it." };
+        const words = x.group ? x.group.map((c) => HOW[c.detail?.how] ?? "").filter(Boolean)[0] ?? "" : f.says;
+        return [words ? el("p", {}, prose(words)) : null, pairs.length ? pairsOf(pairs) : null];
       } }));
     }
     const spend = five.filter((f) => f.kind === "spend" || f.kind === "not-judged");

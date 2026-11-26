@@ -409,6 +409,9 @@ test("[F5.R9] What it reaches: one row per outside system, required or optional 
   assert.ok(sys.every((r) => r.querySelector(".need svg")?.markup), "each need has a shape");
   assert.deepEqual(sys.map((r) => r.querySelector(".under").textContent), ["A Slack app and its two tokens", "Your Gemini API key", "Your ElevenLabs key"]);
   assert.equal(rowOf(app, "S5-021"), undefined, "a credential a system names is in that system's row");
+  assert.equal(rowOf(app, "S5-020").querySelector(".name").textContent, "Gemini", "a credential no system names is the system it opens");
+  rowOf(app, "S5-020").querySelector(".toggle").click();
+  assert.equal(rowOf(app, "S5-020").querySelector(".detail p").textContent, "The code stops without it.", "in words, never the setting as the code writes it");
   assert.ok(!panel.querySelectorAll("h3").some((h) => h.textContent === "Credentials"), "no list of credentials");
   rowOf(app, "S5-011").querySelector(".toggle").click();
   const open = rowOf(app, "S5-011").querySelector(".detail");
