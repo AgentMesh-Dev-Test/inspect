@@ -61,6 +61,20 @@ export function fileAddress(repoUrl, sha, file) {
   if (u.protocol !== "https:" || u.hostname !== "github.com" || !/^[0-9a-f]{40}$/.test(String(sha ?? "")) || !file) return null;
   return `${u.origin}${u.pathname.replace(/\/+$/, "")}/blob/${sha}/${String(file).split("/").map(encodeURIComponent).join("/")}`;
 }
+/** The maker of a model, from the name the code gives it, or null. */
+export function makerOf(id) {
+  const t = String(id ?? "").toLowerCase();
+  if (/anthropic|claude/.test(t)) return "Anthropic";
+  if (/openai|gpt|\bo[1-9]\b|dall-?e|whisper/.test(t)) return "OpenAI";
+  if (/gemini|lyria|imagen|veo|google|palm/.test(t)) return "Google";
+  if (/eleven/.test(t)) return "ElevenLabs";
+  if (/mistral|mixtral/.test(t)) return "Mistral";
+  if (/llama|meta/.test(t)) return "Meta";
+  if (/grok|xai/.test(t)) return "xAI";
+  if (/deepseek/.test(t)) return "DeepSeek";
+  if (/cohere|command-r/.test(t)) return "Cohere";
+  return null;
+}
 /** Versions in order, by their numbers. */
 export const byVersion = (a, b) => { const x = String(a).split(/[.+-]/); const y = String(b).split(/[.+-]/); for (let i = 0; i < Math.max(x.length, y.length); i += 1) { const d = (Number(x[i]) || 0) - (Number(y[i]) || 0); if (d) return d; } return 0; };
 const day = (iso) => (trim(iso) ? trim(iso).slice(0, 10) : "not given"); // cut-ok: the date part of an ISO time, the whole time is in the fact
@@ -165,7 +179,13 @@ export function scriptFindings({ facts, ctx, owner, name, sha, repoUrl, osv = nu
     const names = [...new Set(models.map((m) => m.data.match))];
     const bySetting = models.filter((m) => m.data.chosen_by === "setting");
     const configFiles = [...new Set(configModels.map((m) => m.file))];
-    push(4, "model", "The models it names", `${names.length ? `Its code names ${plural(names.length, "model")}: ${names.join(", ")}.` : "Its code names no model."} ${bySetting.length ? `${plural(bySetting.length, "line")} choose${bySetting.length === 1 ? "s" : ""} a model through a setting (${[...new Set(bySetting.flatMap((m) => m.data.settings ?? []))].join(", ")}).` : names.length ? "No line that names one reads a setting." : ""}${configFiles.length ? ` Its configuration files name ${plural(new Set(configModels.map((m) => m.data.match)).size, "model")} more (${configFiles.join(", ")}).` : ""}`.trim(), [...models, ...configModels], { detail: { models: names, set_by_setting: [...new Set(bySetting.flatMap((m) => m.data.settings ?? []))], in_config: [...new Set(configModels.map((m) => m.data.match))] } });
+    // 0.3.4: its words name the makers, never a model's id, a setting or a
+    // file as the code writes them; those are in its detail and the Markdown.
+    const inConfig = [...new Set(configModels.map((m) => m.data.match))];
+    const makers = [...new Set([...names, ...inConfig].map(makerOf).filter(Boolean))];
+    const and = (xs) => (xs.length < 2 ? xs.join("") : `${xs.slice(0, -1).join(", ")} and ${xs.at(-1)}`);
+    const says = `${names.length ? `Its code names ${plural(names.length, "model")}${makers.length ? `, from ${and(makers)}` : ""}.` : "Its code names no model."}${bySetting.length ? ` A setting chooses the model in ${plural(bySetting.length, "place")}.` : names.length ? " No setting chooses one." : ""}${inConfig.length ? ` Its configuration names ${plural(inConfig.length, "model")} more.` : ""}`;
+    push(4, "model", "The models it names", says, [...models, ...configModels], { detail: { models: names, makers, set_by_setting: [...new Set(bySetting.flatMap((m) => m.data.settings ?? []))], in_config: inConfig, config_files: configFiles } });
   }
 
   // Section 5: each credential it expects, by name; one its tests alone read is said so.
@@ -382,7 +402,9 @@ function findingLine(f, report) {
   const d = f.detail ?? {};
   const need = f.kind === "system" && d.need ? ` ${d.need === "required" ? "Required" : d.need === "optional" ? "Optional" : "Whether it is required is not clear from the code"}.${d.supply ? ` You supply: ${mdText(d.supply)}.` : ""}${d.without ? ` Without it: ${mdText(d.without)}.` : ""}` : "";
   const safe = d.safe ? ` To make it safe: ${mdText(d.safe)}` : "";
-  return `- ${level}**${mdText(f.title)}.** ${mdText(f.says)}${need}${advisories}${safe}${cats ? ` Category: ${cats}.` : ""}${places.length ? ` At ${places.join(", ")}${more}.` : ""}${from}`;
+  // The names the code gives its models, for the reader who checks them (0.3.4).
+  const named = f.kind === "model" && f.by === "script" && Array.isArray(d.models) && d.models.length ? ` Models as the code names them: ${d.models.map(mdText).join(", ")}.` : "";
+  return `- ${level}**${mdText(f.title)}.** ${mdText(f.says)}${need}${named}${advisories}${safe}${cats ? ` Category: ${cats}.` : ""}${places.length ? ` At ${places.join(", ")}${more}.` : ""}${from}`;
 }
 
 /** The whole report as Markdown: the same findings, in the same sections, with

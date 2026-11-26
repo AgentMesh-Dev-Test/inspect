@@ -41,7 +41,7 @@ import { judge } from "./judge.mjs";
 import { checkDescription, checkDrafts, checkGlance, checkSkillNames } from "./checks.mjs";
 import { buildReport, markdownOf, notJudged, replyOf, scriptFindings } from "./report.mjs";
 
-export const VERSION = "0.3.3";
+export const VERSION = "0.3.4";
 const DAY_MS = 24 * 60 * 60 * 1000;
 
 /**

@@ -358,3 +358,11 @@ The owner used 0.2.7's page: "if it does no good, you shouldn't put it on there 
 - **"What it connects to"** under What it reaches meant the same as the tab; it is gone.
 - **The repository row on the Overview** repeated the header and needed a Copy link because the frame opens no link. It is gone; the Next app's header now links the subject to the job's main input when that is an https address (AgentMesh PR, job-page.ts jobSubjectLink). The Overview keeps the commit.
 - The suite: 95 tests, 94 pass, one skipped.
+
+## 0.3.4: no row says its title twice, and the models in words
+
+0.3.3 was running on dev by 10:40 pm Mountain time on 2026-11-25 (view at sha256:35bdc3ee229279d41f598f05a072f3422c634ccf9830a30957a9ba46451072db); one live run as a new test account, job 01a2165f-6ac4-7001-9e18-eb9b0dd4a513, sent 10:41 pm, delivered 10:45 pm. All 36 skills took the model's plain name and words, none repeating its name or written for a model. The cut pass, every row on every tab opened, found two more:
+
+- "Skill scripts start other programs" opened on "Many skill scripts start other programs on their own." The model is told a finding's words never repeat its title, and checks.mjs repeatsTitle holds back one whose words carry its title of three or more words.
+- "The models it names", a script finding, listed eighteen model ids as the code writes them and a configuration file's name. Its words now name the makers ("Its code names 18 models, from Anthropic, OpenAI, Google and ElevenLabs."), and the ids, settings and files are in its detail and, in the Markdown, after "Models as the code names them".
+- The suite: 96 tests, 95 pass, one skipped.

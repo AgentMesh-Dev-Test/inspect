@@ -50,7 +50,7 @@ export const PLAIN_RULE = "Write every title and every sentence for a manager, i
 export const SKILL_NAMES = 'Also answer "skills": one entry for each of the agent\'s own skills (each skill fact whose data.for_coding_assistants is false), with "skill" its fact id, "title" a short plain name of three to eight words for what it makes or does for the team (such as Captions for talking-head videos), and "does" one or two plain sentences on what it does for the team. Write both for a manager: never the trigger words the skill\'s own description writes for a model (use for, invoke when, route by), and never the title again in its sentences.';
 
 /** Each thing said once (0.3.0): checks.mjs nearSame holds back a title that repeats another. */
-export const SAY_ONCE = "Within a section, never write two findings that say or ask the same thing, even in other words (which tools need approval, and which tools should wait for a person, are one finding); merge them into one.";
+export const SAY_ONCE = "Within a section, never write two findings that say or ask the same thing, even in other words (which tools need approval, and which tools should wait for a person, are one finding); merge them into one. A finding's words never repeat its title: they say what the title can't.";
 
 const SYSTEM = [
   "You are Inspect. You read the facts scripts found in an outside agent's code at one commit, and write judgments about what the agent does and how safe it is, for the person in charge of a department's agents.",

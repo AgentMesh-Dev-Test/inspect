@@ -96,6 +96,13 @@ export function nearSame(a, b) {
   for (const w of x) if (y.has(w)) both += 1;
   return both / small >= 0.75;
 }
+/** Whether a finding's words say its title again: the title's words, three
+ *  or more, in order in its words. */
+export function repeatsTitle(title, says) {
+  const norm = (t) => String(t ?? "").toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
+  const t = norm(title);
+  return t.split(" ").length >= 3 && ` ${norm(says)} `.includes(` ${t} `);
+}
 /** The fields of a judgment's detail a person reads, by kind. */
 export const SHOWN = { system: ["supply", "without", "sends"], risk: ["safe"], job: ["does"], code: ["covers"] };
 /** A judgment's detail with each field a person reads in plain words: Inspect's
@@ -219,6 +226,8 @@ export function checkDrafts(drafts, { sections, byId, ctx, known = {} }) {
     // section and the same group of kinds says is held back.
     const twin = kept.find((k) => k.section === section && kindGroup(k.kind) === kindGroup(trim(d.kind)) && nearSame(k.title, title));
     if (twin) { hold(`it says what "${twin.title}" says`); continue; }
+    // 0.3.4: its words add what its title can't say, never the title again.
+    if (repeatsTitle(title, says)) { hold("its words repeat its title"); continue; }
     const f = { section, kind: trim(d.kind), title, says, by: "model", based_on: ids, ...(evidence.length ? { evidence } : {}), ...(source.length ? { source } : {}) };
     if (d.detail && typeof d.detail === "object" && !Array.isArray(d.detail)) f.detail = plainDetail(f.kind, d.detail);
     if (f.kind === "risk") {

@@ -143,3 +143,21 @@ test("[F5.R10] each skill gets a short plain name and plain words for the team f
   assert.ok(skill.says.startsWith("It flags colours"), "the Markdown says what it does in plain words");
   assert.ok(!skill.says.includes("Route by"));
 });
+
+test("[F5.R10] a finding's words never repeat its title, and the models it names are said by their makers, never by the names the code gives them", async () => {
+  const { repeatsTitle } = await import("../scripts/checks.mjs");
+  const { makerOf, markdownOf: md } = await import("../scripts/report.mjs");
+  const { SAY_ONCE } = await import("../scripts/judge.mjs");
+  assert.equal(repeatsTitle("Skill scripts start other programs", "Many skill scripts start other programs on their own."), true);
+  assert.equal(repeatsTitle("Skill scripts start other programs", "Media converters, an installer and the GitHub client start from scripts."), false);
+  assert.equal(repeatsTitle("Slack", "It posts to Slack."), false, "a short title may appear in its words");
+  assert.match(SAY_ONCE, /never repeat its title/);
+  assert.deepEqual(["anthropic:claude-opus-5-5", "openai:gpt-6.1", "gemini-2.5-flash", "eleven_multilingual_v2", "models/lyria-realtime-exp", "x-unknown"].map(makerOf), ["Anthropic", "OpenAI", "Google", "ElevenLabs", "Google", null]);
+  const files = { ...smallAgent(), "src/models.py": 'MODEL = "anthropic:claude-opus-5-5"\nOTHER = "gemini-2.5-flash"\n' };
+  const out = await inTemp((at) => inspect({ text: "repository: acme/helper\ncommit: 86d8f66", workDir: at, env: ENV, fetchImpl: world({ files }).fetchImpl, ask: model().ask }));
+  const f = out.report.findings.find((x) => x.kind === "model" && x.by === "script");
+  assert.ok(f, "the scripts name the models");
+  assert.doesNotMatch(f.says, /claude-opus|gemini-2|:|_|\.toml|\.py/, `plain words: ${f.says}`);
+  assert.match(f.says, /from (?:.*Anthropic|.*Google)/);
+  assert.match(md(out.report), /Models as the code names them: /, "the Markdown keeps the names, for the reader who checks them");
+});
