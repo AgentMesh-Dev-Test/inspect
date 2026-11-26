@@ -331,17 +331,29 @@ export const WORKING_DETAIL = {
   credential: ["env", "how", "need", "need_by", "need_why", "read_by_code"],
   risk: ["safe"],
 };
+/** The fields the Overview and the systems' cards need, kept longest (0.4.5):
+ *  when the copy is too big for every field, the rest go first. At the end of
+ *  design-agent's job the whole copy of 206 findings dropped every field, and
+ *  for six seconds the Overview drew "0 of 18" systems required. */
+export const WORKING_DETAIL_FIRST = {
+  repository: WORKING_DETAIL.repository, commit: WORKING_DETAIL.commit, publisher: WORKING_DETAIL.publisher, license: WORKING_DETAIL.license,
+  "built-on": WORKING_DETAIL["built-on"], activity: WORKING_DETAIL.activity,
+  skill: ["path", "size", "own", "for_coding_assistants", "instructions_only"],
+  code: WORKING_DETAIL.code, test: WORKING_DETAIL.test,
+  system: ["system", "need", "need_by", "supply", "credentials"],
+  credential: ["env", "how", "need", "need_by", "read_by_code"],
+};
 export function workingCopy({ about, findings, stage, limit = WORKING_COPY_CHARS }) {
   const a = about ?? {};
-  const shown = (f) => {
-    const keep = WORKING_DETAIL[f.kind];
+  const shown = (f, fields = WORKING_DETAIL) => {
+    const keep = fields[f.kind];
     if (!keep || !f.detail || typeof f.detail !== "object") return null;
     const out = Object.fromEntries(keep.filter((k) => f.detail[k] !== undefined && f.detail[k] !== null).map((k) => [k, f.detail[k]]));
     return Object.keys(out).length ? out : null;
   };
   const short = (f, words, detail = true) => {
     const ev = Array.isArray(f.evidence) ? f.evidence : [];
-    const dt = detail ? shown(f) : null;
+    const dt = detail === "first" ? shown(f, WORKING_DETAIL_FIRST) : detail ? shown(f) : null;
     return {
       id: f.id, section: f.section, kind: f.kind, title: f.title, ...(words ? { says: f.says } : {}), by: f.by,
       ...(f.level ? { level: f.level, ...(f.level_by ? { level_by: f.level_by } : {}) } : {}),
@@ -369,8 +381,11 @@ export function workingCopy({ about, findings, stage, limit = WORKING_COPY_CHARS
   const fits = (d) => JSON.stringify(d).length <= limit;
   let d = doc(all.map((f) => short(f, true)), true, 0);
   if (fits(d)) return d;
-  // The words go before the fields the view draws, then the fields too.
+  // The words go before the fields the view draws; then every field but
+  // those the Overview and the systems' cards need (0.4.5); then those too.
   d = doc(all.map((f) => short(f, false)), false, 0);
+  if (fits(d)) return d;
+  d = doc(all.map((f) => short(f, false, "first")), false, 0);
   if (fits(d)) return d;
   let list = all.map((f) => short(f, false, false));
   d = doc(list, false, 0);

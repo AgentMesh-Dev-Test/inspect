@@ -279,3 +279,16 @@ test("[F5.R4] the first working copy, posted before GitHub names the commit, fit
   const delivered = reportSchema().properties.commit.properties.sha;
   assert.match(delivered.description, /null only in the first working copy/);
 });
+
+test("[F5.R4] when the copy is too big for every field, the fields the Overview and the systems' cards need are the last to go, so the Overview never falls back to empty tiles or a wrong count as the job finishes", () => {
+  const skill = (i) => ({ id: `S3-${String(i).padStart(3, "0")}`, section: 3, kind: "skill", title: `A skill of a long enough name ${i}`, by: "script", based_on: ["F0001"], evidence: [{ file: `skills/s${i}/SKILL.md`, line: 2 }], detail: { name: `s${i}`, path: `skills/s${i}`, size: { scripts: 3, lines: 400, instructions_chars: 900, tests: { files: 1, cases: 4 } }, for_coding_assistants: false, instructions_only: false, lift_out: "no", plain: true, does: "It makes something useful for the team from a short request, in a sentence of ordinary length for a skill's words." } });
+  const system = { id: "S5-001", section: 5, kind: "system", title: "Slack: chat", by: "model", based_on: ["F0002"], evidence: [{ file: "src/slack.py", line: 4 }], detail: { system: "Slack", need: "required", need_by: "rule", supply: "A Slack app and its tokens", without: "No replies at all in any channel or thread the team uses.", sends: "Replies, files and progress cards." } };
+  const findings = [...Array.from({ length: 150 }, (_, i) => skill(i + 1)), system];
+  const copy = workingCopy({ about: ABOUT, findings, stage: "Step 5 of 5: Finishing the report." });
+  assert.ok(JSON.stringify(copy).length <= WORKING_COPY_CHARS);
+  assert.equal(copy.partial.omitted, 0);
+  const s = copy.findings.find((f) => f.id === "S3-001");
+  assert.deepEqual(s.detail, { path: "skills/s1", size: skill(1).detail.size, for_coding_assistants: false, instructions_only: false }, "a skill keeps its size, and loses the words the Overview does not draw");
+  assert.deepEqual(copy.findings.find((f) => f.id === "S5-001").detail, { system: "Slack", need: "required", need_by: "rule", supply: "A Slack app and its tokens" }, "a system keeps its need and what the person supplies");
+  assert.deepEqual(schemaProblems(copy, reportSchema()), []);
+});
