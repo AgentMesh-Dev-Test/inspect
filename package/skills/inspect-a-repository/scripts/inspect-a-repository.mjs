@@ -41,7 +41,7 @@ import { judge } from "./judge.mjs";
 import { checkDescription, checkDrafts, checkGlance, checkSkillNames } from "./checks.mjs";
 import { buildReport, markdownOf, notJudged, replyOf, scriptFindings } from "./report.mjs";
 
-export const VERSION = "0.3.4";
+export const VERSION = "0.4.0";
 const DAY_MS = 24 * 60 * 60 * 1000;
 
 /**
@@ -60,15 +60,17 @@ export async function inspect({ text, workDir, env = process.env, fetchImpl = fe
   const dir = join(resolve(workDir), "codebase");
   rmSync(dir, { recursive: true, force: true });
   try {
-    let gh, repository, commitRec, recent, bytes;
+    let gh, repository, commitRec, recent, bytes, newestOn = null;
     try {
-      onStatus(`Reading GitHub's records of ${owner}/${name} and its archive at ${req.commit}.`);
+      onStatus(`Reading GitHub's records of ${owner}/${name} and its archive at ${req.commit ?? "its newest commit"}.`);
       gh = githubReader({ owner, name, env, fetchImpl });
       repository = await gh.repository();
-      commitRec = await gh.commit(req.commit);
+      // 0.4.0: no commit named, so the newest on the default branch.
+      newestOn = req.commit ? null : String(repository.default_branch ?? "").trim();
+      commitRec = req.commit ? await gh.commit(req.commit) : await gh.newestCommit(newestOn);
       const since = new Date(now().getTime() - 90 * DAY_MS).toISOString();
       recent = { ...(await gh.recentCommits(since)), since };
-      bytes = await gh.archive(String(commitRec.sha ?? req.commit).toLowerCase());
+      bytes = await gh.archive(String(commitRec.sha ?? req.commit ?? "").toLowerCase());
     } catch (e) {
       if (e instanceof GitHubFailed) return { code: e.kind === "no-repository" || e.kind === "no-commit" || e.kind === "too-large" ? 0 : 1, reply: [...notes, e.said].join("\n\n") };
       throw e;
@@ -82,7 +84,7 @@ export async function inspect({ text, workDir, env = process.env, fetchImpl = fe
     const textFiles = files.filter((f) => { const b = bytesOf(f); return b && looksLikeText(b); }).length;
     const url = String(repository.html_url ?? `https://github.com/${owner}/${name}`);
     onStatus(`Unpacked ${files.length} files of ${owner}/${name} at ${sha.slice(0, 12)}; reading the facts by rule.`); // cut-ok: a short digest in a status line; the full one is in the report
-    const collected = collectFacts({ files, read, bytesOf, archive, github: { repository, commit: commitRec, recent }, owner, name, sha });
+    const collected = collectFacts({ files, read, bytesOf, archive, github: { repository, commit: commitRec, recent, newest_on: newestOn }, owner, name, sha });
     const { facts, byId, add } = collected;
     onStart({ owner, name, url, sha, checked: archive.commit === sha, date: facts.find((f) => f.kind === "commit")?.data?.date ?? null, version: VERSION, started_at: startedAt });
 

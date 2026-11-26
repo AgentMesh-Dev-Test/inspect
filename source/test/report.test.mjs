@@ -243,3 +243,26 @@ test("[F5.R8] titles a person reads: a skill by its own description, never a YAM
   assert.equal(credentialTitle("GOOGLE_APPLICATION_CREDENTIALS"), "Google application credentials");
   assert.equal(spaced("brand-lint.mjs"), "Brand lint");
 });
+
+// 0.4.0: while the job runs, every field the view draws is filled, never
+// empty, so each finding in the working copy carries the few fields of its
+// detail the view reads; the words go first when the copy is too big.
+test("[F5.R4] the working copy carries the fields of each finding's detail the view draws: what was inspected, a skill's size, a system's need and what the person supplies, a risk's fix; never a skill's whole instructions", () => {
+  const skill = { id: "S3-010", section: 3, kind: "skill", title: "Captions for videos", says: "Captions.", by: "script", based_on: ["F0001"], evidence: [{ file: "skills/captions/SKILL.md", line: 2 }], detail: { name: "captions", path: "skills/captions", size: { scripts: 23, lines: 11807, instructions_chars: 5000, tests: { files: 3, cases: 40 } }, instructions: "x".repeat(6000), description: "Use for captions.", keeps: [{ file: "a.mjs", line: 1 }], for_coding_assistants: false, lift_out: "no" } };
+  const system = { id: "S5-010", section: 5, kind: "system", title: "Slack: chat", says: "Slack.", by: "model", based_on: ["F0002"], evidence: [{ file: "src/slack.py", line: 4 }], detail: { system: "Slack", need: "required", need_by: "rule", need_why: "a setting it reads is required", need_settings: [{ name: "SLACK_BOT_TOKEN" }], supply: "A Slack app and its tokens", without: "No replies.", sends: "Replies.", need_by_model: "optional" } };
+  const commit = { id: "S2-002", section: 2, kind: "commit", title: "The commit", says: "Commit 86d8f66.", by: "script", based_on: ["F0003"], source: [{ system: "code-host", call: "GET /repos/acme/helper/commits/{branch}", field: "sha" }], detail: { sha: "86d8f667796890eb6d3612dbd1b9e941782fe03f", date: "2026-11-23T21:25:23Z", checked: true, newest_on: "main" } };
+  const risk = { id: "S7-001", section: 7, kind: "risk", title: "A risk", says: "Risky.", by: "model", based_on: ["F0004"], level: "high", level_by: "model", evidence: [{ file: "a.py", line: 3 }], detail: { safe: "Put it behind an OK." } };
+  const copy = workingCopy({ about: ABOUT, findings: [skill, system, commit, risk], stage: "Asking the model." });
+  assert.deepEqual(schemaProblems(copy, reportSchema()), []);
+  const by = Object.fromEntries(copy.findings.map((f) => [f.id, f]));
+  assert.deepEqual(by["S3-010"].detail, { name: "captions", path: "skills/captions", size: skill.detail.size, for_coding_assistants: false, lift_out: "no" }, "a skill's size, never its instructions, description or what keeps it");
+  assert.deepEqual(by["S5-010"].detail, { system: "Slack", need: "required", need_by: "rule", supply: "A Slack app and its tokens", without: "No replies.", sends: "Replies." });
+  assert.equal(by["S2-002"].detail.newest_on, "main");
+  assert.deepEqual(by["S7-001"].detail, { safe: "Put it behind an OK." });
+  assert.equal(copy.partial.says_left_out, false);
+  const many = Array.from({ length: 150 }, (_, i) => ({ ...skill, id: `S3-${String(i + 100).padStart(3, "0")}`, says: "A skill that does a thing, described in a sentence of ordinary length for a skill, and then some more words so that it is long." }));
+  const big = workingCopy({ about: ABOUT, findings: many, stage: "Writing section 1." });
+  assert.ok(JSON.stringify(big).length <= WORKING_COPY_CHARS);
+  assert.equal(big.partial.says_left_out, true, "the words go first");
+  assert.ok(big.findings.every((f) => f.detail?.size), "the fields the view draws stay while they fit");
+});

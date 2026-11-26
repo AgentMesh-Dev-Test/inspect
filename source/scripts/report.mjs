@@ -250,8 +250,8 @@ export function scriptFindings({ facts, ctx, owner, name, sha, repoUrl, osv = nu
   // 0.3.0: its words name no file; the files are its evidence and its detail.
   if (gapFacts.length) push(8, "could-not-tell", gapFacts.length === 1 ? "Versions missing from the dependency list" : "Some versions are missing from the dependency list", `The versions installed for ${plural(gapFacts.length, "part")} of the repository are not in the dependency list, so they were not checked for known security flaws.`, gapFacts.map((x) => x.f), { detail: { gaps: gapFacts.map(({ g }) => ({ about: g.about, why: g.why })) } });
   const nc = of("not-checked");
-  if (nc.length) { const why = (w) => (/ecosystem/.test(w) ? "OSV is not asked about their kind of package" : /range/.test(w) ? "only a range of versions is given, not one version" : "there were more than OSV is asked about in one job"); push(8, "could-not-tell", "Dependencies not checked against OSV", `${plural(nc.length, "dependency", "dependencies")} could not be checked for known security flaws: ${[...new Set(nc.map((x) => why(String(x.data.why))))].join("; ")}.`, nc, { detail: { components: nc.map((x) => ({ purl: x.data.purl, why: x.data.why })) } }); }
-  if (osv && !osv.ok) { const f = of("osv-failed")[0]; if (f) push(8, "could-not-tell", "The dependencies were not checked against OSV", `The dependencies were not checked against OSV: ${osv.said}.`, [f]); }
+  if (nc.length) { const why = (w) => (/ecosystem/.test(w) ? "the database of known flaws is not asked about their kind of package" : /range/.test(w) ? "only a range of versions is given, not one version" : "there were more than the database of known flaws is asked about in one job"); push(8, "could-not-tell", "Dependencies not checked for known security flaws", `${plural(nc.length, "dependency", "dependencies")} could not be checked for known security flaws: ${[...new Set(nc.map((x) => why(String(x.data.why))))].join("; ")}.`, nc, { detail: { components: nc.map((x) => ({ purl: x.data.purl, why: x.data.why })) } }); }
+  if (osv && !osv.ok) { const f = of("osv-failed")[0]; if (f) push(8, "could-not-tell", "The dependencies were not checked for known security flaws", `The dependencies were not checked for known security flaws: ${osv.said}.`, [f]); }
   const unread = of("vulnerability-unread");
   if (unread.length) push(8, "could-not-tell", "Vulnerabilities not read in full", `OSV named ${plural(unread.length, "more known security flaw", "more known security flaws")} than Inspect reads in one job.`, unread, { detail: { ids: unread.map((u) => u.data.id) } });
   const links = of("link");
@@ -314,11 +314,34 @@ export const WORKING_COPY_CHARS = 60_000;
  * fit, findings that carry no level are left out from the largest section
  * first, counted in `partial.omitted`. The counts are always of every finding
  * so far. The delivered report replaces it.
+ *
+ * 0.4.0: each finding also carries the few fields of its detail the view
+ * draws (WORKING_DETAIL: what was inspected, each skill's size, the agent's
+ * own code, the count of tests, each system's need and what the person
+ * supplies, each risk's fix), so a field on the page is filled while the job
+ * runs, never shown empty. When the copy does not fit, the words are left
+ * out first, then these fields, then findings.
  */
+export const WORKING_DETAIL = {
+  repository: ["owner", "name", "url"], commit: ["sha", "date", "checked", "newest_on"], publisher: ["login", "type"], license: ["spdx"],
+  "built-on": ["languages", "frameworks"], activity: ["pushed_at", "archived", "commits_last_90_days"],
+  skill: ["name", "path", "size", "own", "for_coding_assistants", "instructions_only", "lift_out", "plain", "does"],
+  code: ["files", "lines"], test: ["files", "cases", "live"],
+  system: ["system", "need", "need_by", "supply", "without", "sends", "credentials"],
+  credential: ["env", "how", "need", "need_by", "need_why", "read_by_code"],
+  risk: ["safe"],
+};
 export function workingCopy({ about, findings, stage, limit = WORKING_COPY_CHARS }) {
   const a = about ?? {};
-  const short = (f, words) => {
+  const shown = (f) => {
+    const keep = WORKING_DETAIL[f.kind];
+    if (!keep || !f.detail || typeof f.detail !== "object") return null;
+    const out = Object.fromEntries(keep.filter((k) => f.detail[k] !== undefined && f.detail[k] !== null).map((k) => [k, f.detail[k]]));
+    return Object.keys(out).length ? out : null;
+  };
+  const short = (f, words, detail = true) => {
     const ev = Array.isArray(f.evidence) ? f.evidence : [];
+    const dt = detail ? shown(f) : null;
     return {
       id: f.id, section: f.section, kind: f.kind, title: f.title, ...(words ? { says: f.says } : {}), by: f.by,
       ...(f.level ? { level: f.level, ...(f.level_by ? { level_by: f.level_by } : {}) } : {}),
@@ -326,6 +349,7 @@ export function workingCopy({ about, findings, stage, limit = WORKING_COPY_CHARS
       ...(f.repeats ? { repeats: f.repeats } : {}),
       ...(ev.length ? { evidence: [{ file: ev[0].file, line: ev[0].line }], ...(ev.length > 1 ? { more_evidence: ev.length - 1 } : {}) } : {}),
       ...(!ev.length && f.source?.length ? { source: [f.source[0]] } : {}),
+      ...(dt ? { detail: dt } : {}),
     };
   };
   const all = [...findings].sort((x, y) => x.section - y.section);
@@ -345,7 +369,10 @@ export function workingCopy({ about, findings, stage, limit = WORKING_COPY_CHARS
   const fits = (d) => JSON.stringify(d).length <= limit;
   let d = doc(all.map((f) => short(f, true)), true, 0);
   if (fits(d)) return d;
-  let list = all.map((f) => short(f, false));
+  // The words go before the fields the view draws, then the fields too.
+  d = doc(all.map((f) => short(f, false)), false, 0);
+  if (fits(d)) return d;
+  let list = all.map((f) => short(f, false, false));
   d = doc(list, false, 0);
   let omitted = 0;
   while (!fits(d)) {

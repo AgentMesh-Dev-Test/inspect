@@ -81,7 +81,7 @@ export const SECTIONS = [
   { number: 2, key: "what-was-inspected", title: "What was inspected" },
   { number: 3, key: "what-it-does", title: "What it does" },
   { number: 4, key: "how-it-works", title: "How it works" },
-  { number: 5, key: "what-it-connects-to", title: "What it connects to" },
+  { number: 5, key: "what-it-connects-to", title: "Systems it uses" },
   { number: 6, key: "what-it-can-do-on-its-own", title: "What it can do on its own" },
   { number: 7, key: "risks", title: "Risks, and what it needs to run safely" },
   { number: 8, key: "tests-and-what-inspect-could-not-tell", title: "Tests, and what Inspect couldn't tell" },

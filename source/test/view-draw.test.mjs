@@ -33,7 +33,7 @@ const script = html.match(/<script>([\s\S]*?)<\/script>/)[1];
 const style = html.match(/<style>([\s\S]*?)<\/style>/)[1];
 const KIND = "application/vnd.agentmesh.inspection-report+json";
 const WORDS = ["Critical", "High", "Medium", "Low", "No risk", "Not rated"];
-const TAB_NAMES = ["Overview", "What it does", "What it reaches", "Risks", "Tests and gaps"];
+const TAB_NAMES = ["Overview", "What it does", "Systems it uses", "Risks", "Tests and gaps"];
 // Words that explain a count, a section or how the report was made, a
 // status, a section code or a category code: never drawn.
 const NEVER = [
@@ -70,6 +70,7 @@ class Element extends Node {
   set className(v) { this.attrs.set("class", String(v)); }
   get id() { return this.attrs.get("id") ?? ""; }
   setAttribute(k, v) { this.attrs.set(k, String(v)); }
+  removeAttribute(k) { this.attrs.delete(k); }
   getAttribute(k) { return this.attrs.has(k) ? this.attrs.get(k) : null; }
   addEventListener(type, fn) { (this.listeners[type] ??= []).push(fn); }
   click() { for (const fn of this.listeners.click ?? []) fn({ target: this, currentTarget: this }); }
@@ -118,8 +119,9 @@ function page() {
   const root = new Element("html");
   const body = new Element("body");
   const app = new Element("main"); app.setAttribute("id", "app");
+  const layerEl = new Element("div"); layerEl.setAttribute("id", "layer");
   const toastEl = new Element("div"); toastEl.setAttribute("id", "toast");
-  root.append(body); body.append(app, toastEl);
+  root.append(body); body.append(app, layerEl, toastEl);
   let say = () => {};
   // The host's side, as Next's bridge answers: a resize request gets the
   // height back, a moment later; a file offered is saved.
@@ -149,7 +151,7 @@ function page() {
   const context = vm.createContext({ window, document, Node, setTimeout: later, clearTimeout, requestAnimationFrame: (fn) => fn(), TextDecoder, atob, URL, Intl, console });
   vm.runInContext(script, context);
   say = (m) => { for (const fn of listeners) fn({ source: parent, data: { jsonrpc: "2.0", ...m } }); };
-  return { app, sent, say, document };
+  return { app, layer: layerEl, sent, say, document };
 }
 
 /** The view, drawn with one report, as a host sends it (DESCRIPTOR-UI Section 9.4), with Inspect's Descriptor. */
@@ -279,23 +281,28 @@ test("[F5.R9] the view is one row of five tabs with nothing above it, in the ARI
   assert.match(risks.getAttribute("aria-label"), /, the highest High$/);
 });
 
-test("[F5.R9] Overview describes the whole agent: the description first, how much is there, what was inspected with the commit and no repository row, and two lines about Inspect at the foot; no risk on it", async () => {
+test("[F5.R9] Overview describes the whole agent: the description first, then how much is there as tiles each with an icon, counting only its own skills, then what was inspected with the commit; nothing at its foot; no risk on it", async () => {
   const { app, sent } = drawn(richReport());
   const panel = shownPanel(app);
-  assert.equal(panel.children[0].className, "lead", "the description is the answer, first");
+  assert.equal(panel.children[0].className, "lead", "the description is the anchor, first");
   assert.match(panel.children[0].textContent, /^Content Studio is a design agent/);
-  const size = panel.querySelector("dl.size");
+  const tiles = panel.querySelector("ul.size-tiles").querySelectorAll("li");
+  assert.deepEqual(tiles.map((t) => [t.querySelector(".v").textContent, t.querySelector(".k").textContent]), [["2", "Skills"], ["2", "Scripts in its skills, 640 lines"], ["4,100", "Lines of its own code"], ["14", "Tests, 12 run offline"], ["2 of 3", "Systems required"]], "only the agent's own skills: the one kept for coding assistants is not counted");
+  assert.ok(tiles.every((t) => t.querySelector("svg")?.markup), "each tile has an icon");
+  assert.ok(script.includes('aria-hidden="true" focusable="false">${inner}</svg>'), "every icon is for the eye only; its words say it");
+  assert.ok(!/coding assistants/.test(readable(panel)), "no count line about coding assistants");
   const pairs = (dl) => Object.fromEntries(dl.children.reduce((a, n, i, all) => (n.tagName === "DT" ? [...a, [n.textContent, all[i + 1].textContent]] : a), []));
-  assert.deepEqual(pairs(size), { Skills: "2, and 1 for coding assistants", Scripts: "2 in its skills, 640 lines of code", "Its own code": "4,100 lines", Tests: "14 in 2 files, 12 run offline", "Outside systems": "3, 2 required" });
-  const facts = panel.querySelectorAll("dl.facts").find((d) => !d.classList.contains("size"));
-  const shown = pairs(facts);
+  const shown = pairs(panel.querySelector("dl.facts"));
   assert.equal(shown.Commit, "86d8f66, Nov 24, 2026");
   assert.equal(shown.License, "Apache-2.0");
   assert.equal(shown.Repository, undefined, "the header names the repository and links it; the Overview keeps the commit");
-  const foot = panel.querySelector(".about-foot");
-  assert.equal(foot.querySelectorAll("p").length, 2);
-  assert.match(foot.textContent, /^About Inspect\./);
-  assert.match(foot.textContent, /What it doesn't do\./);
+  assert.equal(panel.querySelector(".about-foot"), null, "no lines about Inspect at the foot");
+  assert.ok(!/About Inspect|What it doesn't do/.test(readable(panel)));
+  assert.equal(panel.children.at(-1).tagName, "DL", "what was inspected is the last thing on it");
+  const { list, facts } = rich();
+  const newest = list.map((f) => (f.id === "S2-002" ? { ...f, detail: { ...f.detail, newest_on: "main" } } : f));
+  const again = drawn(report(newest, [], facts));
+  assert.equal(pairs(shownPanel(again.app).querySelector("dl.facts")).Commit, "86d8f66, Nov 24, 2026, the newest on main", "a commit read because none was named says it was the newest");
   assert.equal(panel.querySelector(".tiles"), null, "no risk tiles on the Overview");
   assert.equal(panel.querySelectorAll("li.row").length, 0, "no risk rows");
   assert.ok(!/Save a summary/.test(panel.textContent), "the summary for security is on Risks");
@@ -361,102 +368,167 @@ test("[F5.R9] What it does: jobs naming the skills that do them, the skills the 
   assert.ok(!/skills\/|\.mjs|\.md|:\d/.test(readable(panel)), "no file on the tab");
 });
 
-test("[F5.R9] Read the skill opens a viewer: beside the list at a desktop's width, the whole frame at a phone's; the skill's Markdown is drawn as text, with no markup, image or link; Close and Escape put focus back", async () => {
-  const wide = drawn(richReport(), { width: 1100 });
-  tabNamed(wide.app, "What it does").click();
-  rowOf(wide.app, "S3-010").querySelector(".toggle").click();
-  wide.app.querySelector('button[data-k="read:S3-010"]').click();
-  let panel = shownPanel(wide.app);
-  assert.ok(panel.querySelector(".with-viewer .beside"), "the list stays, beside the viewer");
-  const viewer = panel.querySelector("section.viewer");
-  assert.equal(viewer.getAttribute("role"), "dialog");
-  assert.equal(viewer.querySelector("h2").textContent, "Check a draft against the brand pack");
-  assert.equal(viewer.querySelector("p.own").textContent, "Check a draft against the brand pack.", "the skill's own words are in the viewer");
-  assert.equal(doc.activeElement, viewer.querySelector('button[data-k="viewer-close"]'), "focus moves to Close");
-  const md = viewer.querySelector(".md");
-  assert.deepEqual(md.children.map((n) => n.tagName), ["H3", "P", "H4", "UL", "PRE", "P"]);
-  assert.deepEqual(md.querySelectorAll("li").map((li) => li.textContent), ["Read the brand pack first", "Run the check on the draft"], "a link keeps its words only");
-  assert.equal(md.querySelector("pre").textContent, "node lint.mjs <file>");
-  assert.equal(md.children.at(-1).textContent, "<b>bold?</b>  and strong words", "markup is drawn as text, images are left out, emphasis marks go");
-  assert.equal(md.querySelectorAll("img").length + md.querySelectorAll("a").length, 0);
-  viewer.querySelector('button[data-k="viewer-close"]').click();
-  assert.equal(shownPanel(wide.app).querySelector("section.viewer"), null);
-  assert.equal(doc.activeElement?.getAttribute("data-k"), "read:S3-010", "focus goes back to Read the skill");
-  const narrow = drawn(richReport(), { width: 368 });
-  tabNamed(narrow.app, "What it does").click();
-  rowOf(narrow.app, "S3-011").querySelector(".toggle").click();
-  narrow.app.querySelector('button[data-k="read:S3-011"]').click();
-  panel = shownPanel(narrow.app);
-  assert.equal(panel.children.length, 1, "the viewer takes the whole frame");
-  assert.ok(panel.children[0].classList.contains("full"));
-  assert.equal(panel.children[0].getAttribute("aria-modal"), "true");
-  assert.match(panel.querySelector(".cut").textContent, /The rest is longer than the report carries\. Copy the link to the whole skill/);
-  panel.querySelector('button[data-k="viewer-copy"]').click();
+test("[F5.R9] Read the skill opens a dialog over the page, placed in the frame where the person is, with a veil, Close and Escape; focus moves in and back; the page behind can't be reached; the skill's Markdown is drawn as text, with no markup, image or link", async () => {
+  for (const width of [1100, 368]) {
+    const p = drawn(richReport(), { width });
+    tabNamed(p.app, "What it does").click();
+    rowOf(p.app, "S3-010").querySelector(".toggle").click();
+    p.app.querySelector('button[data-k="read:S3-010"]').click();
+    await ticks();
+    const dlg = p.layer.querySelector("section.dialog");
+    assert.ok(dlg, `a dialog opens at ${width}`);
+    assert.equal(dlg.getAttribute("role"), "dialog");
+    assert.equal(dlg.getAttribute("aria-modal"), "true");
+    assert.equal(dlg.getAttribute("aria-labelledby"), "viewer-title");
+    assert.ok(p.layer.querySelector("div.veil"), "a veil over the page behind");
+    assert.equal(p.app.getAttribute("inert"), "", "the page behind can't be reached");
+    assert.ok(rowOf(p.app, "S3-010"), "the list stays where it was, behind the dialog, never replaced by it");
+    assert.equal(shownPanel(p.app).querySelector(".with-viewer"), null, "no side column");
+    assert.match(dlg.getAttribute("style"), /^top:\d+px;max-height:\d+px$/, "placed in the frame, with a height of its own");
+    assert.equal(dlg.querySelector("h2").textContent, "Check a draft against the brand pack");
+    assert.equal(dlg.querySelector("p.own").textContent, "Check a draft against the brand pack.", "the skill's own words are in the dialog");
+    assert.equal(doc.activeElement, dlg.querySelector('button[data-k="viewer-close"]'), "focus moves to Close");
+    assert.equal(dlg.querySelector(".dlg-body").getAttribute("tabindex"), "0", "the instructions scroll with the keys too");
+    const md = dlg.querySelector(".md");
+    assert.deepEqual(md.children.map((n) => n.tagName), ["H3", "P", "H4", "UL", "PRE", "P"]);
+    assert.deepEqual(md.querySelectorAll("li").map((li) => li.textContent), ["Read the brand pack first", "Run the check on the draft"], "a link keeps its words only");
+    assert.equal(md.querySelector("pre").textContent, "node lint.mjs <file>");
+    assert.equal(md.children.at(-1).textContent, "<b>bold?</b>  and strong words", "markup is drawn as text, images are left out, emphasis marks go");
+    assert.equal(md.querySelectorAll("img").length + md.querySelectorAll("a").length, 0);
+    p.data(richReport(), { job_state: "completed", lifecycle: "accepted" });
+    assert.equal(p.layer.querySelector("section.dialog"), dlg, "new data leaves the open dialog as it is, scrolled where the person put it");
+    if (width === 1100) dlg.querySelector('button[data-k="viewer-close"]').click();
+    else p.document.press("Escape");
+    assert.equal(p.layer.querySelector("section.dialog"), null, width === 1100 ? "Close closes it" : "Escape closes it");
+    assert.equal(p.layer.querySelector("div.veil"), null);
+    assert.equal(p.app.getAttribute("inert"), null, "the page is back");
+    assert.equal(doc.activeElement?.getAttribute("data-k"), "read:S3-010", "focus goes back to Read the skill");
+  }
+  const n = drawn(richReport(), { width: 368 });
+  tabNamed(n.app, "What it does").click();
+  rowOf(n.app, "S3-011").querySelector(".toggle").click();
+  n.app.querySelector('button[data-k="read:S3-011"]').click();
   await ticks();
-  assert.equal(narrow.sent.filter((m) => m.method === "view/copy-text").at(-1).params.text, ADDRESS);
-  narrow.document.press("Escape");
-  assert.equal(shownPanel(narrow.app).querySelector("section.viewer"), null, "Escape closes it");
+  assert.match(n.layer.querySelector(".cut").textContent, /The rest is longer than the report carries\. Copy the link to the whole skill/);
+  n.layer.querySelector('button[data-k="viewer-copy"]').click();
+  await ticks();
+  assert.equal(n.sent.filter((m) => m.method === "view/copy-text").at(-1).params.text, ADDRESS);
+  n.layer.querySelector("div.veil").click();
+  assert.equal(n.layer.querySelector("section.dialog"), null, "a click on the veil closes it");
 });
 
-test("[F5.R9] What it reaches: one row per outside system, required or optional as a word and a shape, what the person supplies, required first; a credential no system names is a system of its own; opened, what uses it, what happens without it and what goes to it", () => {
-  const { app } = drawn(richReport(), { width: 1100 });
-  tabNamed(app, "What it reaches").click();
+test("[F5.R9] Systems it uses: one card per outside system with its icon, its name, what it is for, what the person supplies and required or optional as a word and a shape, required first; a credential no system names is a system of its own; opened, what uses it, what happens without it and what goes to it", async () => {
+  const p = drawn(richReport(), { width: 1100 });
+  const { app } = p;
+  tabNamed(app, "Systems it uses").click();
   const panel = shownPanel(app);
   const sys = panel.querySelectorAll("li.row.system");
   assert.deepEqual(sys.map((r) => r.id), ["f-S5-010", "f-S5-020", "f-S5-011"], "required first, in the report's order");
+  assert.deepEqual(sys.map((r) => r.querySelector(".name").textContent), ["Slack", "Gemini", "ElevenLabs"]);
+  assert.deepEqual(sys.map((r) => r.querySelector(".under")?.textContent ?? ""), ["Reads requests and posts replies", "", "Voiceover"], "what it is for, from its title");
+  assert.deepEqual(sys.map((r) => r.querySelector(".supply").textContent), ["You supply: A Slack app and its two tokens", "You supply: Your Gemini API key", "You supply: Your ElevenLabs key"]);
   assert.deepEqual(sys.map((r) => r.querySelector(".need .word").textContent), ["Required", "Required", "Optional"]);
   assert.ok(sys.every((r) => r.querySelector(".need svg")?.markup), "each need has a shape");
-  assert.deepEqual(sys.map((r) => r.querySelector(".under").textContent), ["A Slack app and its two tokens", "Your Gemini API key", "Your ElevenLabs key"]);
-  assert.equal(rowOf(app, "S5-021"), undefined, "a credential a system names is in that system's row");
-  assert.equal(rowOf(app, "S5-020").querySelector(".name").textContent, "Gemini", "a credential no system names is the system it opens");
+  assert.equal(sys[0].querySelector(".sys-icon").textContent, "S", "a system with no mark of its own is its first letter");
+  assert.ok(sys[1].querySelector(".sys-icon svg")?.markup.startsWith('<path d="M'), "Gemini is drawn with its mark");
+  assert.ok(sys[2].querySelector(".sys-icon svg")?.markup.startsWith('<path d="M'), "ElevenLabs is drawn with its mark");
+  assert.ok(sys.every((r) => r.querySelector(".sys-icon").getAttribute("aria-hidden") === "true"), "the icon is for the eye; the name says it");
+  assert.equal(rowOf(app, "S5-021"), undefined, "a credential a system names is in that system's card");
   rowOf(app, "S5-020").querySelector(".toggle").click();
   assert.equal(rowOf(app, "S5-020").querySelector(".detail p").textContent, "The code stops without it.", "in words, never the setting as the code writes it");
   assert.ok(!panel.querySelectorAll("h3").some((h) => h.textContent === "Credentials"), "no list of credentials");
-  assert.ok(!panel.querySelectorAll("h2").some((h) => h.textContent === "What it connects to"), "no heading that means the same as the tab");
+  assert.ok(!panel.querySelectorAll("h2").some((h) => /What it connects to|Systems it uses/.test(h.textContent)), "no heading that means the same as the tab");
   rowOf(app, "S5-011").querySelector(".toggle").click();
   const open = rowOf(app, "S5-011").querySelector(".detail");
   assert.deepEqual(open.querySelectorAll("dt").map((x) => x.textContent), ["Used by", "Without it", "What goes to it"]);
-  assert.equal(open.querySelector("button.ref").textContent, "Check a draft against the brand pack", "the skill that uses it opens in the viewer");
+  assert.equal(open.querySelector("button.ref").textContent, "Check a draft against the brand pack", "the skill that uses it opens in the dialog");
   open.querySelector("button.ref").click();
-  assert.ok(shownPanel(app).querySelector("section.viewer"));
+  await ticks();
+  assert.ok(p.layer.querySelector("section.dialog"));
+  const { list, facts } = rich();
+  const unclear = drawn(report(list.map((f) => (f.id === "S5-011" ? { ...f, detail: { ...f.detail, need: "unclear" } } : f)), [], facts), { width: 1100 });
+  tabNamed(unclear.app, "Systems it uses").click();
+  assert.equal(rowOf(unclear.app, "S5-011").querySelector(".need .word").textContent, "Not clear from the code", "what the code doesn't settle is said so");
 });
 
-test("[F5.R9] Tests and gaps: each test row says how many tests, of what kind and whether they run offline; the count of all tests is no row; nothing held back is drawn", () => {
-  const { app } = drawn(richReport([{ section: 7, title: "One judgment", why: "it cites a fact the scripts did not find" }]));
+test("[F5.R9] Tests and gaps is a document: a heading for each group, every item's title and words shown with nothing to open, each test with how many tests, of what kind and whether they run offline; two items that say the same thing are one; nothing held back is drawn", () => {
+  const { list, facts } = rich();
+  const more = [
+    { id: "S8-020", section: 8, kind: "could-not-tell", title: "Which tools need approval when deployed", says: "The code leaves the approval list empty. Ask the publisher which tools should wait for an OK.", by: "model", evidence: ev("src/design_agent/assembly.py", 362) },
+    { id: "S8-021", section: 8, kind: "question", title: "Which tools should wait for a person?", says: "Ask which tools wait for a person by default.", by: "model", evidence: ev("src/design_agent/assembly.py", 362) },
+    { id: "S8-022", section: 8, kind: "test-gap", title: "No test covers the Slack replies", says: "The Slack path has only live tests.", by: "model", evidence: ev("tests/live/test_slack.py", 3) },
+  ];
+  const { app } = drawn(report([...list, ...more], [{ section: 7, title: "One judgment", why: "it cites a fact the scripts did not find" }], facts));
   tabNamed(app, "Tests and gaps").click();
   const panel = shownPanel(app);
-  assert.deepEqual(panel.querySelectorAll("h3").map((h) => h.textContent), ["What Inspect couldn't tell", "Tests"]);
-  assert.equal(rowOf(app, "S8-010").querySelector(".measure .words").textContent, "12 tests · unit · offline");
-  assert.equal(rowOf(app, "S8-011"), undefined);
+  const docEl = panel.querySelector("article.doc");
+  assert.ok(docEl, "one document");
+  assert.deepEqual(docEl.querySelectorAll("h3").map((h) => h.textContent), ["What Inspect couldn't tell", "Gaps in the tests", "Tests"]);
+  assert.equal(panel.querySelectorAll("button").length, 0, "nothing to open or close");
+  const item = (id) => docEl.querySelectorAll("div.doc-item").find((x) => x.id === `f-${id}`);
+  assert.deepEqual(item("S8-001").querySelectorAll("h4").map((h) => h.textContent), ["Spending caps"]);
+  assert.equal(item("S8-001").querySelector("p").textContent, "Not in the code.", "every item's words are shown");
+  assert.equal(item("S8-010").querySelector("p.meta").textContent, "12 tests · unit · offline");
+  assert.equal(item("S8-011"), undefined, "the count of all tests is no item");
+  assert.equal(item("S8-021"), undefined, "a question that asks what a gap says is one item with it");
+  assert.match(item("S8-020").textContent, /Ask which tools wait for a person by default\./, "its words are kept with the item it repeats");
+  assert.equal(docEl.querySelectorAll("h4").filter((h) => /Which tools/.test(h.textContent)).length, 1);
   assert.ok(!/Held back|One judgment/.test(readable(panel)), "judgments held back stay in the report, off the page");
+  assert.match(style, /\.doc \{ max-width: 68ch; \}/, "a width that reads well");
 });
 
-test("[F5.R9] while the job runs, one line under the tabs says what Inspect is doing in plain words, tabs fill in with no count, and the line is gone once the report is done", () => {
+test("[F5.R9] while the job runs, one status under the tabs says Inspect is working and which step it is on; every field and list still to come shows a loading placeholder, never a blank; the status is gone once the report is done", () => {
+  const first = page();
+  first.say({ id: "h-1", method: "view/initialize", params: { version: "descriptor-view-v1", color_scheme: "light", locale: "en-US", width: 690 } });
+  assert.equal(first.app.querySelector("div.status").querySelector("p.now").textContent, "Inspecting · Step 1 of 5: Starting", "before any report, it says it has started");
+  assert.ok(shownPanel(first.app).querySelector(".sk"), "and shows what is coming, never an empty page");
   const scripts = findings().filter((f) => f.by === "script");
-  const p = drawn(copyOf(scripts, "Asking the model for the judgments of sections 3, 4 and 5: what it does, how it works and what it connects to."), { job_state: "working", lifecycle: null });
+  const p = drawn(copyOf(scripts, "Asking the model for the judgments of sections 3, 4 and 5: what it does, how it works and the systems it uses."), { job_state: "working", lifecycle: null });
   const { app } = p;
-  const now = () => app.querySelector("p.now");
-  assert.equal(app.children[1], now(), "the line sits straight under the tabs");
-  assert.equal(now().textContent, "Judging what it does, how it works and what it connects to");
-  assert.equal(tabNamed(app, "What it reaches").textContent, "What it reaches");
-  assert.match(tabNamed(app, "What it reaches").getAttribute("aria-label"), /still to come$/);
-  tabNamed(app, "Tests and gaps").click();
-  assert.equal(shownPanel(app).textContent, "Nothing yet.");
+  const status = () => app.querySelector("div.status");
+  assert.equal(app.children[1], status(), "the status sits straight under the tabs");
+  assert.equal(app.querySelectorAll("div.status").length, 1, "said once");
+  assert.equal(status().getAttribute("role"), "status");
+  assert.equal(status().querySelector("p.now").textContent, "Inspecting · Step 3 of 5: Judging what it does and the systems it uses");
+  assert.ok(status().querySelector("span.spin"), "a ring that turns while it works");
+  assert.deepEqual(status().querySelector("ol.steps").querySelectorAll("li").map((li) => li.className), ["done", "done", "at", "", ""], "a bar for each step: done ones filled, the one it is on marked");
+  const sk = (name) => { tabNamed(app, name).click(); return shownPanel(app); };
+  const over = sk("Overview");
+  assert.ok(over.querySelector(".sk-lead"), "the description still to come is a placeholder");
+  const sys = over.querySelector("ul.size-tiles").querySelectorAll("li").find((t) => t.querySelector(".k").textContent === "Systems required");
+  assert.ok(sys.querySelector(".v").querySelector(".sk"), "a count still to come is a placeholder, never a blank or a zero");
+  const does = sk("What it does");
+  assert.deepEqual(does.querySelectorAll("h3").map((h) => h.textContent).slice(0, 1), ["Jobs"]);
+  assert.ok(does.querySelector("ul.sk-rows"), "the jobs still to come are placeholders");
+  const systems = sk("Systems it uses");
+  assert.ok(systems.querySelector("ul.sk-rows.cards"), "the systems still to come are placeholder cards");
+  assert.equal(systems.querySelectorAll("li.row.system").length, 0, "no system is drawn before the model has judged them");
+  const risks = sk("Risks");
+  assert.ok(risks.querySelectorAll("button.tile").every((t) => t.getAttribute("disabled") === "" && t.querySelector(".sk")), "no count of risks before they are judged, only placeholders");
+  assert.ok(risks.querySelector("ul.sk-rows"));
+  assert.equal(tabNamed(app, "Risks").querySelector(".lv"), null, "no highest level before the risks are judged");
+  const tests = sk("Tests and gaps");
+  assert.ok(tests.querySelector(".sk-doc"), "the document still to come is a placeholder");
+  assert.ok(!/Nothing yet|None found/.test(readable(app)), "no blank and no empty-looking field");
   tabNamed(app, "What it does").click();
   const rows = () => shownPanel(app).querySelectorAll("li.row").length;
   const climbs = [rows()];
   p.data(copyOf(findings().filter((f) => f.by === "script" || [3, 4, 5].includes(f.section)), "Asking the model for the judgments of sections 6, 7 and 8: what it can do on its own, its risks, and its tests."));
   climbs.push(rows());
-  assert.equal(now().textContent, "Judging what it can do on its own, its risks and its tests");
+  assert.equal(status().querySelector("p.now").textContent, "Inspecting · Step 4 of 5: Judging its risks and its tests");
+  assert.equal(shownPanel(app).querySelector("ul.sk-rows"), null, "what it does has arrived whole");
   p.data(copyOf(findings().filter((f) => f.section !== 1), "Writing section 1, at a glance, from the checked findings."));
   climbs.push(rows());
-  assert.equal(now().textContent, "Writing the overview");
+  assert.equal(status().querySelector("p.now").textContent, "Inspecting · Step 5 of 5: Writing the overview");
   assert.deepEqual(climbs, [1, 2, 2], "the tab fills in under the person");
   for (const t of tabsOf(app)) assert.ok(!/\d/.test(t.textContent), "no count while running either");
   p.data(report(), { job_state: "completed", lifecycle: "draft" });
-  assert.equal(now(), null, "the line is gone once the report is done");
+  assert.equal(status(), null, "the status is gone once the report is done");
+  for (const name of TAB_NAMES) assert.equal(sk(name).querySelector(".sk"), null, `${name} has no placeholder left`);
   p.data(copyOf(scripts), { job_state: "failed", lifecycle: null });
-  assert.equal(now().textContent, "Stopped before the report was finished.");
+  assert.equal(status().textContent, "Stopped before the report was finished.");
+  assert.equal(status().querySelector(".spin"), null);
+  assert.match(style, /@media \(prefers-reduced-motion: reduce\) \{\s*\.spin, \.steps li\.at, \.sk \{ animation: none; \}/, "nothing moves for a person who asks for less motion");
 });
 
 test("[F5.R9] the tab the person is on stays put when new data arrives, and keeps its focus; an open row stays open", () => {

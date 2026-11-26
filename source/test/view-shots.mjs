@@ -5,7 +5,7 @@
 //
 //   node test/view-shots.mjs --out <folder> --finished <inspection.json> --partial <working copy .json> [--waiting <working copy .json>] [--cases <cases.json>]
 //
-// A case: { name, report: "finished" | "partial" | "waiting" | <path>, job_state, lifecycle, scheme: "light" | "dark", window: 1440, box: 690, tab: "risks", press: ["ArrowRight"], probe: "<an expression evaluated in the view, kept in summary.json>" }.
+// A case: { name, report: "finished" | "partial" | "waiting" | <path>, job_state, lifecycle, scheme: "light" | "dark", window: 1440, box: 690, tab: "risks", open: ["S3-010"], run: ["<an expression in the view>"], steps: [{ in: "host" | "view", js: "..." }], press: ["ArrowRight"], viewport: true, probe: "<an expression evaluated in the view, kept in summary.json>" }.
 // Without --cases, the default set: the partial and the finished report on
 // Overview and on Risks, at a 1440 window with a 690-pixel frame and a 400
 // window with a 368-pixel frame, light and dark; and the waiting copy on What
@@ -125,6 +125,11 @@ try {
     if (c.tab) await inView(`document.getElementById(${JSON.stringify(`tab-${c.tab}`)})?.click()`);
     for (const id of c.open ?? []) await inView(`document.getElementById(${JSON.stringify(`f-${id}`)})?.querySelector(".toggle")?.click()`);
     for (const x of c.run ?? []) { await inView(x); await settled(); }
+    // Steps in order, each in the host's page or in the view (0.4.0): the
+    // host scrolled to a row low on the page, then the row's button clicked.
+    // A step's expression may use what the step before it gave back, as __LAST__.
+    let last = null;
+    for (const s of c.steps ?? []) { const js = s.js.replaceAll("__LAST__", JSON.stringify(last)); last = await (s.in === "host" ? inHost(js) : inView(js)); await settled(); }
     for (const key of c.press ?? []) await inView(`document.activeElement.dispatchEvent(new KeyboardEvent("keydown", { key: ${JSON.stringify(key)}, bubbles: true }))`);
     await settled();
     const seen = await inView(`(() => {
@@ -135,7 +140,9 @@ try {
     const probe = c.probe ? await inView(c.probe) : undefined;
     const heard = await inHost("({ ready: window.host.ready, readyMs: Math.round((window.host.readyAt ?? NaN) - window.host.startedAt), asked: [...new Set(window.host.log.filter((m) => m && m.method && m.id !== undefined).map((m) => m.method))], broken: window.host.broken, heights: window.host.heights })");
     const height = await inHost("Math.ceil(document.documentElement.scrollHeight)");
-    await cdp.send("Emulation.setDeviceMetricsOverride", { width: c.window, height: Math.max(600, height), deviceScaleFactor: 1, mobile: false }, page);
+    // A whole-page shot by default; with viewport: true, what the person
+    // sees in a 900-pixel window, scrolled where the steps left it.
+    if (!c.viewport) await cdp.send("Emulation.setDeviceMetricsOverride", { width: c.window, height: Math.max(600, height), deviceScaleFactor: 1, mobile: false }, page);
     await pause(150);
     const shot = await cdp.send("Page.captureScreenshot", { format: "png" }, page);
     const png = join(OUT, `${c.name}.png`);

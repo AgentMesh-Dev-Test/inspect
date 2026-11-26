@@ -76,7 +76,10 @@ export function collectFacts({ files, read, bytesOf, archive = {}, github = {}, 
     add("activity", { source: { system: "code-host", call: repoCall, field: "pushed_at" } }, { pushed_at: r.pushed_at ?? null, created_at: r.created_at ?? null, archived: r.archived === true, open_issues: r.open_issues_count ?? null, stars: r.stargazers_count ?? null, default_branch: r.default_branch ?? null });
   }
   if (github.commit) {
-    add("commit", { source: { system: "code-host", call: `GET /repos/${owner}/${name}/commits/{sha}`, field: "commit.committer.date" } }, { sha, date: github.commit?.commit?.committer?.date ?? github.commit?.commit?.author?.date ?? null, checked: archive.commit === sha });
+    // 0.4.0: when the request named no commit, the newest on the default
+    // branch was read, and the fact says which branch.
+    const newest = String(github.newest_on ?? "").trim();
+    add("commit", { source: { system: "code-host", call: newest ? `GET /repos/${owner}/${name}/commits/{branch}` : `GET /repos/${owner}/${name}/commits/{sha}`, field: "commit.committer.date" } }, { sha, date: github.commit?.commit?.committer?.date ?? github.commit?.commit?.author?.date ?? null, checked: archive.commit === sha, ...(newest ? { newest_on: newest } : {}) });
   }
   if (github.recent) add("recent-commits", { source: { system: "code-host", call: `GET /repos/${owner}/${name}/commits`, field: "since" } }, { since: github.recent.since, count: github.recent.count, at_least: github.recent.more === true });
 
@@ -236,6 +239,66 @@ export function docWord(line) {
   if (/\b(optional(ly)?|if you want|to enable|to turn on|only if|not required|can be left)\b/i.test(t)) return "optional";
   if (/\b(required|must|needs?|needed|mandatory)\b/i.test(t)) return "required";
   return "mentioned";
+}
+
+// ── Whether a person must supply a setting, by rule (0.4.0) ──
+// The model judged need, and the count of required systems changed from run
+// to run of the same commit. Now the facts decide it wherever they can, the
+// same way every time; the model's own answer stands only where they don't.
+/** Whether a file is in one of the skill folders the facts name. */
+const inSkill = (file, folders) => folders.some((d) => d && String(file ?? "").startsWith(`${d}/`));
+/**
+ * What the facts settle about one setting: {need: "required" | "optional",
+ * why} when they settle it, {need: "unclear", why} when they don't, or null
+ * when only its tests read it, so running the agent never needs it.
+ *   - Read by the agent's own code (outside its skills and tests): the code
+ *     stops without it, required; it skips a feature or has a default,
+ *     optional; read plainly, the setup docs decide (required or optional),
+ *     then an example settings file that leaves it commented out (optional).
+ *   - Read only inside its skills: only the skills that use it need it, so
+ *     the agent runs without it: optional.
+ */
+export function settingNeed(name, facts) {
+  const of = (kind) => facts.filter((f) => f.kind === kind && f.data?.name === name);
+  const reads = of("setting").filter((f) => !f.data?.in_test);
+  if (!reads.length) return null;
+  const folders = facts.filter((f) => f.kind === "skill").map((f) => String(f.data?.folder ?? ""));
+  const own = reads.filter((f) => !inSkill(f.file, folders));
+  if (!own.length) return { need: "optional", why: "only the skills that use it read it" };
+  const hows = new Set(own.map((f) => f.data?.how));
+  if (hows.has("fails")) return { need: "required", why: "the code stops without it" };
+  if (hows.has("guard")) return { need: "optional", why: "the code leaves out a feature without it" };
+  if (hows.has("default")) return { need: "optional", why: "the code has a default for it" };
+  const docs = new Set(of("setup-doc").map((f) => f.data?.says));
+  if (docs.has("required") && !docs.has("optional")) return { need: "required", why: "the setup docs say it is required" };
+  if (docs.has("optional") && !docs.has("required")) return { need: "optional", why: "the setup docs say it is optional" };
+  const ex = of("example-setting");
+  if (ex.length && ex.every((f) => f.data?.commented)) return { need: "optional", why: "the example settings file leaves it commented out" };
+  return { need: "unclear", why: "the code reads it plainly and the setup docs don't say" };
+}
+/**
+ * Whether a person must supply an outside system, from the settings it reads
+ * (its setting facts and the credentials it names) and where the code that
+ * reaches it is (the files its facts cite): {need, by, why, settings}.
+ *   - Any setting required makes it required; every one optional makes it
+ *     optional.
+ *   - When its settings don't settle it, and every file outside its tests
+ *     that reaches it is inside its skills, only those skills need it, so
+ *     the agent runs without it: optional.
+ * by is "rule" for each. Otherwise need and by are null: the facts leave it
+ * unclear, and the model's answer stands.
+ */
+export function systemNeed({ settings = [], files = [], facts = [] } = {}) {
+  const names = [...new Set(settings.map((s) => String(s ?? "").trim()).filter(Boolean))].sort();
+  const each = names.map((n) => ({ name: n, ...(settingNeed(n, facts) ?? { need: null }) })).filter((x) => x.need);
+  const said = each.map((x) => ({ name: x.name, need: x.need, why: x.why }));
+  if (each.some((x) => x.need === "required")) return { need: "required", by: "rule", why: "a setting it reads is required", settings: said };
+  if (each.length && each.every((x) => x.need === "optional")) return { need: "optional", by: "rule", why: "every setting it reads is optional", settings: said };
+  const folders = facts.filter((f) => f.kind === "skill").map((f) => String(f.data?.folder ?? ""));
+  // The code that reaches it: no test, and no doc or example settings file, which reach nothing.
+  const reach = [...new Set(files.map((f) => String(f ?? "")).filter((f) => f && !isTestFile(f) && !/\.(md|mdx|rst|txt)$/i.test(f) && !isExampleSettings(f)))];
+  if (reach.length && reach.every((f) => inSkill(f, folders))) return { need: "optional", by: "rule", why: "only its skills reach it", settings: said };
+  return { need: null, by: null, why: null, settings: said };
 }
 /** A test file's kind, by its folders and name. */
 export function testKind(f) {

@@ -14,7 +14,7 @@ Before an outside agent is installed or given a credential, when the person in c
 ## What this needs
 
 - repository (url, required)
-- commit (identifier, required)
+- commit (identifier, optional: left blank, the newest commit on the default branch)
 
 ## What a good result looks like
 
@@ -27,11 +27,11 @@ An inspection report in eight sections whose every finding stands on its own and
 
 ## When it comes back empty
 
-When the archive holds no file it can read as text, it still writes the report with what was inspected and a finding that there was no code to read; when the message names no repository or no commit, it says which is missing and inspects nothing.
+When the archive holds no file it can read as text, it still writes the report with what was inspected and a finding that there was no code to read; when the message names no repository, it says so and inspects nothing; when it names no commit, it inspects the newest commit on the repository's default branch.
 
 ## How to do it
 
-Give the repository as github.com<owner>/<name> or <owner>/<name> on a repository: line, and the commit's digest on a commit: line, or one GitHub commit address that names both. The script reads GitHub's records and the archive at the commit with GET requests only, unpacks it in the job's own folder, reads the facts by rule with the reverse engineer's and the security reviewer's carried scripts, lists the dependencies and asks OSV about them, asks the model for the judgments in up to three calls, keeps only the judgments that cite facts and check against the commit, and writes every finding through one emitter. It runs nothing from the repository, and removes its copy when the job ends.
+Give the repository as github.com<owner>/<name> or <owner>/<name> on a repository: line, and, to inspect one commit, its digest on a commit: line, or one GitHub commit address that names both; with no commit, the newest commit on the default branch is read. The script reads GitHub's records and the archive at the commit with GET requests only, unpacks it in the job's own folder, reads the facts by rule with the reverse engineer's and the security reviewer's carried scripts, lists the dependencies and asks OSV about them, asks the model for the judgments in up to three calls, keeps only the judgments that cite facts and check against the commit, decides whether each outside system is required by rule, and writes every finding through one emitter. It runs nothing from the repository, and removes its copy when the job ends.
 
 ## Scripts
 

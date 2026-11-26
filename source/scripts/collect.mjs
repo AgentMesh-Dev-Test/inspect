@@ -278,19 +278,27 @@ export function settingNeed(name, facts) {
 }
 /**
  * Whether a person must supply an outside system, from the settings it reads
- * (its setting facts and the credentials it names): {need, by, settings}.
- * Any setting required makes it required; every one optional makes it
- * optional; by is "rule". When none of its settings settles it, or it reads
- * none, need is null and by is null: the facts leave it unclear, and the
- * model's answer stands.
+ * (its setting facts and the credentials it names) and where the code that
+ * reaches it is (the files its facts cite): {need, by, why, settings}.
+ *   - Any setting required makes it required; every one optional makes it
+ *     optional.
+ *   - When its settings don't settle it, and every file outside its tests
+ *     that reaches it is inside its skills, only those skills need it, so
+ *     the agent runs without it: optional.
+ * by is "rule" for each. Otherwise need and by are null: the facts leave it
+ * unclear, and the model's answer stands.
  */
-export function systemNeed({ settings = [], facts = [] } = {}) {
+export function systemNeed({ settings = [], files = [], facts = [] } = {}) {
   const names = [...new Set(settings.map((s) => String(s ?? "").trim()).filter(Boolean))].sort();
   const each = names.map((n) => ({ name: n, ...(settingNeed(n, facts) ?? { need: null }) })).filter((x) => x.need);
-  const said = (x) => ({ name: x.name, need: x.need, why: x.why });
-  if (each.some((x) => x.need === "required")) return { need: "required", by: "rule", settings: each.map(said) };
-  if (each.length && each.every((x) => x.need === "optional")) return { need: "optional", by: "rule", settings: each.map(said) };
-  return { need: null, by: null, settings: each.map(said) };
+  const said = each.map((x) => ({ name: x.name, need: x.need, why: x.why }));
+  if (each.some((x) => x.need === "required")) return { need: "required", by: "rule", why: "a setting it reads is required", settings: said };
+  if (each.length && each.every((x) => x.need === "optional")) return { need: "optional", by: "rule", why: "every setting it reads is optional", settings: said };
+  const folders = facts.filter((f) => f.kind === "skill").map((f) => String(f.data?.folder ?? ""));
+  // The code that reaches it: no test, and no doc or example settings file, which reach nothing.
+  const reach = [...new Set(files.map((f) => String(f ?? "")).filter((f) => f && !isTestFile(f) && !/\.(md|mdx|rst|txt)$/i.test(f) && !isExampleSettings(f)))];
+  if (reach.length && reach.every((f) => inSkill(f, folders))) return { need: "optional", by: "rule", why: "only its skills reach it", settings: said };
+  return { need: null, by: null, why: null, settings: said };
 }
 /** A test file's kind, by its folders and name. */
 export function testKind(f) {

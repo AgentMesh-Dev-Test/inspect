@@ -184,6 +184,7 @@ test("[F4.A8] Required or Optional comes from the setting facts by rule, the sam
     { id: "F0105", kind: "setup-doc", file: "README.md", line: 5, data: { name: "ANTHROPIC_API_KEY", says: "mentioned" } },
     { id: "F0106", kind: "skill", file: "skills/voice/SKILL.md", line: 1, data: { name: "voice", folder: "skills/voice" } },
     { id: "F0107", kind: "setting", file: "src/app.py", line: 20, data: { name: "AWS_REGION", credential: false, how: "default" } },
+    { id: "F0108", kind: "address", file: "skills/voice/scripts/tts.mjs", line: 4, data: { host: "api.paper.design", called: true } },
   ];
   const sById = new Map(sfacts.map((f) => [f.id, f]));
   const system = (name, based_on, need, credentials = []) => ({ section: 5, kind: "system", title: `${name}: what it is used for`, says: `It reaches ${name}.`, based_on, detail: { system: name, need, supply: `Your ${name} key`, credentials } });
@@ -194,19 +195,21 @@ test("[F4.A8] Required or Optional comes from the setting facts by rule, the sam
       system("ElevenLabs", ["F0106"], modelSays.eleven, ["ELEVENLABS_API_KEY"]),
       system("Anthropic", ["F0103", "F0105"], modelSays.anthropic),
       system("AWS", ["F0107"], modelSays.aws),
+      system("Paper", ["F0106", "F0108"], modelSays.paper),
     ];
     const { kept, held } = checkDrafts(drafts, { sections: [3, 4, 5], byId: sById, ctx: sctx });
     assert.deepEqual(held, []);
     return Object.fromEntries(kept.map((f) => [f.detail.system, [f.detail.need, f.detail.need_by]]));
   };
-  const one = needsOf({ slack: "optional", langsmith: "required", eleven: "required", anthropic: "required", aws: "required" });
-  const two = needsOf({ slack: "unclear", langsmith: "unclear", eleven: "optional", anthropic: "optional", aws: "optional" });
-  const settled = ["Slack", "LangSmith", "ElevenLabs", "AWS"];
+  const one = needsOf({ slack: "optional", langsmith: "required", eleven: "required", anthropic: "required", aws: "required", paper: "required" });
+  const two = needsOf({ slack: "unclear", langsmith: "unclear", eleven: "optional", anthropic: "optional", aws: "optional", paper: "unclear" });
+  const settled = ["Slack", "LangSmith", "ElevenLabs", "AWS", "Paper"];
   for (const s of settled) assert.deepEqual(one[s], two[s], `${s} is the same in both runs`);
   assert.deepEqual(one.Slack, ["required", "rule"], "the code stops without its token");
   assert.deepEqual(one.LangSmith, ["optional", "rule"], "the code leaves out tracing without its key");
   assert.deepEqual(one.ElevenLabs, ["optional", "rule"], "only the skill that uses it reads its key, so the agent runs without it");
   assert.deepEqual(one.AWS, ["optional", "rule"], "the code has a default");
+  assert.deepEqual(one.Paper, ["optional", "rule"], "it reads no setting, and only a skill reaches it");
   assert.deepEqual([one.Anthropic, two.Anthropic], [["required", "model"], ["optional", "model"]], "read plainly with no word from the docs: the facts leave it unclear, so the model's answer stands");
   const required = (n) => Object.values(n).filter(([need]) => need === "required").length;
   assert.equal(required(Object.fromEntries(settled.map((s) => [s, one[s]]))), required(Object.fromEntries(settled.map((s) => [s, two[s]]))));

@@ -8,6 +8,11 @@
 // key, so it reads anonymously, with GitHub's small hourly allowance for that,
 // and says so in words when the allowance runs out.
 //
+// When the request names no commit (0.4.0), the commit read is the newest on
+// the repository's default branch: the repository's record names the branch,
+// and the commit's record for that branch gives its full digest. It is the
+// same one call as for a named commit, so a job still makes four.
+//
 // Every call is a GET, counted and recorded (the endpoint and GitHub's answer,
 // never anything else), at most CALLS a job. GitHub's address is GITHUB_API,
 // read on every run and written nowhere here.
@@ -88,6 +93,18 @@ export function githubReader({ owner, name, env = process.env, fetchImpl = fetch
       const r = await json(`/repos/${owner}/${name}/commits/${digest}`, "the commit's record");
       if (r.status === 404 || r.status === 422) throw new GitHubFailed(`${digest} is not a commit of ${owner}/${name}, so nothing was inspected.`, { kind: "no-commit", status: r.status });
       if (r.status >= 400 || !r.data) throw failed("the commit's record", r.entry);
+      return r.data;
+    },
+    /** The newest commit's record on a branch (0.4.0): the repository's default
+     *  branch, when the request names no commit. Refuses when the branch has none. */
+    async newestCommit(branch) {
+      const b = String(branch ?? "").trim();
+      if (!b) throw new GitHubFailed(`GitHub's record of ${owner}/${name} names no default branch, so there is no newest commit to read and nothing was inspected.`, { kind: "no-commit" });
+      const ref = b.split("/").map((x) => encodeURIComponent(x)).join("/");
+      const r = await json(`/repos/${owner}/${name}/commits/${ref}`, "the newest commit's record");
+      if (r.status === 404 || r.status === 409 || r.status === 422) throw new GitHubFailed(`${owner}/${name} has no commit on its default branch, ${b}, so nothing was inspected.`, { kind: "no-commit", status: r.status });
+      if (r.status >= 400 || !r.data) throw failed("the newest commit's record", r.entry);
+      if (!/^[0-9a-f]{40}$/i.test(String(r.data.sha ?? ""))) throw new GitHubFailed(`GitHub's record of the newest commit on ${b} of ${owner}/${name} gives no full digest, so nothing was inspected; try again later.`, { kind: "status", status: r.status });
       return r.data;
     },
     /** The commits since a moment, up to 100: {count, more}. */

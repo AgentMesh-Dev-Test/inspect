@@ -95,7 +95,7 @@ test("[F3.A2] a level comes from OSV's record: its severity word, or a CVSS 3 ve
 test("[F3.A3] a package.json with no lockfile asking for express ^4.0.0 is said in section 8 as not checked, only a range", async () => {
   const files = smallAgent({ "package.json": '{"name":"helper","dependencies":{"express":"^4.0.0"}}' });
   const out = await go(files);
-  const f = out.report.findings.find((x) => x.section === 8 && x.title === "Dependencies not checked against OSV");
+  const f = out.report.findings.find((x) => x.section === 8 && x.title === "Dependencies not checked for known security flaws");
   assert.ok(f, "section 8 says what was not checked");
   assert.match(f.says, /only a range of versions is given/);
   assert.ok(f.detail.components.some((c) => /express/.test(c.purl)));
@@ -104,6 +104,6 @@ test("[F3.A3] a package.json with no lockfile asking for express ^4.0.0 is said 
 test("[F3.A4] OSV answering 500 still delivers the report, and section 8 says the dependencies were not checked and OSV answered 500", async () => {
   const out = await go(smallAgent(), { osvStatus: 500 });
   assert.ok(out.report, "the report is delivered");
-  const f = out.report.findings.find((x) => x.section === 8 && /not checked against OSV/.test(x.title) && /500/.test(x.says));
+  const f = out.report.findings.find((x) => x.section === 8 && /not checked for known security flaws/.test(x.title) && /500/.test(x.says));
   assert.ok(f, "section 8 says OSV answered 500");
 });

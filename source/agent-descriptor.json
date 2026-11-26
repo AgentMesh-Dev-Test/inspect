@@ -1,6 +1,6 @@
 {
   "format": "agent-descriptor-v1",
-  "agent_version": "0.3.4",
+  "agent_version": "0.4.0",
   "name": "Inspect",
   "summary": "Reads an outside agent's code on GitHub at one commit, without running any of it, and reports what it does and how safe it is.",
   "does": "Inspect reads an outside agent's code in a public GitHub repository at one commit, without running any of it, and hands back an inspection report on what the agent does and how safe it is: a list of findings in eight sections, each citing a file and line at the commit. Scripts read the code by rule; a model writes only the judgments, and each judgment cites the lines it rests on. It gives no verdict on bringing the agent in and judges no fit with anyone's plan.",
@@ -20,9 +20,9 @@
         {
           "name": "commit",
           "kind": "identifier",
-          "required": true,
+          "required": false,
           "given_by": "either",
-          "about": "The commit to inspect, as its digest of 7 to 40 characters, such as 86d8f66; a commit's address on GitHub gives the repository and the commit at once."
+          "about": "The commit to inspect, such as 86d8f66; left blank, Inspect reads the newest commit."
         }
       ],
       "outputs": [
@@ -524,7 +524,7 @@
                   },
                   "detail": {
                     "type": "object",
-                    "description": "fields of the finding's kind: a skill's name, path, description, scripts and lift_out (yes or no) with the imports that keep it from standing alone, its size (scripts, lines of code, the length of its instructions and the tests that name it) and its instructions as text (instructions, up to 8,000 characters each and 250,000 in all; instructions_cut when shortened, with instructions_address, the file at the commit on GitHub); the agent's own code's files and lines; a job's does; a risk's safe, how to make it safe; a model's name, where it is chosen and whether a setting changes it; a system's name, host, access (read, write, read-write or unknown), the credentials it expects, need (required, optional or unclear), supply (what the person supplies), without (what happens without it) and sends (what goes to it); a tool's name, what it does and whether it runs without a person's OK; a vulnerability's package, version, OSV id, aliases and fixed version"
+                    "description": "fields of the finding's kind: a skill's name, path, description, scripts and lift_out (yes or no) with the imports that keep it from standing alone, its size (scripts, lines of code, the length of its instructions and the tests that name it) and its instructions as text (instructions, up to 8,000 characters each and 250,000 in all; instructions_cut when shortened, with instructions_address, the file at the commit on GitHub); the agent's own code's files and lines; a job's does; a risk's safe, how to make it safe; a model's name, where it is chosen and whether a setting changes it; a system's name, host, access (read, write, read-write or unknown), the credentials it expects, need (required, optional or unclear), supply (what the person supplies), without (what happens without it) and sends (what goes to it); since 0.4.0 need is decided by rule from the settings it reads and where the code that reaches it is (need_by rule, with need_why and need_settings), and the model's own answer stands only where they leave it unclear (need_by model), kept as need_by_model either way; a credential's need, need_by and need_why by the same rule; a tool's name, what it does and whether it runs without a person's OK; a vulnerability's package, version, OSV id, aliases and fixed version"
                   }
                 },
                 "anyOf": [
@@ -587,7 +587,7 @@
               },
               "FindingSoFar": {
                 "type": "object",
-                "description": "a finding in the working copy: its id, place, title and level, the first place it cites, and its words where they fit",
+                "description": "a finding in the working copy: its id, place, title and level, the first place it cites, the fields of its detail the view draws, and its words where they fit",
                 "required": [
                   "id",
                   "section",
@@ -700,6 +700,10 @@
                     "items": {
                       "$ref": "#/$defs/Source"
                     }
+                  },
+                  "detail": {
+                    "type": "object",
+                    "description": "the fields of the finding's detail the view draws while the job runs (0.4.0): what was inspected, a skill's size, the agent's own code, the count of tests, a system's need and what the person supplies, a credential's need, a risk's fix; left out when the copy does not fit"
                   }
                 }
               }
@@ -754,7 +758,7 @@
       }
     }
   ],
-  "refusals": "Running, installing, building or testing the repository's code, because Inspect only reads it; it says so and inspects without running anything.\nGiving a verdict on whether to bring the agent in, or judging how it fits a plan or a catalog role, because that decision is the reader's; it says so and still delivers the report.\nA branch or a tag in place of a commit, because a branch or a tag can move and the report must stand for one commit; it asks for the commit's digest and inspects nothing.\nA repository that is not public on GitHub, or a commit that is not in it, because there is nothing it may read; it says which, and inspects nothing.\nAn archive larger than 50 MB or holding more than 20000 files, because it reads no more than that; it says how large the archive is, and inspects nothing.\nWriting a link from the archive, or a file whose path leaves its own folder, because an archive from somebody else must not decide where a file lands; it records each one as a fact and writes neither.\nRepeating the characters of anything that looks like a committed credential, because a report that repeats a key has published it; it keeps only the file, the line and the kind of credential.",
+  "refusals": "Running, installing, building or testing the repository's code, because Inspect only reads it; it says so and inspects without running anything.\nGiving a verdict on whether to bring the agent in, or judging how it fits a plan or a catalog role, because that decision is the reader's; it says so and still delivers the report.\nA branch or a tag in place of a commit, because a branch or a tag can move and the report must stand for one commit; it asks for the commit's digest, or for the commit to be left blank so it reads the newest one, and inspects nothing.\nA repository that is not public on GitHub, or a commit that is not in it, because there is nothing it may read; it says which, and inspects nothing.\nAn archive larger than 50 MB or holding more than 20000 files, because it reads no more than that; it says how large the archive is, and inspects nothing.\nWriting a link from the archive, or a file whose path leaves its own folder, because an archive from somebody else must not decide where a file lands; it records each one as a fact and writes neither.\nRepeating the characters of anything that looks like a committed credential, because a report that repeats a key has published it; it keeps only the file, the line and the kind of credential.",
   "records": [
     {
       "name": "the signed job manifest of each delivery",
@@ -820,7 +824,7 @@
         "output": "inspection"
       },
       "file": "views/report.html",
-      "digest": "sha256:35bdc3ee229279d41f598f05a072f3422c634ccf9830a30957a9ba46451072db",
+      "digest": "sha256:df7aced2625a182999d54ccab7529df3eb092c4a4ef1dcfd4ef112430ddc9b42",
       "requests": [
         "resize",
         "copy-text",

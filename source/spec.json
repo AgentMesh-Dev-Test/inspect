@@ -2,7 +2,7 @@
   "format": "spec-v1",
   "product": {
     "name": "inspect",
-    "version": "0.3.4",
+    "version": "0.4.0",
     "kind": "agent"
   },
   "purpose": "Inspect takes a public GitHub repository address and a commit, reads the agent's code at that commit without running any of it, and hands back an inspection report on what the agent does and how safe it is. The report is a list of findings in eight sections, each finding standing on its own and citing a file and line at the commit. Its reader is the person in charge of a department's agents, deciding whether to bring in an outside agent before anything is installed or given a credential. It judges no fit with anyone's plan, matches the agent to no catalog role and gives no bring-it-in-or-not verdict.",
@@ -37,8 +37,8 @@
         {
           "name": "commit",
           "kind": "identifier",
-          "about": "The commit's digest, 7 to 40 hexadecimal characters, on a line of the message (commit: ...), or as the last part of a https://github.com/<owner>/<name>/commit/<digest> or /tree/<digest> address that names the repository too.",
-          "required": true,
+          "about": "The commit's digest, 7 to 40 hexadecimal characters, on a line of the message (commit: ...), or as the last part of a https://github.com/<owner>/<name>/commit/<digest> or /tree/<digest> address that names the repository too; when the message names none, the newest commit on the repository's default branch.",
+          "required": false,
           "given_by": "either"
         }
       ],
@@ -48,7 +48,7 @@
           "kind": "input",
           "priority": "must",
           "verify": "test",
-          "shall": "The agent shall take the repository as a https://github.com/<owner>/<name> address or as <owner>/<name>, and the commit as 7 to 40 hexadecimal characters, from repository: and commit: lines of the message or from one https://github.com/<owner>/<name>/commit/<digest> or /tree/<digest> address that names both.",
+          "shall": "The agent shall take the repository as a https://github.com/<owner>/<name> address or as <owner>/<name>, and the commit, when the message names one, as 7 to 40 hexadecimal characters, from repository: and commit: lines of the message or from one https://github.com/<owner>/<name>/commit/<digest> or /tree/<digest> address that names both.",
           "source": {
             "said": "Inspect takes a GitHub repository address and a commit"
           }
@@ -58,7 +58,7 @@
           "kind": "behavior",
           "priority": "must",
           "verify": "test",
-          "shall": "The agent shall read from GitHub only with GET requests: the repository's record, the commit's record, the commits of the last 90 days, and the archive of the repository at the named commit.",
+          "shall": "The agent shall read from GitHub only with GET requests: the repository's record, the commit's record (or, when no commit is named, the record of the newest commit on the default branch), the commits of the last 90 days, and the archive of the repository at that commit.",
           "source": {
             "said": "GitHub, read only (public repos at a commit)"
           }
@@ -108,7 +108,7 @@
           "kind": "refusal",
           "priority": "must",
           "verify": "test",
-          "shall": "The agent shall refuse, and inspect nothing, when the repository or the commit is missing, naming each one that is missing, and when the commit is given as a branch or tag name rather than a digest, saying that Inspect reads one commit and a branch or a tag can move.",
+          "shall": "The agent shall refuse, and inspect nothing, when the repository is missing, saying so, and when the commit is given as a branch or tag name rather than a digest, saying that Inspect reads one commit and a branch or a tag can move.",
           "source": {
             "said": "Inspect takes a GitHub repository address and a commit"
           }
@@ -141,6 +141,16 @@
           "shall": "The agent shall, when GitHub does not answer or answers with an error, deliver no report and say which call failed and what GitHub answered, so the person can try again later.",
           "source": {
             "said": "GitHub, read only (public repos at a commit)"
+          }
+        },
+        {
+          "id": "F1.R11",
+          "kind": "behavior",
+          "priority": "must",
+          "verify": "test",
+          "shall": "The agent shall, when the message names no commit, read the newest commit on the repository's default branch, as GitHub's record of the repository names that branch, and inspect it, recording its full 40-character digest in the report and saying in what was inspected that it was the newest on that branch; a commit named, or a commit's address, is inspected as named. It shall refuse, and inspect nothing, when the default branch has no commit.",
+          "source": {
+            "said": "Why are you mandating a specific commit? wouldn't it just be the last one?"
           }
         }
       ],
@@ -191,7 +201,7 @@
         },
         {
           "id": "F1.A7",
-          "gherkin": "Scenario: Nothing to say which repository\n  Given a message that names no repository and no commit\n  When Inspect reads the message\n  Then it replies naming the repository and the commit as missing\n  And it makes no call to GitHub",
+          "gherkin": "Scenario: Nothing to say which repository\n  Given a message that names no repository\n  When Inspect reads the message\n  Then it replies naming the repository as missing\n  And it makes no call to GitHub",
           "checks": [
             "F1.R7"
           ]
@@ -215,6 +225,15 @@
           "gherkin": "Scenario: GitHub fails\n  Given GitHub answers 503 to the archive\n  When Inspect fetches it\n  Then it delivers no report\n  And it replies naming the archive call and GitHub's answer 503",
           "checks": [
             "F1.R10"
+          ]
+        },
+        {
+          "id": "F1.A11",
+          "gherkin": "Scenario: No commit named\n  Given a message with the line repository: https://github.com/acme/helper and no commit\n  And GitHub's record of acme/helper names its default branch trunk\n  When Inspect reads the message\n  Then it asks GitHub for the newest commit on trunk with a GET request\n  And it inspects that commit and the report's commit is its full digest\n  And what was inspected says it was the newest on trunk\n  And it makes no more than 6 calls to GitHub",
+          "checks": [
+            "F1.R11",
+            "F1.R2",
+            "F1.R3"
           ]
         }
       ]
@@ -530,6 +549,16 @@
           "source": {
             "said": "Scripts collect the facts; the model writes only the judgments"
           }
+        },
+        {
+          "id": "F4.R9",
+          "kind": "behavior",
+          "priority": "must",
+          "verify": "test",
+          "shall": "The agent shall decide whether a person must supply each outside system by rule, the same in every run of the same commit, from the settings the system reads and where the code that reaches it is: a setting its own code stops without is required; one it skips a feature without, or has a default for, is optional; one read plainly is what the setup docs say, else optional when the example settings file leaves it commented out; one read only inside its skills is optional; one only its tests read is never needed. A system with a required setting is required, and one whose settings are all optional, or that only its skills reach, is optional. Only where these leave it unclear does the model's answer stand, and the report keeps the model's answer either way.",
+          "source": {
+            "said": "The count of required systems varied from run to run because the model judged it."
+          }
         }
       ],
       "acceptance": [
@@ -583,6 +612,13 @@
           "checks": [
             "F4.R7",
             "F4.R8"
+          ]
+        },
+        {
+          "id": "F4.A8",
+          "gherkin": "Scenario: Required or Optional is the same in every run\n  Given the code stops without SLACK_BOT_TOKEN, skips tracing without LANGSMITH_API_KEY and reads ELEVENLABS_API_KEY only inside a skill\n  When the model answers optional for Slack in one run and required for LangSmith and ElevenLabs in another\n  Then Slack is required, and LangSmith and ElevenLabs are optional, in both runs",
+          "checks": [
+            "F4.R9"
           ]
         }
       ]
@@ -1085,7 +1121,7 @@
                   },
                   "detail": {
                     "type": "object",
-                    "description": "fields of the finding's kind: a skill's name, path, description, scripts and lift_out (yes or no) with the imports that keep it from standing alone, its size (scripts, lines of code, the length of its instructions and the tests that name it) and its instructions as text (instructions, up to 8,000 characters each and 250,000 in all; instructions_cut when shortened, with instructions_address, the file at the commit on GitHub); the agent's own code's files and lines; a job's does; a risk's safe, how to make it safe; a model's name, where it is chosen and whether a setting changes it; a system's name, host, access (read, write, read-write or unknown), the credentials it expects, need (required, optional or unclear), supply (what the person supplies), without (what happens without it) and sends (what goes to it); a tool's name, what it does and whether it runs without a person's OK; a vulnerability's package, version, OSV id, aliases and fixed version"
+                    "description": "fields of the finding's kind: a skill's name, path, description, scripts and lift_out (yes or no) with the imports that keep it from standing alone, its size (scripts, lines of code, the length of its instructions and the tests that name it) and its instructions as text (instructions, up to 8,000 characters each and 250,000 in all; instructions_cut when shortened, with instructions_address, the file at the commit on GitHub); the agent's own code's files and lines; a job's does; a risk's safe, how to make it safe; a model's name, where it is chosen and whether a setting changes it; a system's name, host, access (read, write, read-write or unknown), the credentials it expects, need (required, optional or unclear), supply (what the person supplies), without (what happens without it) and sends (what goes to it); since 0.4.0 need is decided by rule from the settings it reads and where the code that reaches it is (need_by rule, with need_why and need_settings), and the model's own answer stands only where they leave it unclear (need_by model), kept as need_by_model either way; a credential's need, need_by and need_why by the same rule; a tool's name, what it does and whether it runs without a person's OK; a vulnerability's package, version, OSV id, aliases and fixed version"
                   }
                 },
                 "anyOf": [
@@ -1148,7 +1184,7 @@
               },
               "FindingSoFar": {
                 "type": "object",
-                "description": "a finding in the working copy: its id, place, title and level, the first place it cites, and its words where they fit",
+                "description": "a finding in the working copy: its id, place, title and level, the first place it cites, the fields of its detail the view draws, and its words where they fit",
                 "required": [
                   "id",
                   "section",
@@ -1261,6 +1297,10 @@
                     "items": {
                       "$ref": "#/$defs/Source"
                     }
+                  },
+                  "detail": {
+                    "type": "object",
+                    "description": "the fields of the finding's detail the view draws while the job runs (0.4.0): what was inspected, a skill's size, the agent's own code, the count of tests, a system's need and what the person supplies, a credential's need, a risk's fix; left out when the copy does not fit"
                   }
                 }
               }
@@ -1335,7 +1375,7 @@
           "kind": "interface",
           "priority": "must",
           "verify": "test",
-          "shall": "The agent shall pass every finding, from the scripts and from the model, through one function that emits a finding, in the order it is found and with the id it has in the report, and that function shall post each finding to the running job as a piece named by its id, with a status line as each stage of the inspection begins (adapter 0.102.0: lines of the job folder's updates.jsonl), written together once per turn of the event loop, each write ending with the working copy of the report: the report so far, under the report's own name inspection, marked partial with the stage it is at, whole in one piece of at most 60,000 characters.",
+          "shall": "The agent shall pass every finding, from the scripts and from the model, through one function that emits a finding, in the order it is found and with the id it has in the report, and that function shall post each finding to the running job as a piece named by its id, with a status line as each stage of the inspection begins (adapter 0.102.0: lines of the job folder's updates.jsonl), written together once per turn of the event loop, each write ending with the working copy of the report: the report so far, under the report's own name inspection, marked partial with the stage it is at, whole in one piece of at most 60,000 characters, each finding carrying the fields of its detail the view draws while there is room for them, so no field on the page is empty while the job runs.",
           "source": {
             "said": "Shape its code so that posting each finding as it is found is a small later change (one place that emits a finding)."
           }
@@ -1385,7 +1425,7 @@
           "kind": "interface",
           "priority": "must",
           "verify": "test",
-          "shall": "The agent's package shall carry a view of the report, views/report.html, declared in the descriptor's views[] by its digest for the output inspection (Common Agent Specification 6.13.6; DESCRIPTOR-UI 0.2.0 Section 9): one self-contained file that loads nothing, speaks only the bridge's methods, asks only for resize, copy-text and save-file, draws with the --ca-* tokens and a fallback for each in light and dark, opens on At a glance with the risks by level, then the eight sections one line per finding with its level, category and file and line, sorts risks by level, filters by section and by level, copies a finding with the address of its line at the commit, saves a plain summary for security, draws the working copy as the findings so far with the stage and the report's place in its lifecycle, and, when the job has ended and only the working copy arrived, says the job finished but the full report did not arrive, and gives every level a word and a shape, never a color alone.",
+          "shall": "The agent's package shall carry a view of the report, views/report.html, declared in the descriptor's views[] by its digest for the output inspection (Common Agent Specification 6.13.6; DESCRIPTOR-UI 0.2.0 Section 9): one self-contained file that loads nothing, speaks only the bridge's methods, asks only for resize, copy-text and save-file, and draws with the --ca-* tokens and a fallback for each in light and dark. It is one row of five tabs with nothing above it: Overview (the description of the agent, how much is there as tiles each with an icon, counting only its own skills, and what was inspected), What it does (jobs, what it takes and hands back, skills with their size, its own code, how it works; a skill's instructions open in a dialog over the page, placed where the person is, with Close, Escape and focus moved in and back), Systems it uses (one card per system with its icon, its name, required or optional as a word and a shape, and what the person supplies), Risks (the risks by level as the filter, a summary for security, every risk with how to make it safe) and Tests and gaps (a document, every item's words shown). While the job runs, one status under the tabs says the step it is on, and every field and list still to come shows a loading placeholder. It names no file, line or advisory id, and gives every level and need a word and a shape, never a color alone.",
           "source": {
             "said": "Package Inspect with a view, to the published Common Agent spec, as Inspect 0.2.0."
           }
@@ -1496,7 +1536,7 @@
       "module": "scripts/github.mjs",
       "keep": false,
       "about": "Reads GitHub, GET only.",
-      "signature": "githubReader({owner, name, env, fetchImpl}): a reader with repository(), commit(sha), recentCommits(since) and archive(sha), each one counted GET"
+      "signature": "githubReader({owner, name, env, fetchImpl}): a reader with repository(), commit(sha), newestCommit(branch), recentCommits(since) and archive(sha), each one counted GET"
     },
     {
       "id": "I6",
