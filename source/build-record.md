@@ -453,3 +453,41 @@ Two fixes inside Inspect, the first for the platform agents scorecard (AgentMesh
 - **A bound on the day** (scripts/limits.mjs). Each inspection asks the model at most three times, each call with its own output budget and a cap on what it is given, so a cap on inspections bounds what the model is asked for. One asker may start 20 inspections in a UTC day and everyone 200. The count is taken before anything is read or asked, in the records folder the host keeps across jobs (RECORDS, or --records); over either cap the request is refused at once, in words that say when to try again ("Try again in 7 hours."), with nothing posted to the running job. Who asked is kept only as a digest of the account, else of the sending agent; the file keeps one day at most; a count that cannot be read or written refuses, since a cap that cannot count is no cap. Two inspections that start in the same moment may read the same count, so a cap can let one more through. The spec (F1.R12, F1.A12), the refusals and test/limits.test.mjs say so.
 - **The Overview as the job finishes.** The working copy posted with every finding (206 on design-agent) was too big to keep the fields of their detail, and for six seconds the Overview drew "0 of 18" systems required and none of its other tiles. When the copy is too big for every field, the fields the Overview and the systems' cards draw (what was inspected, each skill's size, the agent's own code, the count of tests, each system's need and what the person supplies) now go last (report.mjs WORKING_DETAIL_FIRST). Applied to 0.4.4's run, the final copy is 54,183 characters and keeps every skill's size and every system's need.
 - The suite: 113 tests, 112 pass, one skipped.
+
+The 0.4.5 install on dev: filed through the deploy ticket at 11:37 am Mountain time on 2026-11-26, approved as asking for nothing new, running at 11:41:01 am; the view is unchanged from 0.4.4 (sha256:22220ca477e853f06095917fce24e499c2b74750fc96947512fcde660c0ac93d). The fleet's run spec for Inspect passes `--records {records}`, the agent's own folder (state/inspect/records on the dev agent-state bucket). The smallest proof, with no model call: one message through the deploy ticket's test route naming a repository that does not exist passed the count and was refused by GitHub in Inspect's words ("There is no public repository at agentmesh-dev-test/no-such-repository-for-inspect on GitHub, so nothing was inspected."), and the folder then held `{"day":"2026-11-26","total":1,"by":{"b72cbc69c2fa9a7f":1}}`. The same route, given the repository as owner/name, was refused by the adapter's input door before Inspect saw it, as 0.4.4 chose: the form and the descriptor ask for the address.
+
+## The platform agents scorecard
+
+Inspect is scored against the nine items of AgentMesh's docs/platform-agents.md in services/src/api/platform-agent-registry.ts (AgentMesh PR 1058), which also lists it on dev.agentmesh.ai/platform-agents.html. Screened fails: the facts its scripts read from an outside repository reach the model with no screening; the plan is the house screening (EXT-10, Model Armor), fail-closed because its output is a judgment, once a package job can reach the gateway. Bounded spend passes since 0.4.5's caps. Fails absent and no money pass. Console-managed, contract in code, retains nothing, ordinary identity and on the record are partial, each with its reason in the registry: no live console card; its tests run here, not in AgentMesh's CI; job folders on the agent-state bucket have no purge or closure entry; the node seed is a plain file and the node credential shared; no honesty-list entry, and it is not on prod.
+
+## What an Inspect production release needs (a checklist; none of it done)
+
+Prod is held, and every step below waits on the owner's yes.
+
+1. **Settings on prod.**
+   - OSV_API bound in AgentMesh's prod environment (env/prod.json, as AgentMesh PR 1035 bound it in env/dev.json) and the services deployed with it.
+   - The same on the prod fleet host's /opt/fleet/env/prod.json, backed up first.
+   - GITHUB_API and the four model settings bound for package jobs on prod, as on dev.
+2. **The prod fleet host matches dev's.**
+   - Adapter 0.102.0 or later, so the job's updates.jsonl reaches the Task while the job runs.
+   - MESH_ADAPTER_JOBS on the shared mount for mesh-node-platform.
+   - The /mesh mount's metadata cache at one second (dev's changes are under 0.1.2 above).
+   - The agent's records folder bound, since a day count that cannot be kept refuses every inspection.
+3. **A deploy ticket for prod.** POST /v1/deploy/by-email on the prod instance with the platform's prod deploy key: email platform@agentmesh.ai, repository AgentMesh-Dev-Test/inspect. Keep the ticket beside dev's, never printed. The first install asks for its systems (GitHub read, OSV read, a text model), so it needs the owner's approval, not the automatic one.
+4. **The Next and services changes it depends on, on prod first.**
+   - The view host to DESCRIPTOR-UI 0.2.0 Section 9: the bridge, the --ca-* tokens, the view by digest at GET /v1/agents/:key/views/:digest, and GET /v1/accounts/:id/jobs/:job/updates (PR 1039).
+   - Notices (PR 1040).
+   - The job page and its header (PRs 1045, 1046, 1048, 1050), and the work through PR 1057: optional inputs under More options, the job's id within seconds, the Working chip until the view is up, the chip at 14 px.
+   - The scorecard (PR 1058).
+   - Services deployed to prod with deploy.sh, and app-next published to prod with its publish script, one deploy at a time.
+5. **What to prove on prod**, from a throwaway prod test account closed afterwards.
+   - The Descriptor gives the version and the view's digest, and the view's bytes hash to it.
+   - One run on https://github.com/langchain-ai/design-agent with the commit left blank shows each of these:
+     - the header's subject links to GitHub;
+     - the view is up with "Step 1 of 5" and five placeholder tiles;
+     - the Overview fills in without a wrong count;
+     - the report arrives with inspection.json, inspection.md and the dependency list on the answer's manifest, not only in the job folder;
+     - the newest commit's full digest is recorded;
+     - the day count appears in the records folder.
+   - A request naming no repository is refused in words, with nothing inspected.
+6. **Before it ships beyond dev**, screened should move off fails: the scorecard allows a fails with a plan, but the owner should decide whether that is enough for prod.
