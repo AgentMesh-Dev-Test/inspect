@@ -12,10 +12,10 @@
       "inputs": [
         {
           "name": "repository",
-          "kind": "identifier",
+          "kind": "url",
           "required": true,
           "given_by": "either",
-          "about": "The public GitHub repository to inspect, as its address or as owner and name, such as langchain-ai/design-agent."
+          "about": "The public GitHub repository's address, such as https://github.com/langchain-ai/design-agent."
         },
         {
           "name": "commit",

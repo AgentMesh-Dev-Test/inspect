@@ -29,8 +29,8 @@
       "inputs": [
         {
           "name": "repository",
-          "kind": "identifier",
-          "about": "The public GitHub repository, as https://github.com/<owner>/<name> or <owner>/<name>, on a line of the message (repository: ...) or anywhere in it.",
+          "kind": "url",
+          "about": "The public GitHub repository's address, https://github.com/<owner>/<name>, on a line of the message (repository: ...) or anywhere in it; a message from another agent may give <owner>/<name>, which is read the same way.",
           "required": true,
           "given_by": "either"
         },
@@ -48,7 +48,7 @@
           "kind": "input",
           "priority": "must",
           "verify": "test",
-          "shall": "The agent shall take the repository as a https://github.com/<owner>/<name> address or as <owner>/<name>, and shall declare it so either form reaches it (kind identifier, 0.4.3), and the commit, when the message names one, as 7 to 40 hexadecimal characters, from repository: and commit: lines of the message or from one https://github.com/<owner>/<name>/commit/<digest> or /tree/<digest> address that names both.",
+          "shall": "The agent shall take the repository as a https://github.com/<owner>/<name> address or as <owner>/<name>, declaring it as an address (kind url, so the Next app links the job's subject to it; 0.4.4) while still reading <owner>/<name> from a message, and the commit, when the message names one, as 7 to 40 hexadecimal characters, from repository: and commit: lines of the message or from one https://github.com/<owner>/<name>/commit/<digest> or /tree/<digest> address that names both.",
           "source": {
             "said": "Inspect takes a GitHub repository address and a commit"
           }
