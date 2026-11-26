@@ -165,3 +165,66 @@ test("[F4.A7] a call whose facts are more than one call can take is not made, an
   assert.ok(j.second.failed, "the call was not made");
   assert.match(j.second.failed, new RegExp(`more than the ${CALL_TOKENS.toLocaleString("en-US")} one call can take`));
 });
+
+// 0.4.0: whether a person must supply a system is decided by rule from the
+// setting facts, so two runs of the same commit agree however the model
+// answers; the model's answer stands only where the facts leave it unclear.
+test("[F4.A8] Required or Optional comes from the setting facts by rule, the same whatever the model says; the model's answer stands only where the facts don't settle it", async () => {
+  const { settingNeed } = await import("../scripts/collect.mjs");
+  const APP = lines(30, { 4: 'token = os.environ["SLACK_BOT_TOKEN"]', 9: 'if not os.getenv("LANGSMITH_API_KEY"):', 10: "    return", 14: 'model = os.getenv("ANTHROPIC_API_KEY")', 20: 'region = os.getenv("AWS_REGION", "us-east-1")' });
+  const TTS = lines(10, { 3: "const key = process.env.ELEVENLABS_API_KEY;", 4: 'if (!key) throw new Error("no key");' });
+  const README = lines(10, { 5: "Set ANTHROPIC_API_KEY to your Anthropic key." });
+  const files = { "src/app.py": APP, "skills/voice/scripts/tts.mjs": TTS, "README.md": README, "skills/voice/SKILL.md": lines(5, {}) };
+  const sctx = contextFor({ files: Object.keys(files), read: (f) => files[f] ?? null });
+  const sfacts = [
+    { id: "F0101", kind: "setting", file: "src/app.py", line: 4, data: { name: "SLACK_BOT_TOKEN", credential: true, how: "fails" } },
+    { id: "F0102", kind: "setting", file: "src/app.py", line: 9, data: { name: "LANGSMITH_API_KEY", credential: true, how: "guard" } },
+    { id: "F0103", kind: "setting", file: "src/app.py", line: 14, data: { name: "ANTHROPIC_API_KEY", credential: true, how: "plain" } },
+    { id: "F0104", kind: "setting", file: "skills/voice/scripts/tts.mjs", line: 3, data: { name: "ELEVENLABS_API_KEY", credential: true, how: "fails" } },
+    { id: "F0105", kind: "setup-doc", file: "README.md", line: 5, data: { name: "ANTHROPIC_API_KEY", says: "mentioned" } },
+    { id: "F0106", kind: "skill", file: "skills/voice/SKILL.md", line: 1, data: { name: "voice", folder: "skills/voice" } },
+    { id: "F0107", kind: "setting", file: "src/app.py", line: 20, data: { name: "AWS_REGION", credential: false, how: "default" } },
+  ];
+  const sById = new Map(sfacts.map((f) => [f.id, f]));
+  const system = (name, based_on, need, credentials = []) => ({ section: 5, kind: "system", title: `${name}: what it is used for`, says: `It reaches ${name}.`, based_on, detail: { system: name, need, supply: `Your ${name} key`, credentials } });
+  const needsOf = (modelSays) => {
+    const drafts = [
+      system("Slack", ["F0101"], modelSays.slack),
+      system("LangSmith", ["F0102"], modelSays.langsmith),
+      system("ElevenLabs", ["F0106"], modelSays.eleven, ["ELEVENLABS_API_KEY"]),
+      system("Anthropic", ["F0103", "F0105"], modelSays.anthropic),
+      system("AWS", ["F0107"], modelSays.aws),
+    ];
+    const { kept, held } = checkDrafts(drafts, { sections: [3, 4, 5], byId: sById, ctx: sctx });
+    assert.deepEqual(held, []);
+    return Object.fromEntries(kept.map((f) => [f.detail.system, [f.detail.need, f.detail.need_by]]));
+  };
+  const one = needsOf({ slack: "optional", langsmith: "required", eleven: "required", anthropic: "required", aws: "required" });
+  const two = needsOf({ slack: "unclear", langsmith: "unclear", eleven: "optional", anthropic: "optional", aws: "optional" });
+  const settled = ["Slack", "LangSmith", "ElevenLabs", "AWS"];
+  for (const s of settled) assert.deepEqual(one[s], two[s], `${s} is the same in both runs`);
+  assert.deepEqual(one.Slack, ["required", "rule"], "the code stops without its token");
+  assert.deepEqual(one.LangSmith, ["optional", "rule"], "the code leaves out tracing without its key");
+  assert.deepEqual(one.ElevenLabs, ["optional", "rule"], "only the skill that uses it reads its key, so the agent runs without it");
+  assert.deepEqual(one.AWS, ["optional", "rule"], "the code has a default");
+  assert.deepEqual([one.Anthropic, two.Anthropic], [["required", "model"], ["optional", "model"]], "read plainly with no word from the docs: the facts leave it unclear, so the model's answer stands");
+  const required = (n) => Object.values(n).filter(([need]) => need === "required").length;
+  assert.equal(required(Object.fromEntries(settled.map((s) => [s, one[s]]))), required(Object.fromEntries(settled.map((s) => [s, two[s]]))));
+  // One setting, by rule: the docs and the example settings file settle a plain read.
+  const plain = (extra) => settingNeed("X_KEY", [{ id: "F1", kind: "setting", file: "src/a.py", line: 1, data: { name: "X_KEY", how: "plain" } }, ...extra]);
+  assert.equal(plain([{ kind: "setup-doc", data: { name: "X_KEY", says: "required" } }]).need, "required");
+  assert.equal(plain([{ kind: "setup-doc", data: { name: "X_KEY", says: "optional" } }]).need, "optional");
+  assert.equal(plain([{ kind: "example-setting", data: { name: "X_KEY", commented: true } }]).need, "optional");
+  assert.equal(plain([{ kind: "example-setting", data: { name: "X_KEY", commented: false } }]).need, "unclear");
+  assert.equal(settingNeed("X_KEY", [{ kind: "setting", file: "tests/test_a.py", data: { name: "X_KEY", how: "fails", in_test: true } }]), null, "a setting only its tests read is never needed to run it");
+});
+
+test("[F4.A8] a credential no system names carries its need by the same rule, so the view draws it the same in every run", async () => {
+  await inTemp(async (at) => {
+    const files = smallAgent({ "src/keys.py": 'import os\nkey = os.environ["GEMINI_API_KEY"]\nopt = os.getenv("POSTHOG_API_KEY")\nif not opt:\n    pass\n' });
+    const out = await inspect({ text: "repository: acme/helper\ncommit: 86d8f66", workDir: at, env: ENV, fetchImpl: world({ files }).fetchImpl, ask: model().ask });
+    const cred = (env) => out.report.findings.find((f) => f.kind === "credential" && f.detail?.env === env);
+    assert.deepEqual([cred("GEMINI_API_KEY").detail.need, cred("GEMINI_API_KEY").detail.need_by], ["required", "rule"]);
+    assert.equal(cred("POSTHOG_API_KEY").detail.need, "optional");
+  });
+});

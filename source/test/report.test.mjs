@@ -134,7 +134,7 @@ test("[F5.R8] inspection.md is the report as Markdown: its headings, each level 
   assert.match(text, /^# Inspection of acme\/helper$/m);
   assert.match(text, /^## At a glance$/m);
   // 0.2.6: plain headings, no finding codes, category names in words, the short commit only.
-  for (const t of ["What was inspected", "What it does", "How it works", "What it connects to", "What it can do on its own", "Risks, and what it needs to run safely", "Tests, and what Inspect couldn't tell"]) assert.match(text, new RegExp(`^## ${t.replace(/[,.]/g, "\\$&")}$`, "m"));
+  for (const t of ["What was inspected", "What it does", "How it works", "Systems it uses", "What it can do on its own", "Risks, and what it needs to run safely", "Tests, and what Inspect couldn't tell"]) assert.match(text, new RegExp(`^## ${t.replace(/[,.]/g, "\\$&")}$`, "m"));
   assert.ok(!/^## \d/m.test(text), "no section numbers");
   for (const re of [/\bS\d-\d{3}\b/, /LLM0/, /ASI0/, /\b[0-9a-f]{40}\b/, /inspection\.json/, /\bthe facts\b/i, /without running any of it/]) assert.ok(!re.test(text), `the Markdown holds nothing like ${re}`);
   assert.match(text, /\[`LICENSE:1`\]\(https:\/\/github\.com\/acme\/helper\/blob\/86d8f66\/LICENSE#L1\)/);

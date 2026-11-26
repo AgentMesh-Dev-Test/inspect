@@ -105,7 +105,8 @@ export function world({ files = {}, links = {}, raw = [], commit = SHA, archiveC
     if (url.startsWith(API)) {
       for (const [part, s] of Object.entries(status)) if (u.pathname.includes(part)) return response(s, { json: { message: "no" }, headers: s === 403 ? { "x-ratelimit-remaining": 0 } : {} });
       if (/\/tarball\//.test(u.pathname)) return response(200, { bytes: archive, headers: archiveLength ? { "content-length": archiveLength } : { "content-length": archive.length } });
-      if (/\/commits\/[0-9a-f]+$/.test(u.pathname)) return response(200, { json: { sha: commit, commit: { committer: { date: "2026-11-23T21:25:23Z" } } } });
+      // A commit's record, by its digest or, for the newest, by the default branch's name (0.4.0).
+      if (/\/commits\/[0-9a-f]+$/.test(u.pathname) || u.pathname.endsWith(`/commits/${repo.default_branch}`)) return response(200, { json: { sha: commit, commit: { committer: { date: "2026-11-23T21:25:23Z" } } } });
       if (/\/commits$/.test(u.pathname)) return response(200, { json: Array.from({ length: commits }, (_, i) => ({ sha: String(i) })) });
       if (/^\/repos\/[^/]+\/[^/]+$/.test(u.pathname)) return response(200, { json: repo });
       return response(404, { json: { message: "Not Found" } });

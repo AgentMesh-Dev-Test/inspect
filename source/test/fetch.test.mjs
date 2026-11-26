@@ -19,7 +19,7 @@ import { readRequest } from "../scripts/request.mjs";
 import { githubReader, CALLS, ARCHIVE_BYTES } from "../scripts/github.mjs";
 import { untar, MAX_FILES } from "../scripts/untar.mjs";
 import { inspect } from "../scripts/inspect-a-repository.mjs";
-import { ENV, API, SHA, inTemp, world, model, smallAgent, archiveOf, response } from "./helpers.mjs";
+import { ENV, API, SHA, inTemp, world, model, smallAgent, archiveOf, response, repoRecord } from "./helpers.mjs";
 
 const run = (text, w, at, m = model()) => inspect({ text, workDir: at, env: ENV, fetchImpl: w.fetchImpl, ask: m.ask });
 
@@ -98,18 +98,53 @@ test("[F1.A6] a branch name in place of a commit is refused, and GitHub is not c
     const out = await run("repository: acme/helper\ncommit: main", w, at);
     assert.match(out.reply, /Inspect reads one commit/);
     assert.match(out.reply, /A branch or a tag can move/);
+    assert.match(out.reply, /leave the commit out to inspect the newest one/);
     assert.equal(w.calls.length, 0);
   });
 });
 
-test("[F1.A7] a message naming neither is refused naming both as missing, and GitHub is not called", async () => {
+test("[F1.A7] a message naming no repository is refused, naming the repository as missing, and GitHub is not called", async () => {
   await inTemp(async (at) => {
-    const w = world();
-    const out = await run("please inspect something", w, at);
-    assert.match(out.reply, /the repository/);
-    assert.match(out.reply, /the commit/);
-    assert.match(out.reply, /nothing was inspected/);
-    assert.equal(w.calls.length, 0);
+    for (const text of ["please inspect something", "commit: 86d8f66"]) {
+      const w = world();
+      const out = await run(text, w, at);
+      assert.equal(out.reply, "Inspect needs the repository (https://github.com/<owner>/<name>), and the message does not name it, so nothing was inspected.");
+      assert.equal(out.report, undefined);
+      assert.equal(w.calls.length, 0);
+    }
+  });
+});
+
+test("[F1.A11] no commit named: Inspect reads the newest commit on the default branch from GitHub's records, with GET requests only and four calls, and the report records its full digest", async () => {
+  for (const text of ["repository: https://github.com/acme/helper", "Inspect https://github.com/acme/helper please", "repository: acme/helper\ncommit:\nnotes: none", "Inspect a repository.\n\nrepository: acme/helper"]) {
+    await inTemp(async (at) => {
+      assert.equal(readRequest(text).commit, null, `${JSON.stringify(text)} names no commit`);
+      const w = world({ files: smallAgent(), repo: repoRecord({ default_branch: "trunk" }) });
+      const out = await run(text, w, at);
+      assert.equal(out.code, 0, out.reply);
+      const gh = w.calls.filter((c) => c.url.startsWith(API));
+      assert.ok(gh.every((c) => c.method === "GET"));
+      assert.deepEqual(gh.map((c) => new URL(c.url).pathname), ["/repos/acme/helper", "/repos/acme/helper/commits/trunk", "/repos/acme/helper/commits", `/repos/acme/helper/tarball/${SHA}`], "the repository's record names the branch; its newest commit's record gives the digest the archive is read at");
+      assert.equal(out.report.commit.sha, SHA, "the full digest");
+      assert.equal(out.report.commit.checked, true);
+      const c = out.report.findings.find((f) => f.kind === "commit");
+      assert.equal(c.detail.newest_on, "trunk");
+      assert.match(c.says, /the newest on trunk when it was inspected/);
+    });
+  }
+  await inTemp(async (at) => {
+    const out = await run("repository: acme/helper\ncommit: 86d8f66", world({ files: smallAgent() }), at);
+    assert.equal(out.report.findings.find((f) => f.kind === "commit").detail.newest_on, undefined, "a commit named is that commit, never the newest");
+  });
+});
+
+test("[F1.A11] a default branch with no commit is refused in words, and nothing is inspected", async () => {
+  await inTemp(async (at) => {
+    const w = world({ files: smallAgent(), status: { "/commits/main": 409 } });
+    const out = await run("repository: acme/helper", w, at);
+    assert.equal(out.reply, "acme/helper has no commit on its default branch, main, so nothing was inspected.");
+    assert.equal(out.report, undefined);
+    assert.ok(!w.calls.some((c) => c.url.includes("/tarball/")));
   });
 });
 

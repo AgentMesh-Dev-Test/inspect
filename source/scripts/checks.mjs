@@ -20,6 +20,7 @@
 import { INFERRING, JUDGING, checkEvidence, unquoted } from "./evidence.mjs";
 import { KINDS, LEVELS, LIST_IDS, PRECISE, categoryOf } from "./lists.mjs";
 import { evidenceOf } from "./report.mjs";
+import { systemNeed } from "./collect.mjs";
 
 const trim = (s) => String(s ?? "").trim();
 
@@ -193,6 +194,8 @@ export function resolveCategory(raw, { spdx = new Set(), purls = new Set(), osv 
  */
 export function checkDrafts(drafts, { sections, byId, ctx, known = {} }) {
   const kept = []; const held = [];
+  let facts = null;
+  const allFacts = () => (facts ??= [...byId.values()]);
   for (const d of Array.isArray(drafts) ? drafts : []) {
     const section = Number(d?.section);
     const title = plainWords(trim(d?.title)); const says = plainWords(trim(d?.says));
@@ -230,6 +233,18 @@ export function checkDrafts(drafts, { sections, byId, ctx, known = {} }) {
     if (repeatsTitle(title, says)) { hold("its words repeat its title"); continue; }
     const f = { section, kind: trim(d.kind), title, says, by: "model", based_on: ids, ...(evidence.length ? { evidence } : {}), ...(source.length ? { source } : {}) };
     if (d.detail && typeof d.detail === "object" && !Array.isArray(d.detail)) f.detail = plainDetail(f.kind, d.detail);
+    // 0.4.0: whether the person must supply a system is the rule's answer,
+    // from the settings it reads, wherever the facts settle it; the model's
+    // own answer stands only where they leave it unclear.
+    if (f.kind === "system") {
+      f.detail = f.detail ?? { need: "unclear" };
+      const named = Array.isArray(d.detail?.credentials) ? d.detail.credentials : [];
+      const rule = systemNeed({ settings: [...cited.filter((x) => x.kind === "setting").map((x) => x.data?.name), ...named], facts: allFacts() });
+      f.detail.need_by_model = f.detail.need;
+      if (rule.by === "rule") f.detail.need = rule.need;
+      f.detail.need_by = rule.by ?? "model";
+      if (rule.settings.length) f.detail.need_settings = rule.settings;
+    }
     if (f.kind === "risk") {
       const level = trim(d.level).toLowerCase();
       if (!LEVELS.includes(level)) { hold(`its level ${JSON.stringify(d.level ?? null)} is not one of ${LEVELS.join(", ")}`); continue; }

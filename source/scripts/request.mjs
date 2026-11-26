@@ -4,7 +4,9 @@
 // or <owner>/<name>) or from a GitHub address anywhere in the message; the
 // commit from a `commit:` line or from the last part of a /commit/<digest> or
 // /tree/<digest> address. A commit is its digest, 7 to 40 hexadecimal
-// characters: a branch or a tag can move, so neither is taken.
+// characters: a branch or a tag can move, so neither is taken. A message that
+// names no commit (0.4.0) asks for the newest one: commit is null, and
+// Inspect reads the newest commit on the repository's default branch.
 //
 // Two asks are noticed and never acted on: to run, install, build or test the
 // code (Inspect only reads it), and for a verdict or a fit with a plan
@@ -36,13 +38,17 @@ export function fromAddress(text) {
 
 /** The value of a `key:` line, or "". */
 export function lineValue(text, key) {
-  const m = new RegExp(`^\\s*${key}\\s*:\\s*(.+?)\\s*$`, "im").exec(String(text ?? ""));
+  // The value on the key's own line (0.4.0): an empty `commit:` line has no
+  // value, never the line under it.
+  const m = new RegExp(`^[ \\t]*${key}[ \\t]*:[ \\t]*(\\S.*?)[ \\t]*$`, "im").exec(String(text ?? ""));
   return m ? trim(m[1]) : "";
 }
 
 /**
  * The request: {ok: true, owner, name, commit, asks_to_run, asks_verdict}, or
- * {ok: false, refusal} saying what is missing or wrong. No call is made here.
+ * {ok: false, refusal} saying what is missing or wrong. commit is null when
+ * the message names none: the newest commit is read (0.4.0). No call is made
+ * here.
  */
 export function readRequest(text) {
   const words = String(text ?? "");
@@ -56,14 +62,11 @@ export function readRequest(text) {
   const fromWords = fromLine ?? fromAddress(words);
   if (fromWords) { owner = fromWords.owner; name = fromWords.name; commit = fromWords.commit ?? ""; }
   if (commitLine) commit = commitLine.split(/\s+/)[0];
-  const missing = [];
-  if (!owner || !name || !OWNER.test(owner) || !NAME.test(name)) missing.push("the repository (https://github.com/<owner>/<name>)");
-  if (!commit) missing.push("the commit (its digest, 7 to 40 hexadecimal characters)");
-  if (missing.length) {
-    return { ok: false, refusal: `Inspect needs ${missing.join(" and ")}, and the message does not name ${missing.length === 2 ? "either" : "it"}, so nothing was inspected.` };
+  if (!owner || !name || !OWNER.test(owner) || !NAME.test(name)) {
+    return { ok: false, refusal: "Inspect needs the repository (https://github.com/<owner>/<name>), and the message does not name it, so nothing was inspected." };
   }
-  if (!DIGEST.test(commit)) {
-    return { ok: false, refusal: `Inspect reads one commit, named by its digest (7 to 40 hexadecimal characters), and ${JSON.stringify(commit)} is not one. A branch or a tag can move, so give the commit's digest; nothing was inspected.` };
+  if (commit && !DIGEST.test(commit)) {
+    return { ok: false, refusal: `Inspect reads one commit, named by its digest (7 to 40 hexadecimal characters), and ${JSON.stringify(commit)} is not one. A branch or a tag can move, so give the commit's digest, or leave the commit out to inspect the newest one; nothing was inspected.` };
   }
-  return { ok: true, owner, name, commit: commit.toLowerCase(), asks_to_run: RUN_ASK.test(words), asks_verdict: VERDICT_ASK.test(words) };
+  return { ok: true, owner, name, commit: commit ? commit.toLowerCase() : null, asks_to_run: RUN_ASK.test(words), asks_verdict: VERDICT_ASK.test(words) };
 }

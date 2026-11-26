@@ -19,7 +19,7 @@
 import { checkEvidence } from "./evidence.mjs";
 import { SECTIONS, categoryOf, LIST_IDS } from "./lists.mjs";
 import { scrub } from "./secrets.mjs";
-import { HOW_ORDER } from "./collect.mjs";
+import { HOW_ORDER, settingNeed } from "./collect.mjs";
 
 /** The most of one skill's instructions the report carries, and of all of them (0.3.0). */
 export const INSTRUCTIONS_CHARS = 8_000;
@@ -111,7 +111,9 @@ export function scriptFindings({ facts, ctx, owner, name, sha, repoUrl, osv = nu
   // Section 2: what was inspected.
   const pub = of("publisher")[0]; const act = of("activity")[0]; const com = of("commit")[0]; const rec = of("recent-commits")[0];
   if (pub) push(2, "repository", "The repository", `${owner}/${name} on GitHub, ${repoUrl}.`, [pub], { detail: { owner, name, url: repoUrl } });
-  if (com) push(2, "commit", "The commit", `Commit ${String(sha).slice(0, 7)}, committed ${day(com.data?.date)}. ${com.data?.checked ? "The archive's own header names this commit." : "The archive's own header did not name this commit, so it is not marked as checked."}`, [com], { detail: { sha, date: com.data?.date ?? null, checked: com.data?.checked === true } });
+  // 0.4.0: a commit read because none was named is the newest on the default branch, and says so.
+  const newestOn = trim(com?.data?.newest_on);
+  if (com) push(2, "commit", "The commit", `Commit ${String(sha).slice(0, 7)}, committed ${day(com.data?.date)}${newestOn ? `, the newest on ${newestOn} when it was inspected` : ""}. ${com.data?.checked ? "The archive's own header names this commit." : "The archive's own header did not name this commit, so it is not marked as checked."}`, [com], { detail: { sha, date: com.data?.date ?? null, checked: com.data?.checked === true, ...(newestOn ? { newest_on: newestOn } : {}) } });
   if (pub) push(2, "publisher", "The publisher", `Published by ${pub.data?.login}, a GitHub ${String(pub.data?.type ?? "account").toLowerCase()}.`, [pub], { detail: pub.data });
   const licFiles = of("license").filter((f) => f.data?.file_kind === "license" && f.file && !f.file.includes("/"));
   const licManifest = of("license").filter((f) => f.data?.file_kind === "manifest");
@@ -197,7 +199,9 @@ export function scriptFindings({ facts, ctx, owner, name, sha, repoUrl, osv = nu
     const says = run.length
       ? `It reads the credential ${n} from its environment, in ${plural(places(run), "place")} of ${plural(run.length, "file")}${run.length < at.length ? `, and its tests read it in ${plural(at.length - run.length, "more file")}` : ""}.`
       : `Only its tests read the credential ${n}, in ${plural(at.length, "file")}; no other code reads it.`;
-    push(5, "credential", credentialTitle(n, cased), says, at, { detail: { env: n, read_by_code: run.length > 0, files: at.map((c) => c.file), how: HOW_ORDER.find((h) => run.some((c) => c.data.how === h)) ?? null } });
+    // 0.4.0: whether a person must supply it, by the same rule as a system's.
+    const need = settingNeed(n, facts);
+    push(5, "credential", credentialTitle(n, cased), says, at, { detail: { env: n, read_by_code: run.length > 0, files: at.map((c) => c.file), how: HOW_ORDER.find((h) => run.some((c) => c.data.how === h)) ?? null, ...(need ? { need: need.need, need_by: "rule", need_why: need.why } : {}) } });
   }
 
   // Section 7: known vulnerabilities with OSV's level, and committed credentials.
