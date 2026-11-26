@@ -434,6 +434,14 @@ The 0.4.3 install and proof on dev:
 - The cut pass on the shots at 5 s, 20 s and done found one thing: at step 1, before any of the scripts' facts, the Overview drew "Systems required" as a single wide placeholder tile. Its fix (all five tiles as placeholders until the first facts arrive) was not deployed this round, which allowed one deploy; it waits on a branch.
 - The test account was closed afterwards. Production is untouched.
 
-## 0.4.4, waiting on a deploy turn: the Overview's tiles at the first step
+## 0.4.4: the repository asked for as its address, and the step-1 tiles
 
-The fix for 0.4.3's cut-pass finding. Until the first of the scripts' facts arrive, the Overview draws all five tiles as placeholders, each with its icon, where 0.4.3 drew "Systems required" as one wide tile alone. test/view-draw.test.mjs holds it; the stand-in host draws it at 1440 and 400. The suite: 108 tests, 107 pass, one skipped. Packed as 0.4.4 on branch inspect-0.4.4-step1-tiles; not filed on dev.
+- **The repository input is kind url again**, its words asking for the address only ("The public GitHub repository's address, such as https://github.com/langchain-ai/design-agent."). 0.4.3's kind identifier let owner/name through the adapter's door, but the Next app links the job's subject in its header only when the input is an address, and the owner wants that link. Inspect's own reading still takes owner/name from another agent's message. The spec (F1 inputs, F1.R1), SKILL.md, prose.json and the tests say so.
+- **The Overview's tiles at the first step**: until the first of the scripts' facts arrive, all five tiles are placeholders, each with its icon, where 0.4.3 drew "Systems required" as one wide tile alone.
+- The suite: 108 tests, 107 pass, one skipped.
+
+The 0.4.4 install and proof on dev:
+- Filed through the deploy ticket at 11:23 am Mountain time on 2026-11-26, approved as asking for nothing new, running at 11:26:55 am. Dev's Descriptor gives agent_version 0.4.4, the repository kind url and required, the commit kind identifier and not required, and views/report.html at sha256:22220ca477e853f06095917fce24e499c2b74750fc96947512fcde660c0ac93d; GET /v1/agents/:key/views/:digest serves 118,085 bytes that hash to it.
+- One live run from the Next app as a new dev test account of ours, https://github.com/langchain-ai/design-agent with the commit left blank: job 01a2191c-b768-7000-967d-f5f0a94bdebf. The form's repository field shows "https://" again. The header's subject "langchain-ai/design-agent" is a link to https://github.com/langchain-ai/design-agent from the first second. The view was on screen at 27.4 s at step 1 with all five tiles placeholders; step 3 at 50 s; done at 210 s: commit 86d8f667796890eb6d3612dbd1b9e941782fe03f, the newest on main, checked; 206 findings, 2 held back; one of eleven systems required, Anthropic.
+- The cut pass on the shots found one thing: the working copy posted as the job finished, with all 206 findings, was too big to keep the fields of their detail, so for the six seconds before the report arrived the Overview drew "0 of 18" systems required and none of the other tiles. Its fix waits on a branch (0.4.5).
+- The test account was closed afterwards. Production is untouched.
