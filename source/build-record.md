@@ -404,3 +404,32 @@ The 0.4.1 install and proof on dev: filed at 8:27 am Mountain time, running at 8
 The two live runs counted the required systems 1 and 2: the second run's model called "Setup download hosts" required, where the first called its download hosts optional; both read no setting and both said the person has nothing to set up. collect.mjs systemNeed now says a system it reads no setting for, where the person has nothing to set up, is nothing to set up (need none, by rule), drawn as its own word and a dashed ring and never counted as required. Applied to both runs' systems, each counts one required system, Anthropic. A supply the model could not name ("Not shown") is no longer drawn as a line under the system. The suite: 105 tests, 104 pass, one skipped. No third live run was made: the change is the rule and its drawing, both held by tests, and the screenshots draw the second run's report with the rule applied.
 
 The 0.4.2 install on dev: filed through the deploy ticket at 8:43 am Mountain time on 2026-11-26, approved as asking for nothing new, and running as inspect.platform@agentmesh.ai at 8:46:54 am. Dev's Descriptor gives agent_version 0.4.2, the commit input not required, and views/report.html at sha256:798de65f1ed4e8edc13fd6577e6c156615014d7d697361dd7d01ca286b039f77; GET /v1/agents/:key/views/:digest serves 117,518 bytes that hash to it, and the Next app draws the second run's job with it (five tabs, fourteen system cards, each with its mark). The test account was closed afterwards. Production is untouched.
+
+## 0.4.3: the view up at once, owner/name taken, plain status lines
+
+The coordinator's four fixes, from the Next builder's live runs after its host fixes (Next now learns the job's id in about four seconds and reads its Task at once).
+
+- **The first working copy goes out the moment the job starts**, before any call to GitHub, with the repository the request names and no commit yet (the report's schema now lets commit.sha be null in that copy alone); then again once GitHub's record names the commit, and once the archive is checked. The view draws it as "Inspecting · Step 1 of 5: Reading the repository" with every field a placeholder.
+- **owner/name reaches Inspect.** A run with `langchain-ai/design-agent` was refused in 16 seconds with "it needs repository (a web address)". The refusal was AgentMesh's, not Inspect's: the adapter's input door (mesh-adapter.mjs inputFitGate, with agent-messaging's fitCheck) holds an input of kind url to a web address in the message, asks its converter, and when that fails answers with the standard INPUT_NOT_UNDERSTOOD reply, whose "More: <the agent's AgentDoc address>" is that reply's own line (agent-messaging inputNotUnderstood). The repository input is now kind identifier. With no input of a kind the door holds to a form, the door passes the message to Inspect, whose own reading takes both an address and owner/name and refuses, in its own words, a message that names no repository. Next's form shows the repository as a one-line field with the descriptor's words under it and no "https://" placeholder.
+- **Plain status lines.** Each is the step in the words the view draws ("Step 2 of 5: Checking its dependencies for known security flaws."), with no section numbers, digest, count or "facts". The view reads the step from the line, and an older working copy's stage by its words.
+- **Words.** The summary is "Reads an outside agent's code on GitHub, without running any of it, and reports what it does and how safe it is."; the descriptor's does, the job's does, the plugin and the README say "at its newest commit or one you name".
+- The suite: 107 tests, 106 pass, one skipped.
+
+The 0.4.3 install and proof on dev:
+- Filed through the deploy ticket at 11:09 am Mountain time on 2026-11-26, approved as asking for nothing new, running at 11:13:00 am. Dev's Descriptor gives agent_version 0.4.3, the new summary, both inputs kind identifier, the commit not required, and views/report.html at sha256:cddca1a8e92241d6cdbb5d88fea11904b3320b18f0ed4eff17d9a753b9c018aa; GET /v1/agents/:key/views/:digest serves 117,857 bytes that hash to it.
+- One live run from the Next app as a new dev test account of ours, the repository typed as `langchain-ai/design-agent` and the commit left blank: job 01a21910-123a-7000-852a-f436398ec198.
+
+| After the send (11:13:33.8 am) | |
+|---|---|
+| 0.3 s | the adapter has the message |
+| 2 s | the page knows the job; Next draws its own placeholder and its Working chip |
+| about 9 s | the worker has the job's folder ready (message.txt) and Inspect starts; its first working copy, Step 1 with no commit, is the first piece it posts |
+| 17.8 s | the view is on screen: "Inspecting · Step 1 of 5: Reading the repository", every field a placeholder, Next's chip gone |
+| 28 s | step 2 |
+| 40 s | step 3 |
+| 139 s | step 4 |
+| 262 s | done: commit 86d8f667796890eb6d3612dbd1b9e941782fe03f, the newest on main, checked; 213 findings, 3 held back; 4 GitHub calls; one of eleven systems required, Anthropic |
+
+- Inspect posts within a second of starting. The other 17 seconds are the platform's: about nine from the adapter having the message to the worker starting Inspect, and about seven from Inspect's first piece to the view drawn (the adapter reading the job folder's updates, the Task, Next's poll and the frame).
+- The cut pass on the shots at 5 s, 20 s and done found one thing: at step 1, before any of the scripts' facts, the Overview drew "Systems required" as a single wide placeholder tile. Its fix (all five tiles as placeholders until the first facts arrive) was not deployed this round, which allowed one deploy; it waits on a branch.
+- The test account was closed afterwards. Production is untouched.
