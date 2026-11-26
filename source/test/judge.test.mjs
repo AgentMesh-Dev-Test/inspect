@@ -97,7 +97,6 @@ test("[F4.A5] a judgment with code, a file, a command, an advisory id or the wor
     ["It fetches pull requests through gh.", "a command line"],
     ["The loader falls back to @latest.", "a version tag"],
     ["It depends on a package with GHSA-jpvv-r467-5p4w.", "an advisory id"],
-    ["The facts do not show which calls need an OK.", "Inspect's own word"],
     ["It repeats S7-010 in other words.", "a finding code"],
   ];
   for (const [says, what] of breaks) {
@@ -108,6 +107,14 @@ test("[F4.A5] a judgment with code, a file, a command, an advisory id or the wor
   const plain = checkDrafts([risk({ title: "Outside content can reach shell actions", says: "Slack posts and fetched pages reach a model that can run commands in a sandbox without a person's OK." })], { sections: [6, 7, 8], byId, ctx });
   assert.equal(plain.kept.length, 1, "plain words are kept");
   assert.equal(notPlain("It posts to Slack, e.g. a summary of each run."), null, "ordinary words are plain");
+  assert.equal(notPlain("Skill scripts fetch packages from npm while working."), null, "a registry said in passing is plain");
+  for (const { why } of checkDrafts([risk({ says: "It reads src/tools.py." })], { sections: [6, 7, 8], byId, ctx }).held) assert.ok(!/src\/tools|"/.test(why), "why quotes none of the words it holds back");
+  // Inspect's own word is said as a person would, and the judgment is kept (0.2.7).
+  const said = checkDrafts([risk({ title: "The facts show an empty approval list", says: "The facts do not show which calls need an OK." })], { sections: [6, 7, 8], byId, ctx });
+  assert.equal(said.kept.length, 1);
+  assert.equal(said.kept[0].title, "The code shows an empty approval list");
+  assert.equal(said.kept[0].says, "The code does not show which calls need an OK.");
+  assert.match(PLAIN_RULE, /say the code shows/);
   assert.match(PLAIN_RULE, /for a manager, in plain words/);
   assert.match(firstPrompt("", { repo: "x" }) + secondPrompt("", { repo: "x" }), /./);
   assert.match(glancePrompt([]), /for a manager, in plain words/);

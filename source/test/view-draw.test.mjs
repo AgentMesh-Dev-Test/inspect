@@ -453,7 +453,8 @@ test("[F5.R9] About Inspect says what Inspect does, how it works and what it doe
   assert.deepEqual(panel.querySelectorAll("h2").map((h) => h.textContent), ["What it does", "How it works", "What it doesn't do"]);
   const d = descriptor();
   assert.equal(panel.querySelectorAll("p")[0].textContent, d.summary);
-  assert.equal(panel.querySelectorAll("p")[1].textContent, "Scripts collect the facts; a model writes only the judgments, and each judgment cites the facts it rests on.");
+  assert.equal(panel.querySelectorAll("p")[1].textContent, "Scripts read the code by rule; a model writes only the judgments, and each judgment cites the lines it rests on.");
+  assert.ok(!/\bthe facts\b/i.test(panel.textContent), "no internal word in About");
   assert.deepEqual(panel.querySelectorAll("li").map((li) => li.textContent), ["Running, installing, building or testing the repository's code", "Giving a verdict on whether to bring the agent in, or judging how it fits a plan or a catalog role"]);
   assert.equal(panel.querySelectorAll("details").length, 0);
   assert.ok(!/\bMore\b/.test(panel.textContent));

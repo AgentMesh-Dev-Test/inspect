@@ -54,7 +54,7 @@ test("[F3.A2] a package's advisories are one finding, at the highest of their le
   const rec = (id, severity, summary, fixed) => ({ id, aliases: [], summary, database_specific: { severity }, affected: [{ package: { ecosystem: "PyPI", name: "httpx" }, ranges: [{ events: [{ introduced: "0" }, ...(fixed ? [{ fixed }] : [])] }] }] });
   const osv = {
     affects: { "PyPI:httpx@0.27.0": ["GHSA-1111-1111-1111", "GHSA-2222-2222-2222"] },
-    records: { "GHSA-1111-1111-1111": rec("GHSA-1111-1111-1111", "MODERATE", "open redirect in the client", "0.27.1"), "GHSA-2222-2222-2222": rec("GHSA-2222-2222-2222", "HIGH", "header injection", null) },
+    records: { "GHSA-1111-1111-1111": rec("GHSA-1111-1111-1111", "MODERATE", "httpx: open redirect in the client", "0.27.1"), "GHSA-2222-2222-2222": rec("GHSA-2222-2222-2222", "HIGH", "header injection", null) },
   };
   const out = await go(smallAgent(), { osv });
   const list = out.report.findings.filter((x) => x.section === 7 && x.detail?.advisories);

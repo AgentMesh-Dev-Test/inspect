@@ -18,7 +18,7 @@ import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { inspect, writeOutputs } from "../scripts/inspect-a-repository.mjs";
 import { createEmitter, liveUpdates, pieceData, PIECE_CHARS, UPDATES_FILE, WORKING_COPY } from "../scripts/emit.mjs";
-import { markdownOf, workingCopy, WORKING_COPY_CHARS } from "../scripts/report.mjs";
+import { markdownOf, workingCopy, WORKING_COPY_CHARS, skillTitle, credentialTitle, spaced } from "../scripts/report.mjs";
 import { checkDelivered } from "./delivered-formats.test.mjs";
 import { ENV, SHA, descriptor, inTemp, world, model, smallAgent, reportSchema, schemaProblems } from "./helpers.mjs";
 
@@ -229,4 +229,17 @@ test("[F5.A6] asked whether to bring it in, the reply says Inspect gives no verd
   assert.match(out.reply, /Inspect gives no verdict and judges no fit/);
   assert.ok(out.report);
   await inTemp(async (job) => { writeOutputs(job, out); assert.ok(existsSync(join(job, "out", "inspection.json"))); });
+});
+
+test("[F5.R8] titles a person reads: a skill by its own description, never a YAML marker, a trigger phrase or a slug; a credential and a script part in words", () => {
+  assert.equal(skillTitle("brand-design", ">"), "Brand design", "a folded description that was not read gives the name with spaces");
+  assert.equal(skillTitle("deep-agents", "INVOKE THIS SKILL when building ANY Deep Agents application"), "Building any Deep Agents application");
+  assert.equal(skillTitle("stills", "Use when someone needs a still image."), "Someone needs a still image");
+  assert.equal(skillTitle("port", "'Port an existing Remotion (React) composition''s source to HyperFrames HTML'"), "Port an existing Remotion (React) composition's source to HyperFrames HTML");
+  assert.equal(skillTitle("contract", "The HyperFrames composition contract \u2014 build one renderable project"), "The HyperFrames composition contract: build one renderable project");
+  assert.equal(skillTitle("data-viz", "Draws charts. And more words after that."), "Draws charts");
+  assert.equal(skillTitle("long-one", "x".repeat(130)), "Long one");
+  assert.equal(credentialTitle("GEMINI_API_KEY"), "Gemini API key");
+  assert.equal(credentialTitle("GOOGLE_APPLICATION_CREDENTIALS"), "Google application credentials");
+  assert.equal(spaced("brand-lint.mjs"), "Brand lint");
 });

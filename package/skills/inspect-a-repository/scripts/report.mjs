@@ -31,7 +31,13 @@ export function spaced(name) {
 /** A skill's title: its own one-line description when the repository gives
  *  one (its first sentence, when that is short), else its name with spaces. */
 export function skillTitle(name, description) {
-  const first = String(description ?? "").replace(/\s+/g, " ").trim().split(/(?<=[.!?])\s/)[0]?.replace(/[.!?]+$/, "") ?? "";
+  let d = String(description ?? "").replace(/\s+/g, " ").trim().replace(/^(['"])(.*)\1$/, "$2").replace(/''/g, "'");
+  // A YAML block marker (">", "|-") is not a description; the lines after it were not read.
+  if (/^[>|][+-]?\d?$/.test(d)) d = "";
+  // A description written to trigger the skill says what it is for.
+  d = d.replace(/^(?:invoke|use)\s+this\s+skill\s+(?:when|to|for|if)\s+|^use\s+(?:when|to|for|if)\s+/i, "");
+  d = d.replace(/\b(OR|AND|ANY|ALL|NOT|ONLY)\b/g, (w) => w.toLowerCase()).replace(/\s+[—–]\s+/g, ": ");
+  const first = d.split(/(?<=[.!?])\s/)[0]?.replace(/[.!?]+$/, "") ?? "";
   return first && first.length <= 110 ? `${first[0].toUpperCase()}${first.slice(1)}` : spaced(name);
 }
 /** A credential's title from the setting it is read from: "GEMINI_API_KEY" as "Gemini API key". */
@@ -155,7 +161,10 @@ export function scriptFindings({ facts, ctx, owner, name, sha, repoUrl, osv = nu
   }
   for (const vs of byPackage.values()) {
     const d = vs[0].data;
-    const advisories = vs.map((v) => ({ id: v.data.osv_id, aliases: v.data.aliases ?? [], summary: v.data.summary ?? null, level: v.data.level, fixed: v.data.fixed ?? null }));
+    // A summary that opens with the package's own name ("Hono: …") says it again; it is left out.
+    const own = String(d.name ?? "").split("/").pop().toLowerCase();
+    const plainSummary = (s) => { const t = String(s ?? "").trim(); const m = /^([\w@/.-]+):\s+/.exec(t); return m && m[1].split("/").pop().toLowerCase() === own ? t.slice(m[0].length) : t || null; };
+    const advisories = vs.map((v) => ({ id: v.data.osv_id, aliases: v.data.aliases ?? [], summary: plainSummary(v.data.summary), level: v.data.level, fixed: v.data.fixed ?? null }));
     const level = LEVEL_ORDER.find((l) => advisories.some((a) => a.level === l)) ?? advisories[0].level;
     const cats = [categoryOf("LLM03:2025"), categoryOf("ASI04"), { list: LIST_IDS.cyclonedx, id: d.purl, name: `${d.name} ${d.version}` }, ...advisories.map((a) => ({ list: LIST_IDS.osv, id: a.id, name: a.id }))];
     const sentence = (s) => { const t = String(s ?? "").trim().replace(/[.;:]+$/, ""); return t ? `${t[0].toUpperCase()}${t.slice(1)}.` : ""; };
@@ -171,10 +180,10 @@ export function scriptFindings({ facts, ctx, owner, name, sha, repoUrl, osv = nu
   if (tests.length) push(8, "test", "Tests",`${plural(tests.length, "test file")} with ${plural(tests.reduce((n, t) => n + (t.data.cases ?? 0), 0), "test case")} found by rule.${cmd?.data?.command ? ` Its test command is ${cmd.data.command}.` : ""} Inspect ran none of them.`, [...tests, ...(cmd?.file ? [cmd] : [])], { detail: { files: tests.length, cases: tests.reduce((n, t) => n + (t.data.cases ?? 0), 0) } });
   const archiveFact = of("commit")[0] ?? of("publisher")[0];
   if (!textFiles && archiveFact) push(8, "could-not-tell", "There was no code to read", "The archive held no file Inspect could read as text, so there was no code to inspect.", [archiveFact]);
-  for (const g of bomGaps) {
-    const f = facts.find((x) => x.kind === "bom-gap" && x.data?.about === g.about);
-    if (f) push(8, "could-not-tell", `Not in the dependency list: ${g.about}`, `${g.why}.`, [f]);
-  }
+  // 0.2.7: one finding for every gap in the dependency list, its title in
+  // words; the files are in its words and its evidence, not in its title.
+  const gapFacts = bomGaps.map((g) => ({ g, f: facts.find((x) => x.kind === "bom-gap" && x.data?.about === g.about) })).filter((x) => x.f);
+  if (gapFacts.length) push(8, "could-not-tell", gapFacts.length === 1 ? "Versions missing from the dependency list" : "Some versions are missing from the dependency list", gapFacts.map(({ g }) => `${g.about}: ${g.why}.`).join(" "), gapFacts.map((x) => x.f), { detail: { gaps: gapFacts.map(({ g }) => ({ about: g.about, why: g.why })) } });
   const nc = of("not-checked");
   if (nc.length) push(8, "could-not-tell", "Dependencies not checked against OSV", `${plural(nc.length, "dependency", "dependencies")} could not be asked about: ${[...new Set(nc.map((x) => x.data.why))].join("; ")}. Each is in detail.components.`, nc, { detail: { components: nc.map((x) => ({ purl: x.data.purl, why: x.data.why })) } });
   if (osv && !osv.ok) { const f = of("osv-failed")[0]; if (f) push(8, "could-not-tell", "The dependencies were not checked against OSV", `The dependencies were not checked against OSV: ${osv.said}.`, [f]); }

@@ -236,7 +236,7 @@ button { font: inherit; color: inherit; cursor: pointer; }
   // Inspect's own words, for About Inspect when the host hands no Descriptor.
   const OWN = {
     summary: "Reads an outside agent's code on GitHub at one commit, without running any of it, and reports what it does and how safe it is.",
-    how: "Scripts collect the facts; a model writes only the judgments, and each judgment cites the facts it rests on.",
+    how: "Scripts read the code by rule; a model writes only the judgments, and each judgment cites the lines it rests on.",
     not: ["Running, installing, building or testing the repository's code", "Giving a verdict on whether to bring the agent in, or judging how it fits a plan or a catalog role"],
   };
 
@@ -651,7 +651,7 @@ button { font: inherit; color: inherit; cursor: pointer; }
     const sentence = (s) => { const t = one(s).replace(/[.;:]+$/, ""); return t ? `${t[0].toUpperCase()}${t.slice(1)}.` : ""; };
     const words = advisories.length
       ? el("ul", { class: "advisories" }, advisories.map((a) => el("li", {},
-          el("span", {}, `${sentence(a.summary) || "A known security flaw."}${a.fixed ? ` Fixed in ${one(a.fixed)}.` : ""} `),
+          el("span", {}, prose(`${sentence(a.summary) || "A known security flaw."}${a.fixed ? ` Fixed in ${one(a.fixed)}.` : ""} `)),
           el("span", { class: "mono muted" }, one(a.id)))))
       : f.says ? el("p", {}, prose(f.says)) : null;
     return el("div", { class: "detail", id },

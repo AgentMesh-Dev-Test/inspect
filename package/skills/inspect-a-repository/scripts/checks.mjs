@@ -39,11 +39,13 @@ export const NOT_PLAIN = [
   ["a name with an underscore", /\b\w+_\w+\b/],
   ["a dotted name", /\b[a-z_][a-z0-9_]+\.[a-z_][a-z0-9_]+\b/],
   ["a call with brackets", /\b\w+\(\)/],
-  ["a command line", /\b(?:npm|npx|pnpm|yarn|pip|pipx|uvx|curl|wget|sudo|kubectl|apt-get)\b|\bgh\b|\bgit (?:clone|pull|push|checkout)\b/i],
+  // A command as typed ("npm install", "npx hyperframes", "through gh"); the
+  // name of a registry or a tool said in passing ("packages from npm") is plain.
+  ["a command line", /\b(?:npm|pnpm|yarn|pip|pipx|uv)\s+(?:install|i|add|run|exec|ci|sync)\b|\b(?:npx|uvx|sudo|kubectl|wget)\s+\S|\bcurl\s+-|\bgh\s+[a-z]+\b|\bthrough gh\b|\bgit (?:clone|pull|push|checkout)\b/i],
   ["a version tag", /@(?:latest|next|\d)|(?:^|\s)@[\w-]+\//i],
   ["an advisory id", /\b(?:GHSA|CVE)-/i],
   ["a finding code", /\bS[1-8]-\d{3}\b/],
-  ["Inspect's own word", /\bthe facts?\b/i],
+  ["an internal word", /\bthe facts?\b/i],
 ];
 /** The first thing in `text` a manager would not write, as {what, match}, or null. */
 export function notPlain(text) {
@@ -53,7 +55,21 @@ export function notPlain(text) {
   }
   return null;
 }
-const plainWhy = (p) => `it puts ${p.what} in its words ("${p.match}"), which belong only in its evidence`;
+/** Why a judgment was held back, in words that quote none of it. */
+const plainWhy = (p) => `it puts ${p.what} in its words, which belong only in its evidence`;
+/**
+ * Inspect's own word for what the scripts found, said as a person would
+ * (0.2.7): "the facts show" is "the code shows". The model is told not to
+ * write it; this keeps a judgment that does anyway rather than losing it.
+ */
+export function plainWords(text) {
+  return String(text ?? "")
+    .replace(/\b(t|T)he facts (?:do|does) not show\b/g, (m, t) => `${t}he code does not show`)
+    .replace(/\b(t|T)he facts (?:show|shows)\b/g, (m, t) => `${t}he code shows`)
+    .replace(/\b(t|T)he facts (?:say|says)\b/g, (m, t) => `${t}he code says`)
+    .replace(/\b(t|T)he facts? (?:found|given|listed|here)\b/g, (m, t) => `${t}he code`)
+    .replace(/\b(t|T)he facts\b/g, (m, t) => `${t}he code`);
+}
 
 /** A category the draft names, resolved against the lists and the facts: {list, id, name} or null. */
 export function resolveCategory(raw, { spdx = new Set(), purls = new Set(), osv = new Set() } = {}) {
@@ -77,7 +93,7 @@ export function checkDrafts(drafts, { sections, byId, ctx, known = {} }) {
   const kept = []; const held = [];
   for (const d of Array.isArray(drafts) ? drafts : []) {
     const section = Number(d?.section);
-    const title = trim(d?.title); const says = trim(d?.says);
+    const title = plainWords(trim(d?.title)); const says = plainWords(trim(d?.says));
     const hold = (why) => held.push({ section: Number.isInteger(section) && section >= 1 && section <= 8 ? section : sections[0], title: title || "(no title)", ...(says ? { says } : {}), why });
     if (!sections.includes(section)) { hold(`it names section ${JSON.stringify(d?.section)}, which this judgment was not asked for`); continue; }
     if (!KINDS[section].includes(trim(d?.kind))) { hold(`its kind ${JSON.stringify(d?.kind)} is not one section ${section} holds`); continue; }
@@ -128,7 +144,7 @@ export function checkGlance(drafts, findings, { most = 5 } = {}) {
   const byId = new Map(findings.filter((f) => f.section >= 2).map((f) => [f.id, f]));
   for (const d of Array.isArray(drafts) ? drafts : []) {
     const target = byId.get(trim(d?.repeats));
-    const says = trim(d?.says);
+    const says = plainWords(trim(d?.says));
     if (!target) { held.push({ section: 1, title: says || "(no words)", why: `it repeats ${JSON.stringify(d?.repeats ?? null)}, which is not a finding of sections 2 to 8` }); continue; }
     if (!says) { held.push({ section: 1, title: target.title, why: "it has no words" }); continue; }
     const v = VERDICT.exec(unquoted(says));
