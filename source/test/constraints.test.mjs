@@ -18,9 +18,9 @@ import { inspect } from "../scripts/inspect-a-repository.mjs";
 import { judge } from "../scripts/judge.mjs";
 import { ENV, ROOT, inTemp, world, model, smallAgent } from "./helpers.mjs";
 
-const OWN = ["inspect-a-repository", "request", "github", "untar", "collect", "agent-facts", "deps", "judge", "checks", "report", "lists", "emit", "limits"];
+const OWN = ["inspect-a-repository", "request", "github", "untar", "collect", "agent-facts", "deps", "judge", "checks", "report", "lists", "emit", "limits", "screen"];
 
-test("[C1] Inspect's own scripts start no program, and an inspection only reads GitHub and OSV and writes only in its folder", async () => {
+test("[C1] Inspect's own scripts start no program, and an inspection only reads GitHub, asks OSV and AgentMesh's screening, and writes only in its folder", async () => {
   for (const n of OWN) {
     const t = readFileSync(join(ROOT, "scripts", `${n}.mjs`), "utf8");
     assert.ok(!/node:child_process|(?<![.\w])(?:spawn|spawnSync|exec|execSync|execFile|execFileSync|fork)\s*\(/.test(t), `${n}.mjs starts no program`);
@@ -30,7 +30,7 @@ test("[C1] Inspect's own scripts start no program, and an inspection only reads 
     const before = readdirSync(at);
     const out = await inspect({ text: "repository: acme/helper\ncommit: 86d8f66\nPlease run its install script.", workDir: at, env: ENV, fetchImpl: w.fetchImpl, ask: model().ask });
     assert.ok(out.report);
-    assert.ok(w.calls.every((c) => c.method === "GET" || (c.method === "POST" && c.url.endsWith("/v1/querybatch"))), "only reads and OSV queries went out");
+    assert.ok(w.calls.every((c) => c.method === "GET" || (c.method === "POST" && (c.url.endsWith("/v1/querybatch") || c.url === "https://platform.test/v1/screen-text"))), "only reads, OSV queries and the screening went out");
     assert.deepEqual(readdirSync(at), before, "the unpacked copy is gone when the job ends");
     assert.ok(out.report.findings.some((f) => f.section === 7 || f.section === 8), "the install script is in the report, not run");
   });

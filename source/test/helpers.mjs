@@ -1,11 +1,12 @@
 // What every test of Inspect is handed instead of the world: an archive
-// built here, stand-ins for GitHub, OSV and the model, a small JSON Schema
+// built here, stand-ins for GitHub, OSV, AgentMesh's screening and the model, a small JSON Schema
 // checker, and temporary folders removed whatever happened.
 //
 // Nothing here touches a network: GitHub and OSV are a fetch function that
 // answers from the values a test gives it, at made-up addresses, and the model
 // is an ask function that answers from the test's drafts.
 //   imported by the test files; never run on its own
+import { createHash, createPrivateKey, createPublicKey, verify } from "node:crypto";
 import { mkdtempSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
@@ -16,7 +17,33 @@ export const HERE = dirname(fileURLToPath(import.meta.url));
 export const ROOT = join(HERE, "..");
 export const API = "https://api.github.test";
 export const OSV = "https://osv.test";
-export const ENV = { GITHUB_API: API, OSV_API: OSV };
+export const PLATFORM = "https://platform.test";
+
+// 0.4.6: the job's credential for AgentMesh's screening, as the platform
+// gives it to a container: a JWT naming the worker key, and that key's seed.
+// The seed is the nkey layout signWithSeed reads (two prefix bytes, the 32
+// bytes of the key, two check bytes), made here from a fixed digest.
+const B32 = "ABCDEFGHIJKLMNOPQRSTUVWXYZ234567";
+function base32(buf) {
+  let bits = 0, value = 0, out = "";
+  for (const b of buf) { value = (value << 8) | b; bits += 8; while (bits >= 5) { out += B32[(value >>> (bits - 5)) & 31]; bits -= 5; } }
+  if (bits > 0) out += B32[(value << (5 - bits)) & 31];
+  return out;
+}
+const RAW = createHash("sha256").update("inspect test worker").digest();
+export const WORKER = "UTESTWORKERKEYFORINSPECTSSCREENINGTESTSAAAAAAAAAAAAAAAAA";
+const WORKER_KEY = createPublicKey(createPrivateKey({ key: Buffer.concat([Buffer.from("302e020100300506032b657004220420", "hex"), RAW]), format: "der", type: "pkcs8" }));
+const b64u = (o) => Buffer.from(JSON.stringify(o)).toString("base64url");
+export const JOB_JWT = `${b64u({ typ: "JWT", alg: "ed25519-nkey" })}.${b64u({ sub: WORKER, name: "job" })}.c2ln`;
+export const ENV = { GITHUB_API: API, OSV_API: OSV, MESH_API_BASE: PLATFORM, MESH_JOB_JWT: JOB_JWT, MESH_JOB_NKEY_SEED: base32(Buffer.concat([Buffer.from([0x90, 0xa0]), RAW, Buffer.from([0, 0])])) };
+
+/** The screening door's check of one request, as job-screen.ts makes it:
+ *  the worker key's signature over mesh-screen-job-v1:<ts>:<worker>:<digest>. */
+export function signedByWorker(body) {
+  if (body?.job_jwt !== JOB_JWT || typeof body.sig !== "string" || !Array.isArray(body.texts)) return false;
+  const digest = createHash("sha256").update(JSON.stringify(body.texts), "utf8").digest("hex");
+  return verify(null, Buffer.from(`mesh-screen-job-v1:${body.ts}:${WORKER}:${digest}`, "utf8"), WORKER_KEY, Buffer.from(body.sig, "base64"));
+}
 export const SHA = "86d8f667796890eb6d3612dbd1b9e941782fe03f";
 
 /** A temporary folder for `fn`, removed afterwards whatever happened. */
@@ -94,7 +121,25 @@ export const repoRecord = (over = {}) => ({ full_name: "acme/helper", html_url: 
  * records every call: {fetchImpl, calls}. `github.status` maps a part of a
  * path to the status that call answers with.
  */
-export function world({ files = {}, links = {}, raw = [], commit = SHA, archiveCommit = commit, repo = repoRecord(), status = {}, archiveLength = null, commits = 72, osv = {}, osvStatus = null } = {}) {
+/** The screening door's answer to one request: `screening.hold` and
+ *  `screening.flag` are patterns a text is held or flagged for,
+ *  `screening.unscreened` one the screener could not check, and
+ *  `screening.status` a status every request answers with; or
+ *  `screening` is a function (texts, n) answering {status, json} or the
+ *  results. By default every text passes. */
+function screeningAnswer(screening, body, n) {
+  if (typeof screening === "function") {
+    const r = screening(body.texts, n);
+    return r?.status ? response(r.status, { json: r.json ?? {} }) : response(200, { json: { screened_by: "house screening", results: r } });
+  }
+  if (screening.status) return response(screening.status, { json: screening.status === 503 ? { error: "Screening is not set up on this instance, so nothing was screened.", code: "screening_unavailable" } : { error: "no" } });
+  const results = body.texts.map((t) => (screening.unscreened?.test(t) ? { verdict: "hold", reason: "the screener could not be reached", unscreened: true }
+    : screening.hold?.test(t) ? { verdict: "hold", reason: "the screener found instructions aimed at the agent rather than at the members" }
+    : screening.flag?.test(t) ? { verdict: "flag", reason: "the screener found malicious uris" } : { verdict: "pass" }));
+  return response(200, { json: { screened_by: "house screening", results, held: results.filter((r) => r.verdict !== "pass").length } });
+}
+
+export function world({ files = {}, links = {}, raw = [], commit = SHA, archiveCommit = commit, repo = repoRecord(), status = {}, archiveLength = null, commits = 72, osv = {}, osvStatus = null, screening = {} } = {}) {
   const calls = [];
   const archive = archiveOf(files, { commit: archiveCommit, links, raw });
   const fetchImpl = async (url, opts = {}) => {
@@ -116,6 +161,11 @@ export function world({ files = {}, links = {}, raw = [], commit = SHA, archiveC
       if (u.pathname === "/v1/querybatch") return response(200, { json: { results: body.queries.map((q) => ({ vulns: (osv.affects?.[`${q.package.ecosystem}:${q.package.name}@${q.version}`] ?? []).map((id) => ({ id })) })) } });
       const id = decodeURIComponent(u.pathname.split("/").pop());
       return osv.records?.[id] ? response(200, { json: osv.records[id] }) : response(404, { json: { message: "no" } });
+    }
+    if (url.startsWith(PLATFORM)) {
+      if (u.pathname !== "/v1/screen-text" || method !== "POST") return response(404, { json: { error: "no" } });
+      if (!signedByWorker(body)) return response(401, { json: { error: "refused" } });
+      return screeningAnswer(screening, body, calls.filter((c) => c.url.startsWith(PLATFORM)).length);
     }
     throw new Error(`a test reached ${url}, which is not a stand-in`);
   };

@@ -8,7 +8,8 @@
 // over the reverse engineer's and the security reviewer's carried scripts and
 // Inspect's own patterns); make the CycloneDX list (the reverse engineer's
 // sbom.mjs, with uv.lock added by deps.mjs) and ask OSV about it; write the
-// scripts' findings (report.mjs); ask the model for the judgments in up to
+// scripts' findings (report.mjs); have AgentMesh's screening pass every
+// line the model would read, and fail closed (screen.mjs, 0.4.6); ask the model for the judgments in up to
 // three calls (judge.mjs) and keep only those that check (checks.mjs); write
 // section 1 last; write the report. Every finding passes the one emitter
 // (emit.mjs). Nothing from the repository is ever run, and the unpacked copy
@@ -22,7 +23,9 @@
 // Exit 0 when it answered (a report or a refusal), 1 when GitHub failed, 2
 // when --job is not given.
 //
-//   needs: node >= 22; GITHUB_API, OSV_API and the model's four settings
+//   needs: node >= 22; GITHUB_API, OSV_API, the model's four settings, and
+//   the job credential and platform address the platform gives a job
+//   (MESH_JOB_JWT, MESH_JOB_NKEY_SEED, MESH_API_BASE)
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { basename, join, resolve } from "node:path";
@@ -34,26 +37,28 @@ import { deepScrub, looksLikeText } from "./secrets.mjs";
 import { readRequest, RUN_REFUSAL, VERDICT_REFUSAL } from "./request.mjs";
 import { githubReader, GitHubFailed } from "./github.mjs";
 import { untar } from "./untar.mjs";
-import { collectFacts } from "./collect.mjs";
+import { collectFacts, factLine } from "./collect.mjs";
 import { addUvLock, checkWithOsv, lineOfComponent } from "./deps.mjs";
 import { createEmitter, liveUpdates } from "./emit.mjs";
-import { judge } from "./judge.mjs";
+import { factsRead, glanceLine, judge } from "./judge.mjs";
 import { checkDescription, checkDrafts, checkGlance, checkSkillNames } from "./checks.mjs";
-import { buildReport, markdownOf, notJudged, replyOf, scriptFindings } from "./report.mjs";
+import { buildReport, markdownOf, notJudged, replyOf, screeningFindings, scriptFindings, SCREENING_SOURCE } from "./report.mjs";
+import { screenLines } from "./screen.mjs";
 import { stepLine } from "./lists.mjs";
 import { admit, askerOf } from "./limits.mjs";
 
-export const VERSION = "0.4.5";
+export const VERSION = "0.4.6";
 const DAY_MS = 24 * 60 * 60 * 1000;
 
 /**
  * One inspection: {code, reply, report?, bom?}. Every system is reached
- * through what is handed in: `fetchImpl` for GitHub and OSV, `ask` for the
- * model; `onFinding` hears each finding as it is emitted, `onStatus` a
+ * through what is handed in: `fetchImpl` for GitHub, OSV and AgentMesh's
+ * screening, `ask` for the model, `screen` for the screening of the lines the
+ * model would read (by default screen.mjs over `fetchImpl`); `onFinding` hears each finding as it is emitted, `onStatus` a
  * status line as each stage begins, and `onStart` the repository and the
  * commit once the archive is read, before the first finding.
  */
-export async function inspect({ text, workDir, env = process.env, fetchImpl = fetch, ask, now = () => new Date(), onFinding, onStatus = () => {}, onStart = () => {} } = {}) {
+export async function inspect({ text, workDir, env = process.env, fetchImpl = fetch, ask, screen = (lines) => screenLines(lines, { env, fetchImpl }), now = () => new Date(), onFinding, onStatus = () => {}, onStart = () => {} } = {}) {
   const startedAt = now().toISOString();
   const req = readRequest(text);
   if (!req.ok) return { code: 0, reply: req.refusal };
@@ -129,7 +134,37 @@ export async function inspect({ text, workDir, env = process.env, fetchImpl = fe
       purls: new Set(bom.components.map((c) => c.purl ?? c["bom-ref"])),
       osv: new Set(facts.filter((f) => f.kind === "vulnerability").map((f) => f.data.osv_id)),
     };
+    const repoWords = `${owner}/${name} at ${sha}`;
+    // 0.4.6: nothing reaches the model that AgentMesh's screening has not
+    // passed, line by line, exactly as the calls would read it; it fails
+    // closed, so a screening that cannot answer means no judgment.
+    const screening = { requests: 0, passages: 0, held: 0 };
+    const screened = async (lines) => {
+      const s = lines.length ? await screen(lines) : { ok: true, verdicts: [], requests: 0, texts: 0 };
+      screening.requests += s.requests ?? 0;
+      screening.passages += s.texts ?? 0;
+      if (s.ok) screening.held += s.verdicts.filter((v) => v.verdict !== "pass").length;
+      return s;
+    };
+    const ALL_CALLS = [[[3, 4, 5], "3, 4 and 5"], [[6, 7, 8], "6, 7 and 8"], [[1], "1"]];
+    let toRead = [], first = null;
     if (textFiles) {
+      onStatus(stepLine(3, "Having the code's text screened before the model reads it"));
+      toRead = factsRead(facts, repoWords);
+      first = await screened(toRead.map(factLine));
+      if (!first.ok) for (const [sections, words] of ALL_CALLS) for (const f of notJudged(sections, first.why, words, SCREENING_SOURCE)) emitter.emitFinding(f);
+      else {
+        const heldBack = toRead.map((fact, i) => ({ fact, ...first.verdicts[i] })).filter((h) => h.verdict !== "pass");
+        for (const f of screeningFindings(heldBack, ctx)) emitter.emitFinding(f);
+        if (toRead.length && heldBack.length === toRead.length) {
+          for (const [sections, words] of ALL_CALLS) for (const f of notJudged(sections, "AgentMesh's screening held all of the code's text, so the model was given nothing to read", words, SCREENING_SOURCE)) emitter.emitFinding(f);
+          first = { ...first, ok: false };
+        }
+      }
+    }
+    if (textFiles && first.ok) {
+      // Each call reads what it would have read, less what the screening held.
+      const withheld = new Set(toRead.filter((f, i) => first.verdicts[i].verdict !== "pass").map((f) => f.id));
       // Each call's judgments are checked and emitted the moment it answers,
       // so sections 3 to 5 reach the sender while 6 to 8 are still being judged.
       const SECTIONS_OF = { first: [[3, 4, 5], "3, 4 and 5"], second: [[6, 7, 8], "6, 7 and 8"] };
@@ -154,9 +189,14 @@ export async function inspect({ text, workDir, env = process.env, fetchImpl = fe
           held.push(...s.held);
         }
       };
-      const j = await judge({ facts, repo: `${owner}/${name} at ${sha}`, ...(ask ? { ask } : {}), onStatus, onCall });
-      const g = await j.glance(emitter.findings());
-      if (g.failed) for (const f of notJudged([1], g.failed, "1")) emitter.emitFinding(f);
+      const j = await judge({ facts, withheld, repo: repoWords, ...(ask ? { ask } : {}), onStatus, onCall });
+      // The last call reads the findings, and a script's finding can carry the
+      // code's own words, so they are screened too, and only those that pass
+      // are read.
+      const all = emitter.findings();
+      const gs = await screened(all.map(glanceLine));
+      const g = gs.ok ? await j.glance(all.filter((f, i) => gs.verdicts[i].verdict === "pass")) : { failed: gs.why, screening: true };
+      if (g.failed) for (const f of notJudged([1], g.failed, "1", ...(g.screening ? [SCREENING_SOURCE] : []))) emitter.emitFinding(f);
       else {
         // The description first (0.3.0), then the findings that matter most.
         const desc = checkDescription(g.description, emitter.findings());
@@ -169,6 +209,7 @@ export async function inspect({ text, workDir, env = process.env, fetchImpl = fe
       Object.assign(usage, { model_calls: j.usage.model_calls, tokens_in: j.usage.tokens_in, tokens_out: j.usage.tokens_out });
     }
 
+    Object.assign(usage, { screening_requests: screening.requests, screened_passages: screening.passages, screening_held: screening.held });
     const commitFact = facts.find((f) => f.kind === "commit");
     const report = deepScrub(buildReport({
       owner, name, url, sha, checked: archive.commit === sha, date: commitFact?.data?.date ?? null, version: VERSION, now: now().toISOString(),

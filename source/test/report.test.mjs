@@ -171,7 +171,7 @@ test("[F5.R4] in an inspection the stages are said in order, and sections 3 to 5
   // 0.4.3: each status line is the step in plain words, as the view draws it.
   assert.deepEqual(statuses, [
     "Step 1 of 5: Reading the repository.", "Step 2 of 5: Reading the code.", "Step 2 of 5: Checking its dependencies for known security flaws.", "Step 2 of 5: Writing what the code shows.",
-    "Step 3 of 5: Judging what it does and the systems it uses.", "Step 4 of 5: Judging its risks and its tests.", "Step 5 of 5: Writing the overview.", "Step 5 of 5: Finishing the report.",
+    "Step 3 of 5: Having the code's text screened before the model reads it.", "Step 3 of 5: Judging what it does and the systems it uses.", "Step 4 of 5: Judging its risks and its tests.", "Step 5 of 5: Writing the overview.", "Step 5 of 5: Finishing the report.",
   ]);
   for (const line of statuses) assert.doesNotMatch(line, /facts|section|OSV|[0-9a-f]{7,}|\/|by rule/i, "no internal word, digest or path in a status line");
   const second = events.findIndex(([k]) => k === "second call");
@@ -225,7 +225,7 @@ test("[F5.A5] asked to install it and run its tests, Inspect says it only reads 
     const out = await inspect({ text: "Install acme/helper at 86d8f66 and run its tests.\nrepository: acme/helper\ncommit: 86d8f66", workDir: at, env: ENV, fetchImpl: w.fetchImpl, ask: model().ask });
     assert.match(out.reply, /Inspect only reads the code/);
     assert.ok(out.report, "the inspection is still done");
-    assert.ok(w.calls.every((c) => c.method === "GET" || c.url.endsWith("/v1/querybatch")), "nothing but reads went out");
+    assert.ok(w.calls.every((c) => c.method === "GET" || c.url.endsWith("/v1/querybatch") || c.url.endsWith("/v1/screen-text")), "nothing but reads, OSV queries and the screening went out");
   });
 });
 

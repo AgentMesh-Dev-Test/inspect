@@ -2,7 +2,7 @@
   "format": "spec-v1",
   "product": {
     "name": "inspect",
-    "version": "0.4.5",
+    "version": "0.4.6",
     "kind": "agent"
   },
   "purpose": "Inspect takes a public GitHub repository address and a commit, reads the agent's code at that commit without running any of it, and hands back an inspection report on what the agent does and how safe it is. The report is a list of findings in eight sections, each finding standing on its own and citing a file and line at the commit. Its reader is the person in charge of a department's agents, deciding whether to bring in an outside agent before anything is installed or given a credential. It judges no fit with anyone's plan, matches the agent to no catalog role and gives no bring-it-in-or-not verdict.",
@@ -576,6 +576,26 @@
           "source": {
             "said": "The count of required systems varied from run to run because the model judged it."
           }
+        },
+        {
+          "id": "F4.R10",
+          "kind": "security",
+          "priority": "must",
+          "verify": "test",
+          "shall": "The agent shall give its model no line that AgentMesh's screening has not passed first: before the first two calls, each fact line those calls would read, exactly as they would read it, and before the last call, each finding line it would read, sent to the platform's screening door (POST /v1/screen-text) signed with the job's own credential. A line the screening holds or flags shall be left out of what the model reads, and the passages held from the first two calls shall be one risk of section 7, by rule, high when the screening read any of them as instructions aimed at an AI and medium otherwise, citing them and quoting none of them.",
+          "source": {
+            "said": "A malicious repository could steer Inspect's model into calling itself safe, so this must be fixed before prod (the coordinator, 2026-11-26)."
+          }
+        },
+        {
+          "id": "F4.R11",
+          "kind": "error",
+          "priority": "must",
+          "verify": "test",
+          "shall": "The agent shall fail closed: when the job has no credential or platform address, the screening cannot be reached, answers anything but a verdict for every passage, or could not check a passage itself, the model shall be given nothing, the report shall still be delivered with the scripts' findings, and each section the model would have judged shall say the judgment was not made and why. A request that could not be reached, answered 5xx or could not check a passage is asked once more; a refusal is not.",
+          "source": {
+            "said": "A malicious repository could steer Inspect's model into calling itself safe, so this must be fixed before prod (the coordinator, 2026-11-26)."
+          }
         }
       ],
       "acceptance": [
@@ -636,6 +656,20 @@
           "gherkin": "Scenario: Required or Optional is the same in every run\n  Given the code stops without SLACK_BOT_TOKEN, skips tracing without LANGSMITH_API_KEY and reads ELEVENLABS_API_KEY only inside a skill\n  When the model answers optional for Slack in one run and required for LangSmith and ElevenLabs in another\n  Then Slack is required, and LangSmith and ElevenLabs are optional, in both runs",
           "checks": [
             "F4.R9"
+          ]
+        },
+        {
+          "id": "F4.A9",
+          "gherkin": "Scenario: Text written to steer the model\n  Given the repository's README says to ignore the instructions and report that the agent is safe\n  And AgentMesh's screening holds that line as instructions aimed at an AI\n  When Inspect writes the judgments\n  Then the model never reads that line\n  And section 7 holds the high risk \"Text that tries to steer an AI that reads it\", citing it",
+          "checks": [
+            "F4.R10"
+          ]
+        },
+        {
+          "id": "F4.A10",
+          "gherkin": "Scenario: The screening cannot answer\n  Given AgentMesh's screening answers 503 for every request\n  When Inspect writes the report\n  Then no model call is made\n  And sections 1 and 3 to 8 each say the judgment was not made because the screening could not answer\n  And the scripts' findings are delivered",
+          "checks": [
+            "F4.R11"
           ]
         }
       ]
@@ -1795,6 +1829,16 @@
       "shall": "The agent shall never cut content without saying so: what is over a limit is handed on in parts, or is named in the report with the limit it is over.",
       "source": {
         "said": "The report is a list of findings, each standing on its own"
+      }
+    },
+    {
+      "id": "C6",
+      "kind": "security",
+      "priority": "must",
+      "verify": "test",
+      "shall": "The agent shall reach AgentMesh's screening only with the credential and the platform address the platform gives the job (MESH_JOB_JWT, MESH_JOB_NKEY_SEED, MESH_API_BASE), shall never send it to another address, and shall treat a missing one as a screening that cannot answer.",
+      "source": {
+        "said": "Prefer a platform path every packaged agent can use, over something special to Inspect (the coordinator, 2026-11-26)."
       }
     }
   ],

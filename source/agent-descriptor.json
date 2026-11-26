@@ -1,6 +1,6 @@
 {
   "format": "agent-descriptor-v1",
-  "agent_version": "0.4.5",
+  "agent_version": "0.4.6",
   "name": "Inspect",
   "summary": "Reads an outside agent's code on GitHub, without running any of it, and reports what it does and how safe it is.",
   "does": "Inspect reads an outside agent's code in a public GitHub repository, at its newest commit or one you name, without running any of it, and hands back an inspection report on what the agent does and how safe it is: a list of findings in eight sections, each citing a file and line at the commit. Scripts read the code by rule; a model writes only the judgments, and each judgment cites the lines it rests on. It gives no verdict on bringing the agent in and judges no fit with anyone's plan.",
@@ -325,6 +325,20 @@
                   "tokens_out": {
                     "type": "integer",
                     "minimum": 0
+                  },
+                  "screening_requests": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "description": "requests to AgentMesh's screening, which passes every line before the model reads it"
+                  },
+                  "screened_passages": {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "screening_held": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "description": "passages the screening held, which the model did not read"
                   }
                 }
               }
@@ -371,7 +385,8 @@
                     "enum": [
                       "code-host",
                       "vulnerability-database",
-                      "text-reasoning"
+                      "text-reasoning",
+                      "screening"
                     ]
                   },
                   "call": {
@@ -762,7 +777,7 @@
       }
     }
   ],
-  "refusals": "Running, installing, building or testing the repository's code, because Inspect only reads it; it says so and inspects without running anything.\nGiving a verdict on whether to bring the agent in, or judging how it fits a plan or a catalog role, because that decision is the reader's; it says so and still delivers the report.\nA branch or a tag in place of a commit, because a branch or a tag can move and the report must stand for one commit; it asks for the commit's digest, or for the commit to be left blank so it reads the newest one, and inspects nothing.\nA repository that is not public on GitHub, or a commit that is not in it, because there is nothing it may read; it says which, and inspects nothing.\nAn archive larger than 50 MB or holding more than 20000 files, because it reads no more than that; it says how large the archive is, and inspects nothing.\nWriting a link from the archive, or a file whose path leaves its own folder, because an archive from somebody else must not decide where a file lands; it records each one as a fact and writes neither.\nRepeating the characters of anything that looks like a committed credential, because a report that repeats a key has published it; it keeps only the file, the line and the kind of credential.\nAsking for more than 20 inspections in a day as one asker, or after 200 have started that day, because each inspection asks a model for its judgments and the day is bounded; it says when to try again, and inspects nothing.",
+  "refusals": "Running, installing, building or testing the repository's code, because Inspect only reads it; it says so and inspects without running anything.\nGiving a verdict on whether to bring the agent in, or judging how it fits a plan or a catalog role, because that decision is the reader's; it says so and still delivers the report.\nA branch or a tag in place of a commit, because a branch or a tag can move and the report must stand for one commit; it asks for the commit's digest, or for the commit to be left blank so it reads the newest one, and inspects nothing.\nA repository that is not public on GitHub, or a commit that is not in it, because there is nothing it may read; it says which, and inspects nothing.\nAn archive larger than 50 MB or holding more than 20000 files, because it reads no more than that; it says how large the archive is, and inspects nothing.\nWriting a link from the archive, or a file whose path leaves its own folder, because an archive from somebody else must not decide where a file lands; it records each one as a fact and writes neither.\nRepeating the characters of anything that looks like a committed credential, because a report that repeats a key has published it; it keeps only the file, the line and the kind of credential.\nAsking for more than 20 inspections in a day as one asker, or after 200 have started that day, because each inspection asks a model for its judgments and the day is bounded; it says when to try again, and inspects nothing.\nJudging text from the repository that AgentMesh's screening has not passed, because a repository can be written to steer the model that reads it; a passage the screening holds is left out of what the model reads and named as a risk, and when the screening cannot answer, the report holds no judgment and says why.",
   "records": [
     {
       "name": "the signed job manifest of each delivery",
@@ -783,7 +798,7 @@
     {
       "name": "text-reasoning",
       "access": "trigger",
-      "needs": "To write the judgments over the facts the scripts found: what the agent does, how it works, what it can do on its own, its risks and what it needs to run safely, and the few findings that matter most."
+      "needs": "To write the judgments over the facts the scripts found: what the agent does, how it works, what it can do on its own, its risks and what it needs to run safely, and the few findings that matter most. Every line it is given has passed AgentMesh's screening first."
     }
   ],
   "can_use": [

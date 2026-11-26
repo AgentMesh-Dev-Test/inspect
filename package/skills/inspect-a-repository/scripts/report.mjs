@@ -261,13 +261,50 @@ export function scriptFindings({ facts, ctx, owner, name, sha, repoUrl, osv = nu
   return out;
 }
 
-/** The findings that say a judgment was not made, one for each section it would have held. */
-export function notJudged(sections, why, which) {
+/** The findings that say a judgment was not made, one for each section it
+ *  would have held. `source` names what ended it: the model by default, or
+ *  the screening when it could not pass the text first (0.4.6). */
+export function notJudged(sections, why, which, source = { system: "text-reasoning", call: `the judgment of sections ${which}`, field: "why the answer ended" }) {
   return sections.map((s) => ({
     section: s, kind: "not-judged", title: "Not judged", by: "script", based_on: [],
     says: `The judgment of section ${s} was not made: ${trim(why)}. The scripts' findings of this section stand.`,
-    source: [{ system: "text-reasoning", call: `the judgment of sections ${which}`, field: "why the answer ended" }],
+    source: [source],
   }));
+}
+
+/** What ends a judgment that the screening could not pass the text for. */
+export const SCREENING_SOURCE = { system: "screening", call: "POST /v1/screen-text", field: "why nothing was screened" };
+
+/**
+ * 0.4.6: the passages AgentMesh's screening held before the model could read
+ * them, as one risk by rule. `held` is [{fact, verdict, reason?}]. A "hold" is
+ * the screener reading the text as instructions aimed at an AI (prompt
+ * injection or a jailbreak), so the risk is high; a passage held for another
+ * reason the screener named is medium. Its words are Inspect's own and quote
+ * none of the passages, because the last call reads them: the passages are its
+ * evidence, for a person to read.
+ */
+export function screeningFindings(held, ctx) {
+  if (!held.length) return [];
+  const cited = held.map((h) => h.fact);
+  const { evidence, source } = evidenceOf(cited, ctx);
+  const n = held.length;
+  const steer = held.filter((h) => h.verdict === "hold").length;
+  const them = n === 1 ? "it" : "them";
+  const how = !steer ? "" : steer === n ? `: ${n === 1 ? "it reads" : "they read"} as instructions aimed at an AI that reads the code` : `: ${steer} of them read as instructions aimed at an AI that reads the code`;
+  return [{
+    section: 7, kind: "risk", by: "script",
+    title: steer ? "Text that tries to steer an AI that reads it" : "Text the screening kept from Inspect's model",
+    says: `AgentMesh's screening held ${plural(n, "passage")} of the code before Inspect's model could read ${them}${how}. The judgments in this report rest on the rest of the code.`,
+    based_on: cited.map((f) => f.id), ...(evidence.length ? { evidence } : {}), source: [...source, SCREENING_SOURCE],
+    level: steer ? "high" : "medium", level_by: "rule",
+    ...(steer ? { categories: [categoryOf("LLM01:2025"), categoryOf("ASI01")] } : {}),
+    detail: {
+      held: n, as_instructions: steer,
+      reasons: [...new Set(held.map((h) => trim(h.reason)).filter(Boolean))],
+      safe: `Read the ${n === 1 ? "passage" : "passages"} this cites before you bring the agent in: text written to steer an AI can also reach the models the agent itself uses.`,
+    },
+  }];
 }
 
 /** The levels a finding may carry, highest first. */
@@ -443,7 +480,7 @@ function findingLine(f, report) {
     return addr ? `[${at}](${addr})` : at;
   });
   const more = (f.evidence?.length ?? 0) > 5 ? `, and ${f.evidence.length - 5} more` : "";
-  const systemWord = { "code-host": "GitHub's records", "vulnerability-database": "OSV, the vulnerability database", "text-reasoning": "the model" };
+  const systemWord = { "code-host": "GitHub's records", "vulnerability-database": "OSV, the vulnerability database", "text-reasoning": "the model", screening: "AgentMesh's screening" };
   const from = !places.length && f.source?.length ? ` From ${mdText([...new Set(f.source.map((s) => systemWord[s.system] ?? s.system))].join(" and "))}.` : "";
   const d = f.detail ?? {};
   const need = f.kind === "system" && d.need ? ` ${d.need === "required" ? "Required" : d.need === "optional" ? "Optional" : "Whether it is required is not clear from the code"}.${d.supply ? ` You supply: ${mdText(d.supply)}.` : ""}${d.without ? ` Without it: ${mdText(d.without)}.` : ""}` : "";

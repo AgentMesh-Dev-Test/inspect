@@ -21,7 +21,7 @@
 // its budget is a failure (the shared caller says so), never read as whole.
 //
 //   needs: node >= 22; the model's four settings, through the shared caller
-//   import { judge, CALL_TOKENS, BUDGETS, estimateTokens } from "./judge.mjs"
+//   import { judge, factsRead, CALL_TOKENS, BUDGETS, estimateTokens } from "./judge.mjs"
 import { callModel, readJson } from "./model-caller.mjs";
 import { factLine } from "./collect.mjs";
 import { KINDS, LEVELS, LLM_TOP_10, AGENTIC_TOP_10, stepLine } from "./lists.mjs";
@@ -98,9 +98,12 @@ export function secondPrompt(factText, { repo }) {
   ].join("\n");
 }
 
+/** One finding as the last call reads it, and as the screening sees it first (0.4.6). */
+export const glanceLine = (f) => `${f.id} [section ${f.section}, ${f.kind}${f.level ? `, ${f.level}` : ""}] ${f.title}: ${f.says}`;
+
 /** The prompt of the last call: section 1 from the findings delivered. */
 export function glancePrompt(findings) {
-  const lines = findings.map((f) => `${f.id} [section ${f.section}, ${f.kind}${f.level ? `, ${f.level}` : ""}] ${f.title}: ${f.says}`);
+  const lines = findings.map(glanceLine);
   return [
     "These are the checked findings of an inspection report, one to a line:",
     ...lines,
@@ -111,19 +114,45 @@ export function glancePrompt(findings) {
   ].join("\n");
 }
 
+const fits = (prompt) => estimateTokens(prompt) + estimateTokens(SYSTEM) <= CALL_TOKENS;
+
+/** What one of the first two calls reads: every fact when the whole list
+ *  fits, else the kinds its sections rest on. {facts, prompt, fits}. */
+function chosen(facts, which, make, repo) {
+  const whole = make(facts.map(factLine).join("\n"), { repo });
+  if (fits(whole)) return { facts, prompt: whole, fits: true };
+  const part = facts.filter((f) => KINDS_FOR[which].includes(f.kind));
+  const prompt = make(part.map(factLine).join("\n"), { repo });
+  return { facts: part, prompt, fits: fits(prompt) };
+}
+
+/** The facts the first two calls would read, in order: what the screening
+ *  must see before either is made (0.4.6). A call too big to be made reads
+ *  nothing, so nothing of it is screened. */
+export function factsRead(facts, repo) {
+  const read = new Set();
+  for (const [which, make] of [["first", firstPrompt], ["second", secondPrompt]]) {
+    const c = chosen(facts, which, make, repo);
+    if (c.fits) for (const f of c.facts) read.add(f);
+  }
+  return facts.filter((f) => read.has(f));
+}
+
 /**
  * Make the calls the budget allows: {first, second, glance, usage, not_made}.
  * Each answer is {drafts} or {failed: why}. `ask(prompt, options)` answers
  * {text, tokens_in, tokens_out}; by default the shared model caller.
+ * `withheld` holds the ids of facts the screening did not pass (0.4.6): each
+ * call reads what it would have read, less those, so which calls are made
+ * is decided on every fact and never changes because some were held.
  */
-export async function judge({ facts, repo, ask = (prompt, o) => callModel(prompt, o), onStatus = () => {}, onCall = async () => {} } = {}) {
+export async function judge({ facts, withheld = new Set(), repo, ask = (prompt, o) => callModel(prompt, o), onStatus = () => {}, onCall = async () => {} } = {}) {
   const usage = { model_calls: 0, tokens_in: 0, tokens_out: 0 };
   const notMade = [];
-  const all = facts.map(factLine).join("\n");
-  const fits = (prompt) => estimateTokens(prompt) + estimateTokens(SYSTEM) <= CALL_TOKENS;
   const promptFor = (which, make) => {
-    const whole = make(all, { repo });
-    return fits(whole) ? whole : make(facts.filter((f) => KINDS_FOR[which].includes(f.kind)).map(factLine).join("\n"), { repo });
+    const c = chosen(facts, which, make, repo);
+    if (!c.fits || !withheld.size) return c.prompt;
+    return make(c.facts.filter((f) => !withheld.has(f.id)).map(factLine).join("\n"), { repo });
   };
   async function one(which, prompt, budget, sections) {
     const est = estimateTokens(prompt) + estimateTokens(SYSTEM);
