@@ -1,6 +1,6 @@
 {
   "format": "agent-descriptor-v1",
-  "agent_version": "0.4.1",
+  "agent_version": "0.4.2",
   "name": "Inspect",
   "summary": "Reads an outside agent's code on GitHub at one commit, without running any of it, and reports what it does and how safe it is.",
   "does": "Inspect reads an outside agent's code in a public GitHub repository at one commit, without running any of it, and hands back an inspection report on what the agent does and how safe it is: a list of findings in eight sections, each citing a file and line at the commit. Scripts read the code by rule; a model writes only the judgments, and each judgment cites the lines it rests on. It gives no verdict on bringing the agent in and judges no fit with anyone's plan.",
@@ -524,7 +524,7 @@
                   },
                   "detail": {
                     "type": "object",
-                    "description": "fields of the finding's kind: a skill's name, path, description, scripts and lift_out (yes or no) with the imports that keep it from standing alone, its size (scripts, lines of code, the length of its instructions and the tests that name it) and its instructions as text (instructions, up to 8,000 characters each and 250,000 in all; instructions_cut when shortened, with instructions_address, the file at the commit on GitHub); the agent's own code's files and lines; a job's does; a risk's safe, how to make it safe; a model's name, where it is chosen and whether a setting changes it; a system's name, host, access (read, write, read-write or unknown), the credentials it expects, need (required, optional or unclear), supply (what the person supplies), without (what happens without it) and sends (what goes to it); since 0.4.0 need is decided by rule from the settings it reads and where the code that reaches it is (need_by rule, with need_why and need_settings), and the model's own answer stands only where they leave it unclear (need_by model), kept as need_by_model either way; a credential's need, need_by and need_why by the same rule; a tool's name, what it does and whether it runs without a person's OK; a vulnerability's package, version, OSV id, aliases and fixed version"
+                    "description": "fields of the finding's kind: a skill's name, path, description, scripts and lift_out (yes or no) with the imports that keep it from standing alone, its size (scripts, lines of code, the length of its instructions and the tests that name it) and its instructions as text (instructions, up to 8,000 characters each and 250,000 in all; instructions_cut when shortened, with instructions_address, the file at the commit on GitHub); the agent's own code's files and lines; a job's does; a risk's safe, how to make it safe; a model's name, where it is chosen and whether a setting changes it; a system's name, host, access (read, write, read-write or unknown), the credentials it expects, need (required, optional, unclear, or none when the person has nothing to set up), supply (what the person supplies), without (what happens without it) and sends (what goes to it); since 0.4.0 need is decided by rule from the settings it reads and where the code that reaches it is (need_by rule, with need_why and need_settings), and the model's own answer stands only where they leave it unclear (need_by model), kept as need_by_model either way; a credential's need, need_by and need_why by the same rule; a tool's name, what it does and whether it runs without a person's OK; a vulnerability's package, version, OSV id, aliases and fixed version"
                   }
                 },
                 "anyOf": [
@@ -824,7 +824,7 @@
         "output": "inspection"
       },
       "file": "views/report.html",
-      "digest": "sha256:9d04de7bdddcd91a43ba4d3a85c18d81fd70d234e1c86ab7461b1d21ec0e66cd",
+      "digest": "sha256:798de65f1ed4e8edc13fd6577e6c156615014d7d697361dd7d01ca286b039f77",
       "requests": [
         "resize",
         "copy-text",

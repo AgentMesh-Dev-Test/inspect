@@ -285,10 +285,12 @@ export function settingNeed(name, facts) {
  *   - When its settings don't settle it, and every file outside its tests
  *     that reaches it is inside its skills, only those skills need it, so
  *     the agent runs without it: optional.
+ *   - When it reads no setting at all and the person has nothing to set up
+ *     (`supply` says so): none, never counted as required (0.4.2).
  * by is "rule" for each. Otherwise need and by are null: the facts leave it
  * unclear, and the model's answer stands.
  */
-export function systemNeed({ settings = [], files = [], facts = [] } = {}) {
+export function systemNeed({ settings = [], files = [], facts = [], supply = "" } = {}) {
   const names = [...new Set(settings.map((s) => String(s ?? "").trim()).filter(Boolean))].sort();
   const each = names.map((n) => ({ name: n, ...(settingNeed(n, facts) ?? { need: null }) })).filter((x) => x.need);
   const said = each.map((x) => ({ name: x.name, need: x.need, why: x.why }));
@@ -298,6 +300,12 @@ export function systemNeed({ settings = [], files = [], facts = [] } = {}) {
   // The code that reaches it: no test, and no doc or example settings file, which reach nothing.
   const reach = [...new Set(files.map((f) => String(f ?? "")).filter((f) => f && !isTestFile(f) && !/\.(md|mdx|rst|txt)$/i.test(f) && !isExampleSettings(f)))];
   if (reach.length && reach.every((f) => inSkill(f, folders))) return { need: "optional", by: "rule", why: "only its skills reach it", settings: said };
+  // 0.4.2: a system it reads no setting for, where the person has nothing to
+  // set up (a download host, a public site), asks nothing of them. Two runs
+  // of the same commit called such hosts required once and optional once;
+  // neither is what the person supplies, so it is said as such and never
+  // counted as required.
+  if (!names.length && /^(?:nothing|none|no setup)\b/i.test(String(supply ?? "").trim())) return { need: "none", by: "rule", why: "it reads no setting, and there is nothing to set up", settings: said };
   return { need: null, by: null, why: null, settings: said };
 }
 /** A test file's kind, by its folders and name. */

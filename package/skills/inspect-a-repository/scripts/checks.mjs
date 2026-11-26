@@ -242,7 +242,7 @@ export function checkDrafts(drafts, { sections, byId, ctx, known = {} }) {
     if (f.kind === "system") {
       f.detail = f.detail ?? { need: "unclear" };
       const named = Array.isArray(d.detail?.credentials) ? d.detail.credentials : [];
-      const rule = systemNeed({ settings: [...cited.filter((x) => x.kind === "setting").map((x) => x.data?.name), ...named], files: cited.map((x) => x.file), facts: allFacts() });
+      const rule = systemNeed({ settings: [...cited.filter((x) => x.kind === "setting").map((x) => x.data?.name), ...named], files: cited.map((x) => x.file), facts: allFacts(), supply: f.detail.supply });
       f.detail.need_by_model = f.detail.need;
       if (rule.by === "rule") { f.detail.need = rule.need; f.detail.need_why = rule.why; }
       f.detail.need_by = rule.by ?? "model";

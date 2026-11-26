@@ -587,3 +587,27 @@ test("[F5.R9] nothing on any tab or opened row names a file, a line, a path or a
     }
   }
 });
+
+test("[F5.R9] a system with nothing to set up says so as its need, with a shape of its own, and is never counted as required", () => {
+  const { list, facts } = rich();
+  const hosts = { id: "S5-012", section: 5, kind: "system", title: "Setup download hosts: installs and sandbox builds", says: "The install script downloads tools.", by: "model", based_on: [], evidence: ev("install.sh", 4), detail: { system: "Setup download hosts", need: "none", need_by: "rule", supply: "Nothing to set up" } };
+  const { app } = drawn(report([...list, hosts], [], facts), { width: 1100 });
+  const tile = shownPanel(app).querySelector("ul.size-tiles").querySelectorAll("li").find((t) => t.querySelector(".k").textContent === "Systems required");
+  assert.equal(tile.querySelector(".v").textContent, "2 of 4", "counted among the systems, never as required");
+  tabNamed(app, "Systems it uses").click();
+  const row = rowOf(app, "S5-012");
+  assert.equal(row.querySelector(".need .word").textContent, "Nothing to set up");
+  assert.ok(row.querySelector(".need svg").markup.includes("stroke-dasharray"), "a dashed ring, its own shape");
+  assert.equal(row.querySelector(".supply"), null, "the need says it; no second line says it again");
+  assert.equal(shownPanel(app).querySelectorAll("li.row.system").at(-1), row, "after the systems that ask something of the person");
+});
+
+test("[F5.R9] a system whose supply the model could not name shows only that the code does not settle it, never a line saying it is not shown", () => {
+  const { list, facts } = rich();
+  const groq = { id: "S5-013", section: 5, kind: "system", title: "Groq: audio transcription address", says: "A transcription address is named.", by: "model", based_on: [], evidence: ev("src/audio.py", 4), detail: { system: "Groq", need: "unclear", need_by: "model", supply: "Not shown" } };
+  const { app } = drawn(report([...list, groq], [], facts), { width: 1100 });
+  tabNamed(app, "Systems it uses").click();
+  const row = rowOf(app, "S5-013");
+  assert.equal(row.querySelector(".need .word").textContent, "Not clear from the code");
+  assert.equal(row.querySelector(".supply"), null);
+});

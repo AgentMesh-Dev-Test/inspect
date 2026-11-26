@@ -169,8 +169,8 @@ button { font: inherit; color: inherit; cursor: pointer; }
 .lv.low, .lv.none { color: var(--muted); }
 .lv .word, .need .word { color: var(--text); }
 .lv.unrated, .lv.unrated .word { color: var(--muted); font-weight: 500; }
-.need.optional, .need.unclear { color: var(--muted); }
-.need.optional .word, .need.unclear .word { color: var(--muted); font-weight: 500; }
+.need.optional, .need.unclear, .need.none { color: var(--muted); }
+.need.optional .word, .need.unclear .word, .need.none .word { color: var(--muted); font-weight: 500; }
 
 /* Risks: the risks by level, each a filter; the action; then the rows */
 .tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(9.5em, 1fr)); gap: calc(var(--s) * 0.75); }
@@ -427,11 +427,12 @@ button { font: inherit; color: inherit; cursor: pointer; }
   // on its color: critical an octagon, high a triangle, medium a diamond, low
   // a ring, no risk a bar, not rated an open square. A system's need has its
   // own: required a filled square, optional a half-filled circle, not clear
-  // an open square with a mark.
+  // an open square with a mark, nothing to set up a dashed ring (0.4.2).
   const SHAPES = {
     required: '<rect x="2" y="2" width="12" height="12" rx="2" fill="currentColor"/>',
     optional: '<circle cx="8" cy="8" r="5.8" fill="none" stroke="currentColor" stroke-width="2"/><path d="M8 2.2a5.8 5.8 0 0 1 0 11.6z" fill="currentColor"/>',
     unclear: '<rect x="2.6" y="2.6" width="10.8" height="10.8" rx="1" fill="none" stroke="currentColor" stroke-width="1.8"/><rect x="7" y="5" width="2" height="6" fill="currentColor"/>',
+    nothing: '<circle cx="8" cy="8" r="5.8" fill="none" stroke="currentColor" stroke-width="1.8" stroke-dasharray="2.6 2.2"/>',
     critical: '<polygon points="5,1 11,1 15,5 15,11 11,15 5,15 1,11 1,5" fill="currentColor"/>',
     high: '<polygon points="8,1.5 15.2,14.5 0.8,14.5" fill="currentColor"/>',
     medium: '<polygon points="8,1 15,8 8,15 1,8" fill="currentColor"/>',
@@ -937,7 +938,7 @@ button { font: inherit; color: inherit; cursor: pointer; }
   // for, what the person supplies, and required or optional as a word and a
   // shape. A credential no system names is a system of its own. Required
   // systems first.
-  const NEED_WORD = { required: "Required", optional: "Optional", unclear: "Not clear from the code" };
+  const NEED_WORD = { required: "Required", optional: "Optional", unclear: "Not clear from the code", none: "Nothing to set up" };
   function systemsOf(d) {
     const sys = d.findings.filter((f) => f.section === 5 && f.kind === "system");
     const { facts } = indexOf(d);
@@ -945,7 +946,7 @@ button { font: inherit; color: inherit; cursor: pointer; }
     const creds = d.findings.filter((f) => f.section === 5 && f.kind === "credential" && f.detail?.read_by_code !== false && !named.has(f.detail?.env));
     // A credential's need: the rule's, which the report carries since 0.4.0,
     // else how the code reads it.
-    const order = ["required", "optional", "unclear"];
+    const order = ["required", "optional", "unclear", "none"];
     const needOfCred = (f) => (order.includes(f.detail?.need) ? f.detail.need : f.detail?.how === "fails" ? "required" : f.detail?.how === "guard" || f.detail?.how === "default" ? "optional" : "unclear");
     // The credentials no system names, one card per system they open: "Google
     // API key" and "Google application credentials" are Google's.
@@ -966,7 +967,7 @@ button { font: inherit; color: inherit; cursor: pointer; }
     ].map((x, i) => ({ ...x, i })).sort((a, b) => order.indexOf(a.need) - order.indexOf(b.need) || a.i - b.i);
   }
   function needBadge(need) {
-    return el("span", { class: `need ${need}` }, shape(need), el("span", { class: "word", text: NEED_WORD[need] }));
+    return el("span", { class: `need ${need}` }, shape(need === "none" ? "nothing" : need), el("span", { class: "word", text: NEED_WORD[need] }));
   }
   function drawSystems(d, pending) {
     const out = [];
@@ -984,7 +985,8 @@ button { font: inherit; color: inherit; cursor: pointer; }
           title: x.name, lead: systemIcon(x.name),
           under: x.purpose || "",
           // What the person supplies, with a key; nothing to supply is said plainly, with no key.
-          under2: !x.supply ? null : /^(?:nothing|none|no setup)\b/i.test(x.supply) ? el("span", { class: "supply nothing" }, el("span", { text: cap(x.supply) })) : el("span", { class: "supply" }, icon("key", 16), el("span", { class: "sr", text: "You supply: " }), el("span", { text: x.supply })),
+          // A supply the model could not name ("Not shown") says nothing the need does not.
+          under2: !x.supply || x.need === "none" || /^(?:not (?:shown|clear|known)|unknown|unclear)\b/i.test(x.supply) ? null : /^(?:nothing|none|no setup)\b/i.test(x.supply) ? el("span", { class: "supply nothing" }, el("span", { text: cap(x.supply) })) : el("span", { class: "supply" }, icon("key", 16), el("span", { class: "sr", text: "You supply: " }), el("span", { text: x.supply })),
           side: needBadge(x.need),
         };
       }, detail: (f) => {
