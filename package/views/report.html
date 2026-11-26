@@ -234,7 +234,6 @@ button { font: inherit; color: inherit; cursor: pointer; }
 .dialog { position: absolute; left: 50%; transform: translateX(-50%); width: min(760px, calc(100% - 32px)); display: flex; flex-direction: column; background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius); box-shadow: 0 12px 40px rgba(0, 0, 0, 0.28); overflow: hidden; }
 .dlg-head { flex: none; display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: calc(var(--s) * 0.5) calc(var(--s) * 1.5); align-items: start; padding: calc(var(--s) * 1.75) calc(var(--s) * 2) calc(var(--s) * 1.25); border-bottom: 1px solid var(--border); }
 .dlg-head h2 { font-size: 1.15em; font-weight: 700; margin: 0.35em 0 0; overflow-wrap: anywhere; }
-.dlg-head .muted { grid-column: 1; }
 .dlg-body { flex: 1 1 auto; min-height: 0; overflow-y: auto; overscroll-behavior: contain; padding: calc(var(--s) * 1.75) calc(var(--s) * 2) calc(var(--s) * 2.25); display: grid; gap: calc(var(--s) * 1.1); align-content: start; }
 .dlg-body:focus-visible { outline-offset: -3px; }
 .md { display: grid; gap: calc(var(--s) * 0.9); overflow-wrap: anywhere; }
@@ -757,7 +756,7 @@ button { font: inherit; color: inherit; cursor: pointer; }
     else if (pending.has(2) || pending.has(3)) out.push(el("ul", { class: "size-tiles", role: "img", "aria-label": SOON }, ["skills", "scripts", "code", "tests", "systems"].map((k) => el("li", {}, icon(k, 22), el("span", { class: "v" }, skInline()), el("span", { class: "k" }, sk("70%"))))));
     const rows = inspected(d);
     if (rows.length) out.push(el("h2", { text: "What was inspected" }), el("dl", { class: "facts" }, rows.flatMap(([k, v]) => [el("dt", { text: k }), el("dd", {}, v)])));
-    else if (pending.has(2)) out.push(el("h2", { text: "What was inspected" }), el("dl", { class: "facts" }, ["Commit", "License", "Built on", "Kept up", "Publisher"].flatMap((k) => [el("dt", { text: k }), el("dd", {}, skInline(), el("span", { class: "sr", text: SOON }))])));
+    else if (pending.has(2)) out.push(el("h2", { text: "What was inspected" }), el("dl", { class: "facts" }, ["Commit", "License", "Built on", "Kept up"].flatMap((k) => [el("dt", { text: k }), el("dd", {}, skInline(), el("span", { class: "sr", text: SOON }))])));
     return out;
   }
   // What was inspected, as a short label and value list.
@@ -787,11 +786,8 @@ button { font: inherit; color: inherit; cursor: pointer; }
       const value = [pushed ? `Last pushed ${pushed}` : null, Number.isFinite(n) && a.commits_last_90_days !== null ? `${plural(n, "commit")} in the last 90 days` : null, a.archived ? "archived" : null].filter(Boolean).join(", ");
       if (value) rows.push(["Kept up", value]);
     }
-    const pub = of("publisher");
-    if (pub?.detail?.login) {
-      const type = String(pub.detail.type ?? "").toLowerCase();
-      rows.push(["Publisher", `${pub.detail.login}${type ? `, ${/^[aeiou]/.test(type) ? "an" : "a"} ${type}` : ""}`]);
-    }
+    // No publisher row (0.4.0): the host's header names the repository and
+    // its owner, and the description says who it is from.
     return rows;
   }
   async function copyLink(url) {
@@ -922,7 +918,8 @@ button { font: inherit; color: inherit; cursor: pointer; }
     const { skillsOf } = indexOf(d);
     const systems = systemsOf(d).filter((x) => x.finding && skillsOf(x.finding).includes(f));
     const z = f.detail?.size;
-    const lift = f.detail?.instructions_only ? "Instructions only, so it can be lifted out as it is" : f.detail?.lift_out === "yes" ? "Can be lifted out on its own" : "Tied to the rest of the agent";
+    // The row already says it is instructions only, so this says what follows from it.
+    const lift = f.detail?.instructions_only ? "Can be lifted out as it is" : f.detail?.lift_out === "yes" ? "Can be lifted out on its own" : "Tied to the rest of the agent";
     const tests = z?.tests?.cases ? `${plural(z.tests.cases, "test")} in ${plural(z.tests.files, "test file")}` : "No test covers it by name";
     const pairs = [];
     if (systems.length) pairs.push(["Uses", refs(systems.map((x) => findingButton(x.finding, "uses", x.name)))]);
@@ -1208,7 +1205,6 @@ button { font: inherit; color: inherit; cursor: pointer; }
     if (layerFor === key && layer.firstChild) { layer.style.height = `${pageHeight()}px`; return; }
     layerFor = key;
     const text = typeof f.detail?.instructions === "string" ? f.detail.instructions : "";
-    const m = measureOf(f);
     const place = state.place ?? { top: 8, max: 640 };
     layer.className = "layer";
     layer.replaceChildren(
@@ -1216,8 +1212,7 @@ button { font: inherit; color: inherit; cursor: pointer; }
       el("section", { class: "dialog", role: "dialog", "aria-modal": "true", "aria-labelledby": "viewer-title", style: `top:${Number(place.top) || 0}px;max-height:${Number(place.max) || 640}px`, onkeydown: trapTab },
         el("div", { class: "dlg-head" },
           el("h2", { id: "viewer-title" }, prose(displayTitle(f))),
-          el("button", { class: "btn", type: "button", "data-k": "viewer-close", onclick: closeViewer }, "Close"),
-          m ? el("p", { class: "muted", text: m }) : null),
+          el("button", { class: "btn", type: "button", "data-k": "viewer-close", onclick: closeViewer }, "Close")),
         el("div", { class: "dlg-body", tabindex: "0", "aria-label": "The skill's instructions", "data-k": "viewer-body" },
           one(f.detail?.description) ? el("p", { class: "own" }, prose(one(f.detail.description))) : null,
           el("div", { class: "md" }, text ? markdown(text) : el("p", { class: "muted", text: "This report does not carry its instructions." })),

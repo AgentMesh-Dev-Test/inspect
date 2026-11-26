@@ -128,8 +128,21 @@ try {
     // Steps in order, each in the host's page or in the view (0.4.0): the
     // host scrolled to a row low on the page, then the row's button clicked.
     // A step's expression may use what the step before it gave back, as __LAST__.
+    // A "click" step is a real click of the mouse on the element its
+    // expression finds in the view, as a person's is: a script's click()
+    // carries no user activation, and a frame given none may not take focus.
     let last = null;
-    for (const s of c.steps ?? []) { const js = s.js.replaceAll("__LAST__", JSON.stringify(last)); last = await (s.in === "host" ? inHost(js) : inView(js)); await settled(); }
+    for (const s of c.steps ?? []) {
+      const js = s.js.replaceAll("__LAST__", JSON.stringify(last));
+      if (s.in === "click") {
+        const at = await inView(`(() => { const e = ${js}; const r = e.getBoundingClientRect(); return [r.left + r.width / 2, r.top + r.height / 2]; })()`);
+        const off = await inHost("(() => { const r = document.querySelector('iframe').getBoundingClientRect(); return [r.left, r.top]; })()");
+        const [x, y] = [at[0] + off[0], at[1] + off[1]];
+        for (const type of ["mouseMoved", "mousePressed", "mouseReleased"]) await cdp.send("Input.dispatchMouseEvent", { type, x, y, button: "left", clickCount: 1 }, page);
+        last = [x, y];
+      } else last = await (s.in === "host" ? inHost(js) : inView(js));
+      await settled();
+    }
     for (const key of c.press ?? []) await inView(`document.activeElement.dispatchEvent(new KeyboardEvent("keydown", { key: ${JSON.stringify(key)}, bubbles: true }))`);
     await settled();
     const seen = await inView(`(() => {

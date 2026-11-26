@@ -231,3 +231,19 @@ test("[F4.A8] a credential no system names carries its need by the same rule, so
     assert.equal(cred("POSTHOG_API_KEY").detail.need, "optional");
   });
 });
+
+test("[F4.A2] a risk that rests only on known flaws already rated is held back: the scripts' finding for each package says it", () => {
+  const vfacts = new Map([
+    ["F0201", { id: "F0201", kind: "vulnerability", file: "src/tools.py", line: 40, data: { name: "hono", version: "4.13.13", level: "medium" } }],
+    ["F0202", { id: "F0202", kind: "vulnerability", file: "src/tools.py", line: 61, data: { name: "hono", version: "4.13.13", level: null } }],
+    ...byId,
+  ]);
+  const flaws = { section: 7, kind: "risk", title: "Known flaws in render sandbox libraries", says: "The lockfile pins a web library at versions with published flaws.", based_on: ["F0201"], level: "medium", categories: ["LLM03:2025"] };
+  const a = checkDrafts([flaws], { sections: [6, 7, 8], byId: vfacts, ctx });
+  assert.equal(a.kept.length, 0);
+  assert.match(a.held[0].why, /scripts' findings for those packages' known flaws/);
+  const unrated = checkDrafts([{ ...flaws, based_on: ["F0202"] }], { sections: [6, 7, 8], byId: vfacts, ctx });
+  assert.equal(unrated.kept.length, 1, "a flaw with no level yet is the model's to rate");
+  const wider = checkDrafts([{ ...flaws, title: "A web page can reach the shell", based_on: ["F0201", "F0007"] }], { sections: [6, 7, 8], byId: vfacts, ctx });
+  assert.equal(wider.kept.length, 1, "a risk that rests on more than the flaws stands");
+});

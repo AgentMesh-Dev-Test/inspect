@@ -207,6 +207,9 @@ export function checkDrafts(drafts, { sections, byId, ctx, known = {} }) {
     if (!ids.length) { hold("it cites no fact the scripts found"); continue; }
     const unknown = ids.filter((id) => !byId.has(id));
     if (unknown.length) { hold(`it cites ${unknown.join(", ")}, which the scripts did not find`); continue; }
+    // 0.4.0: a risk that rests only on known flaws OSV has rated says again
+    // what the scripts' finding for each of those packages says.
+    if (trim(d.kind) === "risk" && ids.every((id) => byId.get(id)?.kind === "vulnerability" && byId.get(id)?.data?.level)) { hold("it says again what the scripts' findings for those packages' known flaws say"); continue; }
     const cited = ids.map((id) => byId.get(id));
     const { evidence, source } = evidenceOf(cited, ctx);
     const fileFacts = cited.filter((f) => f.file);

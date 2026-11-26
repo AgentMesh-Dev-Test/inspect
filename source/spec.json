@@ -2,7 +2,7 @@
   "format": "spec-v1",
   "product": {
     "name": "inspect",
-    "version": "0.4.0",
+    "version": "0.4.1",
     "kind": "agent"
   },
   "purpose": "Inspect takes a public GitHub repository address and a commit, reads the agent's code at that commit without running any of it, and hands back an inspection report on what the agent does and how safe it is. The report is a list of findings in eight sections, each finding standing on its own and citing a file and line at the commit. Its reader is the person in charge of a department's agents, deciding whether to bring in an outside agent before anything is installed or given a credential. It judges no fit with anyone's plan, matches the agent to no catalog role and gives no bring-it-in-or-not verdict.",
@@ -485,7 +485,7 @@
           "kind": "behavior",
           "priority": "must",
           "verify": "test",
-          "shall": "The agent shall hold back a judgment that cites no fact, or cites a fact the scripts did not find, or whose evidence does not check against the commit with the reverse engineer's evidence check, and shall list each one held back with the reason.",
+          "shall": "The agent shall hold back a judgment that cites no fact, or cites a fact the scripts did not find, or whose evidence does not check against the commit with the reverse engineer's evidence check, or that is a risk resting only on known flaws OSV has already rated (each package has its own finding for them), and shall list each one held back with the reason.",
           "source": {
             "said": "check-the-evidence"
           }
@@ -1375,7 +1375,7 @@
           "kind": "interface",
           "priority": "must",
           "verify": "test",
-          "shall": "The agent shall pass every finding, from the scripts and from the model, through one function that emits a finding, in the order it is found and with the id it has in the report, and that function shall post each finding to the running job as a piece named by its id, with a status line as each stage of the inspection begins (adapter 0.102.0: lines of the job folder's updates.jsonl), written together once per turn of the event loop, each write ending with the working copy of the report: the report so far, under the report's own name inspection, marked partial with the stage it is at, whole in one piece of at most 60,000 characters, each finding carrying the fields of its detail the view draws while there is room for them, so no field on the page is empty while the job runs.",
+          "shall": "The agent shall pass every finding, from the scripts and from the model, through one function that emits a finding, in the order it is found and with the id it has in the report, and that function shall post each finding to the running job as a piece named by its id, with a status line as each stage of the inspection begins (adapter 0.102.0: lines of the job folder's updates.jsonl), written together once per turn of the event loop, each write ending with the working copy of the report: the report so far, under the report's own name inspection, marked partial with the stage it is at, whole in one piece of at most 60,000 characters, each finding carrying the fields of its detail the view draws while there is room for them, so no field on the page is empty while the job runs; the first working copy is posted as soon as GitHub's records name the commit, before the archive is read.",
           "source": {
             "said": "Shape its code so that posting each finding as it is found is a small later change (one place that emits a finding)."
           }

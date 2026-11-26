@@ -41,7 +41,7 @@ import { judge } from "./judge.mjs";
 import { checkDescription, checkDrafts, checkGlance, checkSkillNames } from "./checks.mjs";
 import { buildReport, markdownOf, notJudged, replyOf, scriptFindings } from "./report.mjs";
 
-export const VERSION = "0.4.0";
+export const VERSION = "0.4.1";
 const DAY_MS = 24 * 60 * 60 * 1000;
 
 /**
@@ -68,6 +68,13 @@ export async function inspect({ text, workDir, env = process.env, fetchImpl = fe
       // 0.4.0: no commit named, so the newest on the default branch.
       newestOn = req.commit ? null : String(repository.default_branch ?? "").trim();
       commitRec = req.commit ? await gh.commit(req.commit) : await gh.newestCommit(newestOn);
+      // 0.4.0: the repository and the commit are known now, so the first
+      // working copy goes out at once, with the step Inspect is on, rather
+      // than once the archive is read and unpacked (45 seconds on
+      // design-agent, with nothing on the page meanwhile). It is not yet
+      // checked against the archive; the copy after the archive says.
+      const early = String(commitRec?.sha ?? "").toLowerCase();
+      if (/^[0-9a-f]{40}$/.test(early)) onStart({ owner, name, url: String(repository.html_url ?? `https://github.com/${owner}/${name}`), sha: early, checked: false, date: commitRec?.commit?.committer?.date ?? commitRec?.commit?.author?.date ?? null, version: VERSION, started_at: startedAt });
       const since = new Date(now().getTime() - 90 * DAY_MS).toISOString();
       recent = { ...(await gh.recentCommits(since)), since };
       bytes = await gh.archive(String(commitRec.sha ?? req.commit ?? "").toLowerCase());

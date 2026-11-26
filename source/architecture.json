@@ -94,7 +94,7 @@
       "piece": "the commit",
       "direction": "in",
       "kind": "identifier",
-      "convention": "the commit's digest, 7 to 40 hexadecimal characters, on a commit: line, or the last part of a /commit/<digest> or /tree/<digest> address",
+      "convention": "the commit's digest, 7 to 40 hexadecimal characters, on a commit: line, or the last part of a /commit/<digest> or /tree/<digest> address; left out (0.4.0), the newest commit on the default branch",
       "given_by": "either",
       "why": "The report is about one commit, which never moves."
     },

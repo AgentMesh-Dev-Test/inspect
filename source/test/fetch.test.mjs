@@ -200,3 +200,17 @@ test("[F1.A10] GitHub answering 503 to the archive delivers no report and names 
     assert.equal(out.code, 1);
   });
 });
+
+test("[F5.R4] the repository and the commit go to the running job as soon as GitHub's records name them, before the archive is read, so the page shows the job working from its first seconds", async () => {
+  await inTemp(async (at) => {
+    const w = world({ files: smallAgent() });
+    const starts = [];
+    const out = await inspect({ text: "repository: acme/helper", workDir: at, env: ENV, fetchImpl: w.fetchImpl, ask: model().ask, onStart: (a) => starts.push({ ...a, calls: w.calls.map((c) => new URL(c.url).pathname) }) });
+    assert.equal(out.code, 0);
+    assert.equal(starts.length, 2, "once early, once with the archive checked");
+    assert.deepEqual(starts[0].calls, ["/repos/acme/helper", "/repos/acme/helper/commits/main"], "before the archive is asked for");
+    assert.equal(starts[0].sha, SHA);
+    assert.equal(starts[0].checked, false, "not yet checked against the archive");
+    assert.equal(starts[1].checked, true);
+  });
+});
