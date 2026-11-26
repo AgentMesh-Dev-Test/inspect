@@ -39,6 +39,7 @@ Run these from this skill's folder; each one says what it needs at the top.
 
 - scripts/inspect-a-repository.mjs
 - scripts/emit.mjs
+- scripts/limits.mjs
 - scripts/request.mjs
 - scripts/github.mjs
 - scripts/untar.mjs

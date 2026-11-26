@@ -7,3 +7,4 @@ A repository that is not public on GitHub, or a commit that is not in it, becaus
 An archive larger than 50 MB or holding more than 20000 files, because it reads no more than that; it says how large the archive is, and inspects nothing.
 Writing a link from the archive, or a file whose path leaves its own folder, because an archive from somebody else must not decide where a file lands; it records each one as a fact and writes neither.
 Repeating the characters of anything that looks like a committed credential, because a report that repeats a key has published it; it keeps only the file, the line and the kind of credential.
+Asking for more than 20 inspections in a day as one asker, or after 200 have started that day, because each inspection asks a model for its judgments and the day is bounded; it says when to try again, and inspects nothing.

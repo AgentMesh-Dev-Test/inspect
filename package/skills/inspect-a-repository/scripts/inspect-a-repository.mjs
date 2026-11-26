@@ -41,8 +41,9 @@ import { judge } from "./judge.mjs";
 import { checkDescription, checkDrafts, checkGlance, checkSkillNames } from "./checks.mjs";
 import { buildReport, markdownOf, notJudged, replyOf, scriptFindings } from "./report.mjs";
 import { stepLine } from "./lists.mjs";
+import { admit, askerOf } from "./limits.mjs";
 
-export const VERSION = "0.4.4";
+export const VERSION = "0.4.5";
 const DAY_MS = 24 * 60 * 60 * 1000;
 
 /**
@@ -220,6 +221,15 @@ if (ranDirectly) {
     const jobDir = resolve(flags.job);
     const textFile = flags["text-file"] ?? join(jobDir, "message.txt");
     const text = existsSync(textFile) ? readFileSync(textFile, "utf8") : "";
+    // 0.4.5: a request that would start an inspection is counted first, by
+    // asker and for the day, in the records folder the host keeps across jobs;
+    // over a cap it is refused here, before anything is read or asked.
+    const recordsDir = flags.records ?? process.env.RECORDS ?? null;
+    const gate = recordsDir && readRequest(text).ok ? admit({ recordsDir: resolve(recordsDir), asker: askerOf(jobDir) }) : { ok: true };
+    if (!gate.ok) {
+      process.stdout.write(`${JSON.stringify({ reply: gate.refusal })}\n`);
+      process.exitCode = 0;
+    } else {
     // The archive is unpacked in this job's own temporary folder, not the
     // work folder the host keeps across jobs (on a worker that is a mounted
     // bucket, where a thousand files would be a thousand writes), and the
@@ -239,5 +249,6 @@ if (ranDirectly) {
       process.stdout.write(`${JSON.stringify({ reply: `Inspect stopped on an error of its own: ${e?.message ?? e}` })}\n`);
       process.exitCode = 1;
     });
+    }
   }
 }

@@ -2,7 +2,7 @@
   "format": "spec-v1",
   "product": {
     "name": "inspect",
-    "version": "0.4.4",
+    "version": "0.4.5",
     "kind": "agent"
   },
   "purpose": "Inspect takes a public GitHub repository address and a commit, reads the agent's code at that commit without running any of it, and hands back an inspection report on what the agent does and how safe it is. The report is a list of findings in eight sections, each finding standing on its own and citing a file and line at the commit. Its reader is the person in charge of a department's agents, deciding whether to bring in an outside agent before anything is installed or given a credential. It judges no fit with anyone's plan, matches the agent to no catalog role and gives no bring-it-in-or-not verdict.",
@@ -152,6 +152,16 @@
           "source": {
             "said": "Why are you mandating a specific commit? wouldn't it just be the last one?"
           }
+        },
+        {
+          "id": "F1.R12",
+          "kind": "limit",
+          "priority": "must",
+          "verify": "test",
+          "shall": "The agent shall start at most 20 inspections for one asker, and 200 for everyone, in a UTC day, counted in the records folder the host keeps across jobs before anything is read or the model is asked, and shall refuse one over either cap in words that say when to try again; it shall keep who asked only as a digest and the counts for one day at most, and shall refuse when it cannot keep the count.",
+          "source": {
+            "said": "Bounded spend: a per-tenant quota and a global daily budget on model consumption, refused at the door (docs/platform-agents.md)."
+          }
         }
       ],
       "acceptance": [
@@ -234,6 +244,13 @@
             "F1.R11",
             "F1.R2",
             "F1.R3"
+          ]
+        },
+        {
+          "id": "F1.A12",
+          "gherkin": "Scenario: The day is full\n  Given 200 inspections have started today\n  When one more request names a repository\n  Then Inspect refuses it, saying when to try again\n  And it makes no call to GitHub and posts nothing to the running job",
+          "checks": [
+            "F1.R12"
           ]
         }
       ]
