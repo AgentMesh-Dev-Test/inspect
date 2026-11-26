@@ -38,10 +38,10 @@ import { collectFacts } from "./collect.mjs";
 import { addUvLock, checkWithOsv, lineOfComponent } from "./deps.mjs";
 import { createEmitter, liveUpdates } from "./emit.mjs";
 import { judge } from "./judge.mjs";
-import { checkDrafts, checkGlance } from "./checks.mjs";
+import { checkDescription, checkDrafts, checkGlance } from "./checks.mjs";
 import { buildReport, markdownOf, notJudged, replyOf, scriptFindings } from "./report.mjs";
 
-export const VERSION = "0.2.7";
+export const VERSION = "0.3.0";
 const DAY_MS = 24 * 60 * 60 * 1000;
 
 /**
@@ -104,7 +104,7 @@ export async function inspect({ text, workDir, env = process.env, fetchImpl = fe
     const ctx = contextFor({ files, read });
     const emitter = createEmitter({ onFinding });
     onStatus(`OSV ${osv.ok ? `names ${osv.found.length} known vulnerabilities` : "could not be asked"}; writing the findings the scripts make.`);
-    for (const f of scriptFindings({ facts, ctx, owner, name, sha, repoUrl: url, osv, bomGaps: gaps, files, textFiles })) emitter.emitFinding(f);
+    for (const f of scriptFindings({ facts, ctx, owner, name, sha, repoUrl: url, osv, bomGaps: gaps, files, textFiles, skillTexts: collected.skillTexts, cased: collected.cased })) emitter.emitFinding(f);
 
     // The judgments.
     const held = [];
@@ -129,6 +129,10 @@ export async function inspect({ text, workDir, env = process.env, fetchImpl = fe
       const g = await j.glance(emitter.findings());
       if (g.failed) for (const f of notJudged([1], g.failed, "1")) emitter.emitFinding(f);
       else {
+        // The description first (0.3.0), then the findings that matter most.
+        const desc = checkDescription(g.description, emitter.findings());
+        if (desc.kept) emitter.emitFinding(desc.kept);
+        held.push(...desc.held);
         const c = checkGlance(g.drafts, emitter.findings());
         for (const f of c.kept) emitter.emitFinding(f);
         held.push(...c.held);

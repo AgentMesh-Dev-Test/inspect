@@ -219,9 +219,29 @@ export function frontMatter(text) {
   for (let i = 1; i < lines.length && i < 60; i += 1) {
     if (trim(lines[i]) === "---") break;
     const m = /^(name|description)\s*:\s*(.*)$/.exec(lines[i]);
-    if (m && !(m[1] in out)) { out[m[1]] = trim(m[2]).replace(/^["']|["']$/g, ""); out[`${m[1]}_line`] = i + 1; }
+    if (m && !(m[1] in out)) {
+      out[m[1]] = trim(m[2]).replace(/^["']|["']$/g, ""); out[`${m[1]}_line`] = i + 1;
+      // A folded or literal block (">", "|-"): its words are the indented lines that follow (0.3.0).
+      if (/^[>|][+-]?\d?$/.test(out[m[1]])) {
+        const block = [];
+        for (let j = i + 1; j < lines.length && j < 60 && /^\s+\S/.test(lines[j]); j += 1) block.push(trim(lines[j]));
+        if (block.length) { out[m[1]] = block.join(" "); out[`${m[1]}_line`] = i + 2; }
+      }
+    }
   }
   return out;
+}
+
+/** A file's lines of code: not blank and not a comment line alone. */
+export function codeLines(text) {
+  if (typeof text !== "string") return 0;
+  return linesOf(text).filter((l) => { const t = l.trim(); return t && !/^(#|\/\/|\/\*|\*|--|<!--)/.test(t); }).length;
+}
+/** A SKILL.md without its front matter: the instructions a person reads. */
+export function bodyOf(text) {
+  const t = String(text ?? "").replace(/^\uFEFF/, "");
+  const m = /^---\r?\n[\s\S]*?\r?\n---\r?\n?/.exec(t);
+  return (m ? t.slice(m[0].length) : t).trim();
 }
 
 /** An SPDX identifier from a license file's own words, or null. */
@@ -261,17 +281,25 @@ export function agentFacts(files, read, { entries = [] } = {}) {
   const add = (kind, file, line, data = {}) => out.push({ kind, file, line, data });
   const textOf = (f) => { const t = read(f); return t !== null && t !== undefined && t.length <= READ_CHARS ? t : null; };
 
-  // Skills, and whether each folder can be lifted out on its own.
+  // Skills, and whether each folder can be lifted out on its own. Each
+  // skill's size (0.3.0): its scripts, their lines of code (not blank, not a
+  // comment) and the length of its instructions; its instructions' text goes
+  // to the report beside the facts (skillTexts), never into a fact.
   const skillFolders = [];
+  const skillTexts = new Map();
   for (const f of files) {
     if (base(f) !== "SKILL.md") continue;
     const folder = posix.dirname(f) === "." ? "" : posix.dirname(f);
     const fm = frontMatter(textOf(f) ?? "");
     const code = files.filter((x) => folder && x.startsWith(`${folder}/`) && CODE.has(ext(x)));
     skillFolders.push(folder);
+    const body = bodyOf(textOf(f) ?? "");
+    skillTexts.set(folder, body);
+    const own = code.filter((x) => !isTestFile(x));
     add("skill", f, fm.name_line ?? 1, {
       name: fm.name || base(folder), folder, ...(fm.description ? { description: fm.description, description_line: fm.description_line } : {}),
       scripts: code, instructions_only: code.length === 0, for_coding_assistants: isAssistantSkill(folder),
+      size: { scripts: own.length, lines: own.reduce((n, x) => n + codeLines(textOf(x)), 0), instructions_chars: body.length },
     });
     add("part", f, fm.name_line ?? 1, { part: "skill", name: fm.name || base(folder), folder, ...liftOut(folder, code, textOf) });
     // A skill's own instructions that stop for the person's approval: one
@@ -371,5 +399,5 @@ export function agentFacts(files, read, { entries = [] } = {}) {
       }
     }
   }
-  return { facts: out, skillFolders };
+  return { facts: out, skillFolders, skillTexts };
 }

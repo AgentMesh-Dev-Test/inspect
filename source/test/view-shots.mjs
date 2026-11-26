@@ -124,6 +124,7 @@ try {
     await settled();
     if (c.tab) await inView(`document.getElementById(${JSON.stringify(`tab-${c.tab}`)})?.click()`);
     for (const id of c.open ?? []) await inView(`document.getElementById(${JSON.stringify(`f-${id}`)})?.querySelector(".toggle")?.click()`);
+    for (const x of c.run ?? []) { await inView(x); await settled(); }
     for (const key of c.press ?? []) await inView(`document.activeElement.dispatchEvent(new KeyboardEvent("keydown", { key: ${JSON.stringify(key)}, bubbles: true }))`);
     await settled();
     const seen = await inView(`(() => {

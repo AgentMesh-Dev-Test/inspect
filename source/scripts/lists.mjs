@@ -89,9 +89,9 @@ export const SECTIONS = [
 
 /** The kinds of finding each section holds. */
 export const KINDS = {
-  1: ["glance"],
+  1: ["description", "glance"],
   2: ["repository", "commit", "publisher", "license", "built-on", "activity"],
-  3: ["job", "skill", "part", "input", "output", "not-judged"],
+  3: ["job", "skill", "part", "code", "input", "output", "not-judged"],
   4: ["model", "how-it-runs", "memory", "human-step", "not-judged"],
   5: ["system", "credential", "spend", "not-judged"],
   6: ["tool", "autonomy", "not-judged"],

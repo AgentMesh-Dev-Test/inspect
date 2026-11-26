@@ -21,7 +21,7 @@ import { linesOf } from "./codebase.mjs";
 import { isTestFile, readFacts } from "./facts.mjs";
 import { credentialsIn, scrub } from "./secrets.mjs";
 import { CODE as TRACE_CODE, traceOne } from "./trace-programs.mjs";
-import { agentFacts } from "./agent-facts.mjs";
+import { agentFacts, CODE, codeLines } from "./agent-facts.mjs";
 
 /** The longest line a fact keeps the text of. */
 export const TEXT_CHARS = 400;
@@ -87,14 +87,47 @@ export function collectFacts({ files, read, bytesOf, archive = {}, github = {}, 
 
   // The reverse engineer's facts.
   const re = readFacts(files, read);
+  // Each setting by file, with how the code reads it (0.3.0): with a default,
+  // behind a guard that skips the feature, or failing when it is missing.
   for (const s of re.settings) {
     const byFile = new Map();
     for (const e of s.evidence) { if (!byFile.has(e.file)) byFile.set(e.file, []); byFile.get(e.file).push(e.line); }
-    for (const [file, lines] of byFile) add("setting", { file, line: lines[0] }, { name: s.name, credential: s.credential, lines, ...(isTestFile(file) ? { in_test: true } : {}) });
+    for (const [file, lines] of byFile) {
+      const text = linesIn(file) ?? [];
+      const hows = lines.map((l) => howRead(s.name, text, l - 1));
+      const how = HOW_ORDER.find((h) => hows.includes(h)) ?? "plain";
+      add("setting", { file, line: lines[0] }, { name: s.name, credential: s.credential, lines, how, ...(isTestFile(file) ? { in_test: true } : {}) });
+    }
+  }
+  // What the setup docs and the example settings file say of each setting.
+  const names = [...new Set(re.settings.map((s) => s.name))];
+  if (names.length) {
+    const nameRe = new RegExp(`\\b(${names.map(esc).join("|")})\\b`, "g");
+    const said = new Set();
+    for (const file of files.filter(isSetupDoc)) {
+      (linesIn(file) ?? []).forEach((line, i) => {
+        for (const m of line.matchAll(nameRe)) {
+          const key = `${m[1]}:${file}`;
+          if (said.has(key)) continue;
+          said.add(key);
+          if (isExampleSettings(file)) {
+            const e = new RegExp(`^\\s*(#)?\\s*(?:export\\s+)?${esc(m[1])}\\s*=\\s*(.*)$`).exec(line);
+            const v = String(e?.[2] ?? "").trim();
+            add("example-setting", { file, line: i + 1 }, { name: m[1], commented: Boolean(e?.[1]), value_given: Boolean(v) && !/^(<.*>|\.\.\.|your[-_ ].*|x{3,}|changeme|""|'')$/i.test(v) });
+          } else add("setup-doc", { file, line: i + 1 }, { name: m[1], says: docWord(line) });
+        }
+      });
+    }
   }
   for (const e of re.entry_points ?? []) add("entry", e.evidence?.[0], { name: e.name, how: e.how });
   for (const s of re.starts_and_runs ?? []) add("how-it-runs", s.evidence?.[0], { step: s.step });
-  for (const t of re.tests ?? []) add("test-file", { file: t.file, line: t.cases[0]?.line ?? 1 }, { cases: t.cases.length, names: t.cases.map((c) => c.name) });
+  // Each test file, with its kind by its folders and whether it needs live keys (0.3.0).
+  const testText = new Map();
+  for (const t of re.tests ?? []) {
+    const text = read(t.file);
+    testText.set(t.file, typeof text === "string" ? text : "");
+    add("test-file", { file: t.file, line: t.cases[0]?.line ?? 1 }, { cases: t.cases.length, names: t.cases.map((c) => c.name), kind: testKind(t.file), live: needsLiveKeys(testText.get(t.file)) });
+  }
   if (re.test_command?.command) add("test-command", re.test_command.evidence?.[0], { command: re.test_command.command });
   else add("test-command", null, { none: re.test_command?.none ?? "no test command was found" });
   for (const s of re.schemas ?? []) add("schema", s.evidence?.[0] ?? { file: s.file, line: 1 }, { file: s.file, kind: s.kind });
@@ -132,14 +165,131 @@ export function collectFacts({ files, read, bytesOf, archive = {}, github = {}, 
 
   // Inspect's own patterns.
   const own = agentFacts(files, read, { entries: re.surface?.entries ?? [] });
-  for (const a of own.facts) add(a.kind, { file: a.file, line: a.line }, a.data);
+  // A skill's tests: the test files that name its folder, its name or one of
+  // its scripts (0.3.0), with how many tests they hold.
+  // A test inside the skill's folder is its own; one elsewhere counts when it
+  // names the skill's folder or name, unless it names more than five skills,
+  // which makes it a test of the list of skills, not of any one.
+  const skillData = own.facts.filter((a) => a.kind === "skill" && a.data?.size).map((a) => a.data);
+  const named = new Map([...testText].map(([file, t]) => [file, skillData.filter((s) => skillKeys(s).some((k) => k.test(t)))]));
+  const casesOf = (file) => (re.tests ?? []).find((x) => x.file === file)?.cases.length ?? 0;
+  for (const a of own.facts) {
+    if (a.kind === "skill" && a.data?.size) {
+      const hit = [...testText.keys()].filter((file) => (a.data.folder && file.startsWith(`${a.data.folder}/`)) || (named.get(file).includes(a.data) && named.get(file).length <= 5));
+      a.data.size.tests = { files: hit.length, cases: hit.reduce((n, file) => n + casesOf(file), 0) };
+    }
+    add(a.kind, { file: a.file, line: a.line }, a.data);
+  }
+  // The agent's own code, outside its skills and its tests: how much there is.
+  const inSkill = (f) => own.skillFolders.some((d) => d && f.startsWith(`${d}/`));
+  const ownCode = files.filter((f) => CODE.has(posix.extname(f).toLowerCase()) && !inSkill(f) && !isTestFile(f) && !/(^|\/)(node_modules|vendor|dist|build|\.venv)\//.test(f));
+  if (ownCode.length) {
+    const folders = [...new Set(ownCode.map((f) => f.split("/").slice(0, -1).slice(-2).join("/")).filter(Boolean))].slice(0, 30);
+    add("own-code", { file: ownCode[0], line: 1 }, { files: ownCode.length, lines: ownCode.reduce((n, f) => n + codeLines(read(f)), 0), folders });
+  }
 
   // The archive.
   for (const l of archive.links ?? []) add("link", { source: { system: "code-host", call: `GET /repos/${owner}/${name}/tarball/{sha}`, field: l.path } }, { path: l.path, points_to: l.points_to, kind: l.kind });
   for (const p of archive.refused ?? []) add("refused-path", { source: { system: "code-host", call: `GET /repos/${owner}/${name}/tarball/{sha}`, field: p.path } }, { path: p.path, why: p.why });
 
   const byId = new Map(facts.map((f) => [f.id, f]));
-  return { facts, byId, re, skillFolders: own.skillFolders, add };
+  return { facts, byId, re, skillFolders: own.skillFolders, skillTexts: own.skillTexts, cased: casedFrom(files, read), add };
+}
+
+// ── How a setting is read, what the setup docs say, and the tests (0.3.0) ──
+/** The ways a setting is read, the one that decides most first. */
+export const HOW_ORDER = ["fails", "guard", "default", "plain"];
+const esc = (s) => String(s).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+/** How the line at index i reads the setting `name`: "default" (the code has
+ *  one), "guard" (it skips a feature without it), "fails" (it stops without
+ *  it) or "plain". */
+export function howRead(name, lines, i) {
+  const n = esc(name); const q = `["']${n}["']`;
+  const line = String(lines[i] ?? "");
+  if (new RegExp(`(?:\\.get|getenv)\\(\\s*${q}\\s*,\\s*[^)\\s]`).test(line)
+    || new RegExp(`(?:process\\.env\\.${n}\\b|process\\.env\\[${q}\\]|getenv\\(\\s*${q}\\s*\\)|\\.get\\(\\s*${q}\\s*\\))\\s*(?:\\?\\?|\\|\\||\\bor\\b)\\s*[^\\s)]`).test(line)
+    || new RegExp(`\\$\\{${n}:-`).test(line)) return "default";
+  const stops = /\b(?:raise|throw|sys\.exit|process\.exit|SystemExit)\b/;
+  if (new RegExp(`environ\\[\\s*${q}\\s*\\]`).test(line) && !/^\s*(?:if|elif)\b|\bin\s+os\.environ\b/.test(line)) return "fails";
+  const onLine = /^\s*(?:if|elif|unless)\b|\bif\s*\(|\bif\s+not\b/.test(line);
+  const nextIf = /^\s*(?:if|elif)\b|^\s*if\s*\(/.test(String(lines[i + 1] ?? ""));
+  if (!onLine && !nextIf) return "plain";
+  // The condition's own line and the lines indented under it.
+  const at = onLine ? i : i + 1;
+  const cond = String(lines[at] ?? "");
+  const indent = (s) => /^\s*/.exec(s)[0].length;
+  const under = [cond.replace(/^.*?(?::|\)|\{)\s*(?=\S|$)/, "")];
+  for (let j = at + 1; j < Math.min(lines.length, at + 6); j += 1) {
+    const l = String(lines[j] ?? "");
+    if (!l.trim()) continue;
+    if (indent(l) <= indent(cond)) break;
+    under.push(l);
+  }
+  return stops.test(under.join("\n")) ? "fails" : "guard";
+}
+/** The example settings file, and the files a person reads to set the agent up. */
+const isExampleSettings = (f) => /(^|\/)(\.env\.(example|sample|template|dist)|example\.env|env\.example|\.env\.local\.example)$/i.test(f);
+const isSetupDoc = (f) => isExampleSettings(f) || (/\.(md|mdx|rst|txt)$/i.test(f) && /(^|\/)(readme|setup|install|getting[-_ ]started|configuration|config|deploy(ment)?|docs?\/[^/]+)/i.test(f) && !/(^|\/)(node_modules|vendor|skills)\//i.test(f));
+/** What a setup doc's line says of a setting: required, optional or only mentioned. */
+export function docWord(line) {
+  const t = String(line ?? "");
+  if (/\b(optional(ly)?|if you want|to enable|to turn on|only if|not required|can be left)\b/i.test(t)) return "optional";
+  if (/\b(required|must|needs?|needed|mandatory)\b/i.test(t)) return "required";
+  return "mentioned";
+}
+/** A test file's kind, by its folders and name. */
+export function testKind(f) {
+  const p = String(f).toLowerCase();
+  if (/(^|\/|_)(e2e|end[-_]?to[-_]?end)(\/|_|\.)/.test(p)) return "end-to-end";
+  if (/(^|\/)live(\/|_)|_live\b/.test(p)) return "live";
+  if (/(^|\/)integrations?(\/|_)/.test(p)) return "integration";
+  if (/(^|\/)contracts?(\/|_)/.test(p)) return "contract";
+  if (/(^|\/)smoke(\/|_)/.test(p)) return "smoke";
+  if (/(^|\/)unit(\/|_)/.test(p)) return "unit";
+  return "other";
+}
+/** Whether a test file waits on live keys or a live service to run. */
+export function needsLiveKeys(text) {
+  return /skipif\([^\n]*(environ|getenv|API_KEY|_KEY|TOKEN)|@pytest\.mark\.(live|integration|e2e|network|requires_key)|\bRUN_LIVE|\bLIVE_TESTS?\b|requires?[_ ](an? )?(api[_ ])?key|skip(If|Unless)?\([^\n]*process\.env\.[A-Z_]*(KEY|TOKEN)/i.test(String(text ?? ""));
+}
+/** The words that name a skill in a test: its folder, and its folder's and
+ *  its own name when they are a name no ordinary word is ("pr-to-video"). */
+function skillKeys(data) {
+  const folder = String(data.folder ?? "");
+  const words = [folder, posix.basename(folder), String(data.name ?? "")].filter((w) => w.length >= 4 && (/[-_/]/.test(w)));
+  return [...new Set(words.flatMap((w) => [w, w.replace(/-/g, "_")]))].map((w) => new RegExp(`(^|[^A-Za-z0-9_-])${esc(w)}([^A-Za-z0-9_-]|$)`));
+}
+/** The repository's own capitals for a word ("PR", "HyperFrames",
+ *  "ElevenLabs"), from its prose, never from a slug, a path or a name in
+ *  code: a word its prose writes with a capital inside it, or all in
+ *  capitals, at least a third of the times it writes it takes that form. */
+export function casedFrom(files, read) {
+  const forms = new Map();
+  let budget = 3_000_000;
+  for (const f of files.filter((x) => /\.(md|mdx|rst|txt)$/i.test(x) && !/(^|\/)(node_modules|vendor)\//.test(x))) {
+    if (budget <= 0) break;
+    const t = read(f);
+    if (typeof t !== "string") continue;
+    const part = t.slice(0, 400_000); // cut-ok: the repository's capitals from the first part of each prose file; nothing is reported from it
+    budget -= part.length;
+    for (const m of part.matchAll(/[A-Za-z][A-Za-z0-9]*/g)) {
+      const before = part[m.index - 1] ?? " "; const after = part[m.index + m[0].length] ?? " ";
+      if (/[-_/.@`$=]/.test(before) || /[-_/(=`]/.test(after) || (after === "." && /[A-Za-z]/.test(part[m.index + m[0].length + 1] ?? ""))) continue;
+      const k = m[0].toLowerCase();
+      if (k.length < 2) continue;
+      if (!forms.has(k)) forms.set(k, new Map());
+      forms.get(k).set(m[0], (forms.get(k).get(m[0]) ?? 0) + 1);
+    }
+  }
+  return (word) => {
+    const w = String(word ?? ""); const seen = forms.get(w.toLowerCase());
+    if (!seen) return w;
+    let total = 0; let best = null; let bestN = 0;
+    // A capital inside a word ("HyperFrames"), or a short word all in
+    // capitals ("PR", "CLI"); a longer one all in capitals is shouting.
+    for (const [form, n] of seen) { total += n; const special = /[a-z]/.test(form) ? /[A-Z]/.test(form.slice(1)) : form.length <= 4; if (special && n > bestN) { best = form; bestN = n; } }
+    return best && bestN * 3 >= total ? best : w;
+  };
 }
 
 /** What the model is shown of a part's data: whether it can be lifted out and

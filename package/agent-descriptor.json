@@ -1,6 +1,6 @@
 {
   "format": "agent-descriptor-v1",
-  "agent_version": "0.2.7",
+  "agent_version": "0.3.0",
   "name": "Inspect",
   "summary": "Reads an outside agent's code on GitHub at one commit, without running any of it, and reports what it does and how safe it is.",
   "does": "Inspect reads an outside agent's code in a public GitHub repository at one commit, without running any of it, and hands back an inspection report on what the agent does and how safe it is: a list of findings in eight sections, each citing a file and line at the commit. Scripts read the code by rule; a model writes only the judgments, and each judgment cites the lines it rests on. It gives no verdict on bringing the agent in and judges no fit with anyone's plan.",
@@ -429,6 +429,7 @@
                   },
                   "kind": {
                     "enum": [
+                      "description",
                       "glance",
                       "repository",
                       "commit",
@@ -439,6 +440,7 @@
                       "job",
                       "skill",
                       "part",
+                      "code",
                       "input",
                       "output",
                       "model",
@@ -522,7 +524,7 @@
                   },
                   "detail": {
                     "type": "object",
-                    "description": "fields of the finding's kind: a skill's name, path, scripts and lift_out (yes or no) with the imports that keep it from standing alone; a model's name, where it is chosen and whether a setting changes it; a system's name, host, access (read, write, read-write or unknown) and the credentials it expects; a tool's name, what it does and whether it runs without a person's OK; a vulnerability's package, version, OSV id, aliases and fixed version"
+                    "description": "fields of the finding's kind: a skill's name, path, description, scripts and lift_out (yes or no) with the imports that keep it from standing alone, its size (scripts, lines of code, the length of its instructions and the tests that name it) and its instructions as text (instructions, up to 8,000 characters each and 250,000 in all; instructions_cut when shortened, with instructions_address, the file at the commit on GitHub); the agent's own code's files and lines; a job's does; a risk's safe, how to make it safe; a model's name, where it is chosen and whether a setting changes it; a system's name, host, access (read, write, read-write or unknown), the credentials it expects, need (required, optional or unclear), supply (what the person supplies), without (what happens without it) and sends (what goes to it); a tool's name, what it does and whether it runs without a person's OK; a vulnerability's package, version, OSV id, aliases and fixed version"
                   }
                 },
                 "anyOf": [
@@ -606,6 +608,7 @@
                   },
                   "kind": {
                     "enum": [
+                      "description",
                       "glance",
                       "repository",
                       "commit",
@@ -616,6 +619,7 @@
                       "job",
                       "skill",
                       "part",
+                      "code",
                       "input",
                       "output",
                       "model",
@@ -816,7 +820,7 @@
         "output": "inspection"
       },
       "file": "views/report.html",
-      "digest": "sha256:c428efdf64a4bb7f261a23672275ecc61c0aea28633c437d186f2f22564775f3",
+      "digest": "sha256:82f9594aaba922d26643c970228b32aa6eed1553b168c31c0e01b1a1064d03f5",
       "requests": [
         "resize",
         "copy-text",

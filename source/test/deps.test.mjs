@@ -97,7 +97,7 @@ test("[F3.A3] a package.json with no lockfile asking for express ^4.0.0 is said 
   const out = await go(files);
   const f = out.report.findings.find((x) => x.section === 8 && x.title === "Dependencies not checked against OSV");
   assert.ok(f, "section 8 says what was not checked");
-  assert.match(f.says, /only a range is given/);
+  assert.match(f.says, /only a range of versions is given/);
   assert.ok(f.detail.components.some((c) => /express/.test(c.purl)));
 });
 

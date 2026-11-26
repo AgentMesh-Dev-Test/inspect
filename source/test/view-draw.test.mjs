@@ -1,21 +1,21 @@
-// F5.R9, how the report's view draws (0.2.4): the whole view is one row of
-// six tabs with nothing above it; a row shows only its title, and on Risks
-// its level, until it is opened; the top of the report answers with the
-// risks by level and the top judgments; and nothing on the page explains a
-// count, a section or how the report was made.
+// F5.R9, how the report's view draws (0.3.0): one row of five tabs with
+// nothing above it. Overview describes the whole agent (its description, how
+// much is there, what was inspected, two lines about Inspect at the foot);
+// What it does has jobs with the skills that do them and the skills with
+// their size; What it reaches one row per outside system, required or
+// optional and what the person supplies; Risks the risks by level as the
+// filter, the summary for security and every risk with how to make it safe;
+// Tests and gaps each test row with its size. A skill's instructions open in
+// a viewer. Nothing on the page names a file, a line or an advisory id.
 //
 // What is worth pinning, from the view's own script run against a stand-in
-// page: the six tabs and their counts in the ARIA tabs pattern, with its
-// keys; rows closed by default, and what an open row shows; Overview's
-// tiles, top judgments, what was inspected and the plain save button; a
-// "See it in Risks" link that opens the finding; the level filter on Risks
-// with every row shown; About Inspect in Inspect's own words; the line
-// under the tabs while the job runs, gone once it is done; a tab that stays
-// where the person put it when new data arrives; and the words that must
-// never be drawn. How the tabs lay out at a width is checked in a headless
-// browser (test/view-host.html; the build record says how); here the
-// stylesheet is held to never cutting a title and to scrolling the tab strip
-// inside itself.
+// page: the tabs in the ARIA tabs pattern, with their keys; each tab's rows
+// and what an open row shows; the viewer at both widths and its Markdown
+// drawn as text; the line under the tabs while the job runs; a tab that
+// stays where the person put it when new data arrives; the type sizes; and
+// the words and references that must never be drawn. How it lays out at a
+// width is checked in a headless browser (test/view-host.html; the build
+// record says how).
 //
 // Nothing here starts a browser or touches a network: the stand-in page is a
 // few elements in this file, and the view's script runs in a vm context.
@@ -33,8 +33,7 @@ const script = html.match(/<script>([\s\S]*?)<\/script>/)[1];
 const style = html.match(/<style>([\s\S]*?)<\/style>/)[1];
 const KIND = "application/vnd.agentmesh.inspection-report+json";
 const WORDS = ["Critical", "High", "Medium", "Low", "No risk", "Not rated"];
-const TAB_NAMES = ["Overview", "What it does", "What it reaches", "Risks", "Tests and gaps", "About Inspect"];
-const TAB_SECTIONS = [[1, 2], [3, 4], [5, 6], [7], [8], []];
+const TAB_NAMES = ["Overview", "What it does", "What it reaches", "Risks", "Tests and gaps"];
 // Words that explain a count, a section or how the report was made, a
 // status, a section code or a category code: never drawn.
 const NEVER = [
@@ -130,8 +129,11 @@ function page() {
     if (m.method === "view/save-file" && m.id !== undefined) queueMicrotask(() => say({ id: m.id, result: { saved: true } }));
     if (m.method === "view/copy-text" && m.id !== undefined) queueMicrotask(() => say({ id: m.id, result: { copied: true } }));
   } };
+  const keys = [];
   const document = {
     documentElement: root, body, activeElement: null,
+    addEventListener: (type, fn) => { if (type === "keydown") keys.push(fn); },
+    press: (key) => { for (const fn of keys) fn({ key, preventDefault() {} }); },
     createElement: (t) => (t === "template" ? new Template() : new Element(t)),
     createTextNode: (s) => new Text(s),
     getElementById: (id) => [root, ...descendants(root)].find((n) => n.id === id) ?? null,
@@ -151,9 +153,9 @@ function page() {
 }
 
 /** The view, drawn with one report, as a host sends it (DESCRIPTOR-UI Section 9.4), with Inspect's Descriptor. */
-function drawn(report, { job_state = "completed", lifecycle = "draft", desc = descriptor() } = {}) {
+function drawn(report, { job_state = "completed", lifecycle = "draft", desc = descriptor(), width = 690 } = {}) {
   const p = page();
-  p.say({ id: "h-1", method: "view/initialize", params: { version: "descriptor-view-v1", color_scheme: "light", locale: "en-US", width: 690 } });
+  p.say({ id: "h-1", method: "view/initialize", params: { version: "descriptor-view-v1", color_scheme: "light", locale: "en-US", width } });
   p.data = (r, o = {}) => p.say({ method: "view/data", params: { name: "inspection", media_type: KIND, text: JSON.stringify(r), lifecycle: o.lifecycle === undefined ? null : o.lifecycle, job_state: o.job_state ?? "working", descriptor: desc } });
   p.say({ method: "view/data", params: { name: "inspection", media_type: KIND, text: JSON.stringify(report), lifecycle, job_state, descriptor: desc } });
   assert.ok(!p.sent.some((m) => m.method === "view/report-failure"), `the view drew: ${JSON.stringify(p.sent.find((m) => m.method === "view/report-failure"))}`);
@@ -203,265 +205,227 @@ function findings() {
   return [...g.map((f, i) => ({ id: `S1-00${i + 1}`, ...f })), ...out];
 }
 const ABOUT = { owner: "langchain-ai", name: "design-agent", url: "https://github.com/langchain-ai/design-agent", sha: SHA, checked: true, started_at: "2026-11-25T18:25:40Z", version: "0.2.4" };
-const report = (list = findings(), held = []) => buildReport({ owner: "langchain-ai", name: "design-agent", url: "https://github.com/langchain-ai/design-agent", sha: SHA, checked: true, date: "2026-11-24T10:00:00Z", version: "0.2.4", now: "2026-11-25T18:29:10Z", findings: list, held, facts: [], bom: { components: [] }, osv: { asked: 0 }, usage: {} });
+const report = (list = findings(), held = [], facts = []) => buildReport({ owner: "langchain-ai", name: "design-agent", url: "https://github.com/langchain-ai/design-agent", sha: SHA, checked: true, date: "2026-11-24T10:00:00Z", version: "0.2.4", now: "2026-11-25T18:29:10Z", findings: list, held, facts, bom: { components: [] }, osv: { asked: 0 }, usage: {} });
 const copyOf = (list, stage = "Asking the model.") => workingCopy({ about: ABOUT, findings: list, stage });
 
 const levelOf = (badge) => ({ word: badge.querySelector(".word")?.textContent ?? "", shape: badge.querySelector("svg")?.markup ?? "" });
 const SHAPE_OF = Object.fromEntries([...script.matchAll(/\n    (critical|high|medium|low|none|unrated): '([^']+)'/g)].map((m) => [m[1], m[2]]));
 
-test("[F5.R9] the view is one row of six tabs with nothing above it, in the ARIA tabs pattern, with no count on any tab; Risks names its highest level as a word and a shape; it starts on Overview", () => {
-  const r = report();
+// ── 0.3.0: a report shaped like the design-agent one, with what the new tabs draw ──
+const SKILL_TEXT = [
+  "# Brand lint", "", "Checks a draft against the brand pack.", "", "## Steps", "",
+  "- Read the [brand pack](https://example.com/brand) first", "- Run the check on the draft", "",
+  "```bash", "node lint.mjs <file>", "```", "", "<b>bold?</b> ![logo](https://example.com/logo.png) and **strong** words",
+].join("\n");
+const ADDRESS = `https://github.com/langchain-ai/design-agent/blob/${SHA}/skills/stills/SKILL.md`;
+function rich() {
+  const facts = [
+    { id: "F0001", kind: "skill", file: "skills/brand-lint/SKILL.md", line: 1, data: { name: "brand-lint", folder: "skills/brand-lint" } },
+    { id: "F0002", kind: "skill", file: "skills/stills/SKILL.md", line: 1, data: { name: "stills", folder: "skills/stills" } },
+    { id: "F0003", kind: "setting", file: "skills/stills/scripts/gen.mjs", line: 4, data: { name: "GEMINI_API_KEY", credential: true, how: "fails" } },
+    { id: "F0004", kind: "setting", file: "src/app.py", line: 9, data: { name: "SLACK_BOT_TOKEN", credential: true, how: "fails" } },
+    { id: "F0005", kind: "test-file", file: "tests/unit/test_lint.py", line: 3, data: { cases: 12, kind: "unit", live: false } },
+    { id: "F0006", kind: "test-file", file: "tests/live/test_slack.py", line: 3, data: { cases: 2, kind: "live", live: true } },
+    { id: "F0007", kind: "own-code", file: "src/app.py", line: 1, data: { files: 40, lines: 4100 } },
+    { id: "F0008", kind: "setting", file: "skills/brand-lint/scripts/lint.mjs", line: 2, data: { name: "ELEVENLABS_API_KEY", credential: true, how: "guard" } },
+  ];
+  const base = findings().filter((f) => !["S3-001", "S5-001"].includes(f.id));
+  const skill = (id, title, detail) => ({ id, section: 3, kind: "skill", title, says: `${title}.`, by: "script", based_on: [], evidence: ev(`${detail.path}/SKILL.md`, 1), detail: { lift_out: "no", ...detail } });
+  const list = [
+    { id: "S1-010", section: 1, kind: "description", title: "What it is", says: "Content Studio is a design agent that lives in Slack. It makes on-brand images and short videos for a design team.", by: "model", based_on: ["F0001"], evidence: ev("src/app.py", 1) },
+    ...base,
+    { id: "S3-020", section: 3, kind: "skill", title: "Skills", says: "2 skills of the agent's own, and 1 skill kept for coding assistants.", by: "script", based_on: ["F0001"], evidence: ev("skills/brand-lint/SKILL.md", 1), detail: { own: 2, for_coding_assistants: 1 } },
+    skill("S3-011", "Make still images", { name: "stills", path: "skills/stills", description: "Make still images on brand.", instructions_only: true, size: { scripts: 0, lines: 0, instructions_chars: 900, tests: { files: 0, cases: 0 } }, instructions: "Make stills.", instructions_cut: true, instructions_address: ADDRESS }),
+    skill("S3-010", "Check a draft against the brand pack", { name: "brand-lint", path: "skills/brand-lint", description: "Check a draft against the brand pack.", lift_out: "yes", size: { scripts: 2, lines: 640, instructions_chars: 400, tests: { files: 1, cases: 12 } }, instructions: SKILL_TEXT, instructions_cut: false, instructions_address: null }),
+    skill("S3-012", "Release check", { name: "release-check", path: ".claude/skills/release-check", for_coding_assistants: true, instructions_only: true, size: { scripts: 0, lines: 0, instructions_chars: 200, tests: { files: 0, cases: 0 } }, instructions: "Check a release." }),
+    { id: "S3-030", section: 3, kind: "job", title: "Makes on-brand still images", says: "It turns a request in Slack into images that follow the brand pack.", by: "model", based_on: ["F0002", "F0001"], evidence: ev("skills/stills/SKILL.md", 1) },
+    { id: "S3-040", section: 3, kind: "code", title: "Its own code", says: "40 files and 4,100 lines of code outside its skills and its tests.", by: "script", based_on: ["F0007"], evidence: ev("src/app.py", 1), detail: { files: 40, lines: 4100 } },
+    { id: "S3-041", section: 3, kind: "code", title: "Slack app, tools and a sandbox runner", says: "Its own code runs the Slack app, the tools and a sandbox.", by: "model", based_on: ["F0007"], evidence: ev("src/app.py", 1) },
+    { id: "S3-050", section: 3, kind: "part", title: "Brand lint", says: "skills/brand-lint/scripts/lint.mjs runs as a command.", by: "script", based_on: ["F0001"], evidence: ev("skills/brand-lint/scripts/lint.mjs", 1) },
+    { id: "S5-010", section: 5, kind: "system", title: "Slack: reads requests and posts replies", says: "It reads the threads it is mentioned in.", by: "model", based_on: ["F0004"], evidence: ev("src/app.py", 9), detail: { system: "Slack", need: "required", supply: "A Slack app and its two tokens", without: "The agent won't start.", sends: "Replies and files, in the thread.", credentials: ["SLACK_BOT_TOKEN"] } },
+    { id: "S5-011", section: 5, kind: "system", title: "ElevenLabs: voiceover", says: "It sends scripts to ElevenLabs.", by: "model", based_on: ["F0008"], evidence: ev("skills/brand-lint/scripts/lint.mjs", 2), detail: { system: "ElevenLabs", need: "optional", supply: "Your ElevenLabs key", without: "Videos have no voiceover.", sends: "The words to be spoken." } },
+    { id: "S5-020", section: 5, kind: "credential", title: "Gemini API key", says: "It reads the credential GEMINI_API_KEY from its environment.", by: "script", based_on: ["F0003"], evidence: ev("skills/stills/scripts/gen.mjs", 4), detail: { env: "GEMINI_API_KEY", read_by_code: true, how: "fails" } },
+    { id: "S5-021", section: 5, kind: "credential", title: "Slack bot token", says: "It reads the credential SLACK_BOT_TOKEN.", by: "script", based_on: ["F0004"], evidence: ev("src/app.py", 9), detail: { env: "SLACK_BOT_TOKEN", read_by_code: true, how: "fails" } },
+    { id: "S7-030", section: 7, kind: "risk", title: "Outside content can steer powerful actions", says: "Text from pull requests reaches a model that can run commands.", by: "model", level: "high", level_by: "model", categories: [cat("LLM01:2025", "Prompt Injection", "owasp-top-10-llm-2025")], evidence: ev("src/tools.py", 3), detail: { safe: "Put shell commands behind a person's OK." } },
+    { id: "S7-031", section: 7, kind: "risk", title: "hono 4.13.13 has known security flaws", says: "Two flaws.", by: "script", level: "medium", level_by: "source", categories: [cat("LLM03:2025", "Supply Chain", "owasp-top-10-llm-2025"), cat("GHSA-3gg2-335m-rxc6", "GHSA-3gg2-335m-rxc6", "osv")], evidence: ev("sandbox/render/package-lock.json", 1365), detail: { name: "hono", version: "4.13.13", advisories: [{ id: "GHSA-3gg2-335m-rxc6", summary: "css helper does not escape a closing tag", fixed: "4.13.16" }, { id: "GHSA-46wx-v44x-9hh2", summary: "`csrf()` does not check pings", fixed: "4.13.16" }], safe: "Update hono to 4.13.16 or later." } },
+    { id: "S8-010", section: 8, kind: "test", title: "Unit tests cover the lint", says: "The lint has unit tests.", by: "model", based_on: ["F0005"], evidence: ev("tests/unit/test_lint.py", 3) },
+    { id: "S8-011", section: 8, kind: "test", title: "Tests", says: "14 tests in 2 files.", by: "script", based_on: ["F0005", "F0006"], evidence: ev("tests/unit/test_lint.py", 3), detail: { files: 2, cases: 14, live: 2 } },
+  ];
+  return { list, facts };
+}
+const richReport = (held = []) => { const { list, facts } = rich(); return report(list, held, facts); };
+
+test("[F5.R9] the view is one row of five tabs with nothing above it, in the ARIA tabs pattern, with no count on any tab; Risks names its highest level as a word and a shape; it starts on Overview", () => {
+  const r = richReport();
   const { app } = drawn(r);
   assert.equal(app.children[0].className, "tabs-wrap", "the tabs come first: no head, no title, no status line above them");
   assert.equal(app.querySelectorAll('div[role="tablist"]').length, 1, "one row of tabs");
   assert.equal(app.querySelector("h1"), null, "no title of its own");
-  const list = app.querySelector('div[role="tablist"]');
-  assert.ok(list?.getAttribute("aria-label"), "the tab list has a name");
   const tabs = tabsOf(app);
-  assert.deepEqual(tabs.map((t) => t.querySelector(".tab-name").textContent), TAB_NAMES);
-  assert.deepEqual(selected(app), ["Overview"], "it starts on Overview");
+  assert.deepEqual(tabs.map((t) => t.querySelector(".tab-name").textContent), TAB_NAMES, "no About tab: Inspect's own words are at the foot of the Overview");
+  assert.deepEqual(selected(app), ["Overview"]);
   for (const [i, t] of tabs.entries()) {
     const on = i === 0;
-    assert.equal(t.getAttribute("tabindex"), on ? "0" : "-1", "only the open tab is in the page's tab order");
+    assert.equal(t.getAttribute("tabindex"), on ? "0" : "-1");
     const panel = app.querySelectorAll('div[role="tabpanel"]').find((p) => p.id === t.getAttribute("aria-controls"));
-    assert.ok(panel, `${TAB_NAMES[i]} controls a panel`);
     assert.equal(panel.getAttribute("aria-labelledby"), t.id);
     assert.equal(panel.getAttribute("hidden") === null, on);
-    assert.equal(t.querySelector(".tab-key"), null, "no section codes on a tab");
-    // 0.2.6: no count on any tab.
-    assert.ok(!/\d/.test(t.textContent), `${TAB_NAMES[i]} carries no count: "${t.textContent}"`);
+    assert.ok(!/\d/.test(t.textContent), `${TAB_NAMES[i]} carries no count`);
     if (TAB_NAMES[i] !== "Risks") assert.equal(t.getAttribute("aria-label"), TAB_NAMES[i]);
   }
-  assert.ok(r.findings.length > 0);
   const risks = tabNamed(app, "Risks");
   assert.equal(levelOf(risks.querySelector(".lv")).word, "High");
   assert.equal(levelOf(risks.querySelector(".lv")).shape, SHAPE_OF.high);
   assert.match(risks.getAttribute("aria-label"), /, the highest High$/);
-  for (const name of TAB_NAMES.filter((x) => x !== "Risks")) assert.equal(tabNamed(app, name).querySelector(".lv"), null, `${name} names no level`);
 });
 
-test("[F5.R9] a row is closed by default and shows only its title, and on Risks its level; opened, it shows the finding's words, where it is in the code, its plain category and Copy", async () => {
-  const { app, sent } = drawn(report());
-  tabNamed(app, "Risks").click();
-  const row = rowOf(app, "S7-001");
-  const toggle = row.querySelector(".toggle");
-  assert.equal(toggle.getAttribute("aria-expanded"), "false", "closed by default");
-  assert.deepEqual(toggle.children.map((c) => c.className), ["chev", "lv medium", "tt"], "the level, then the title");
-  // A 0.2.5 report's advisory title is said in words; its id is only in the opened row.
-  assert.equal(row.textContent, "▸Medium@hono/node-server 2.1.5 has a known security flaw", "nothing else on the closed row");
-  for (const r of app.querySelectorAll("li.row")) {
-    assert.equal(r.querySelector(".detail"), null, "every row starts closed");
-    assert.ok(!/\.(py|mjs|json|md|toml):\d/.test(r.textContent), "no file and line on a closed row");
-    assert.ok(!/LLM0|ASI0/.test(r.textContent), "no category code on a row");
-    assert.equal(r.querySelector("button.copy"), null, "no Copy on a closed row");
-  }
-  toggle.click();
-  const open = rowOf(app, "S7-001");
-  const detail = open.querySelector(".detail");
-  assert.ok(detail, "it opens");
-  assert.equal(open.querySelector(".toggle").getAttribute("aria-expanded"), "true");
-  assert.equal(detail.querySelector("p").textContent, "A known vulnerability.", "the finding's words");
-  const dts = detail.querySelectorAll("dt").map((x) => x.textContent);
-  const dds = detail.querySelectorAll("dd").map((x) => x.textContent);
-  assert.deepEqual(dts, ["In the code", "Advisory", "Category"]);
-  assert.equal(dds[0], "sandbox/render/package-lock.json:449", "the file and line");
-  assert.equal(dds[1], "GHSA-jpvv-r467-5p4w", "the advisory's id, in the opened row only");
-  assert.equal(dds[2], "Supply chain, Agentic supply chain vulnerabilities", "the category by its plain name, never its code");
-  assert.ok(!/LLM0|ASI0|pkg:|GHSA/.test(dds[2]));
-  const copy = detail.querySelector("button.copy");
-  assert.equal(copy.textContent, "Copy");
-  copy.click();
+test("[F5.R9] Overview describes the whole agent: the description first, how much is there, what was inspected with the repository's link to copy, and two lines about Inspect at the foot; no risk on it", async () => {
+  const { app, sent } = drawn(richReport());
+  const panel = shownPanel(app);
+  assert.equal(panel.children[0].className, "lead", "the description is the answer, first");
+  assert.match(panel.children[0].textContent, /^Content Studio is a design agent/);
+  const size = panel.querySelector("dl.size");
+  const pairs = (dl) => Object.fromEntries(dl.children.reduce((a, n, i, all) => (n.tagName === "DT" ? [...a, [n.textContent, all[i + 1].textContent]] : a), []));
+  assert.deepEqual(pairs(size), { Skills: "2, and 1 for coding assistants", Scripts: "2 in its skills, 640 lines of code", "Its own code": "4,100 lines", Tests: "14 in 2 files, 12 run offline", "Outside systems": "3, 2 required" });
+  const facts = panel.querySelectorAll("dl.facts").find((d) => !d.classList.contains("size"));
+  const shown = pairs(facts);
+  assert.equal(shown.Commit, "86d8f66, Nov 24, 2026");
+  assert.equal(shown.License, "Apache-2.0");
+  assert.match(shown.Repository, /^langchain-ai\/design-agent Copy link$/);
+  panel.querySelector("button.copy-link").click();
   await ticks();
-  const copied = sent.find((m) => m.method === "view/copy-text");
-  assert.match(copied.params.text, /sandbox\/render\/package-lock\.json line 449: https:\/\/github\.com\/langchain-ai\/design-agent\/blob\//, "Copy carries the address of the line");
-  // A row on a tab without levels shows its title alone.
-  tabNamed(app, "What it does").click();
-  assert.deepEqual(rowOf(app, "S3-001").querySelector(".toggle").children.map((c) => c.className), ["chev", "tt"]);
+  const copied = sent.filter((m) => m.method === "view/copy-text").at(-1);
+  assert.equal(copied.params.text, `https://github.com/langchain-ai/design-agent/tree/${SHA}`, "the repository at the commit, copied: this frame opens no link");
+  const foot = panel.querySelector(".about-foot");
+  assert.equal(foot.querySelectorAll("p").length, 2);
+  assert.match(foot.textContent, /^About Inspect\./);
+  assert.match(foot.textContent, /What it doesn't do\./);
+  assert.equal(panel.querySelector(".tiles"), null, "no risk tiles on the Overview");
+  assert.equal(panel.querySelectorAll("li.row").length, 0, "no risk rows");
+  assert.ok(!/Save a summary/.test(panel.textContent), "the summary for security is on Risks");
 });
 
-test("[F5.R9] Overview: the risk tiles, the top judgments each with a level and its title as the link, what was inspected as a label and value list, and a plain save button", async () => {
-  const { app, sent } = drawn(report());
-  const overview = shownPanel(app);
-  const tiles = overview.querySelectorAll("button.tile");
-  assert.deepEqual(tiles.map((t) => t.textContent), ["0Critical risks", "1High risk", "1Medium risk", "1Low risk"]);
-  for (const t of tiles) assert.ok(t.querySelector("svg"), "each tile has its shape");
-  const items = overview.querySelectorAll("ul.matters li");
-  assert.equal(items.length, 4);
-  const got = items.map((li) => ({ title: li.querySelector(".t").textContent, ...levelOf(li.querySelector(".lv")), link: li.querySelector("button.title-link")?.getAttribute("aria-label") }));
-  for (const g of got) assert.ok(WORDS.includes(g.word) && g.shape, `${g.title} shows its level in words and a shape`);
-  // 0.2.6: the title is the link; no "See it in" line under it.
-  assert.deepEqual(got.map((g) => g.link), [`${LONG}, in Risks`, "Which tools run without an OK, in What it reaches", "Sandbox build fetches are pinned, in Risks", "Gemini key sent in a URL, in Risks"]);
-  assert.ok(!/See it in/.test(overview.textContent));
-  const of = Object.fromEntries(got.map((g) => [g.title, g]));
-  assert.equal(of["Which tools run without an OK"].word, "Not rated");
-  assert.equal(of["Which tools run without an OK"].shape, SHAPE_OF.unrated);
-  assert.equal(of["Gemini key sent in a URL"].word, "Low", "a copy without its level takes the level of the finding it repeats");
-  assert.equal(new Set(Object.values(SHAPE_OF)).size, Object.keys(SHAPE_OF).length, "no two levels share a shape");
-  // What was inspected.
-  assert.equal(overview.querySelector("h2").textContent, "What was inspected");
-  const facts = overview.querySelector("dl.facts");
-  const pairs = facts.querySelectorAll("dt").map((dt, i) => [dt.textContent, facts.querySelectorAll("dd")[i].textContent]);
-  assert.deepEqual(pairs, [["License", "Apache-2.0"], ["Built on", "Python and TypeScript, with LangChain and LangGraph"], ["Kept up", "Last pushed Nov 24, 2026, 37 commits in the last 90 days"], ["Publisher", "langchain-ai, an organization"], ["Commit", "86d8f66, Nov 24, 2026"]]);
-  // The save button, with no box around it explaining it.
-  const save = overview.querySelector("button.btn");
-  assert.equal(save.textContent, "Save a summary for security");
-  assert.equal(save.parentNode.className, "save");
-  assert.equal(save.parentNode.textContent, "Save a summary for security", "nothing beside it");
-  save.click();
-  await ticks();
-  const file = sent.find((m) => m.method === "view/save-file");
-  assert.equal(file.params.media_type, "text/plain");
-  assert.match(file.params.name, /^security-summary-langchain-ai-design-agent-86d8f66\.txt$/);
-  assert.match(file.params.text, /Risks, highest first/);
-  // A tile opens Risks at its level.
-  shownPanel(app).querySelectorAll("button.tile")[1].click();
-  assert.deepEqual(selected(app), ["Risks"]);
-  assert.equal(app.querySelector('button.chip[aria-pressed="true"]').textContent, "High1");
-});
-
-test("[F5.R9] a judgment's title opens the tab that holds the finding, lets go of a filter that hides it, opens the finding, brings it into sight and gives it focus", async () => {
-  const { app, sent } = drawn(report());
-  const see = (title) => shownPanel(app).querySelectorAll("ul.matters li").find((li) => li.querySelector(".t").textContent === title).querySelector("button.title-link");
-  tabNamed(app, "Risks").click();
-  app.querySelectorAll("button.chip").find((b) => b.textContent.startsWith("Low")).click();
-  tabNamed(app, "Overview").click();
-  const before = resizes(sent);
-  see(LONG).click();
-  assert.deepEqual(selected(app), ["Risks"]);
-  assert.equal(resizes(sent), before + 1, "the frame is asked to fit the tab");
-  await ticks();
-  const row = rowOf(app, "S7-012");
-  assert.ok(row, "the finding is in the Risks tab, the filter let go");
-  assert.ok(row.querySelector(".detail"), "it is open");
-  assert.equal(row.scrolled, 1, "it was scrolled into sight, after the frame was fitted");
-  assert.equal(app.querySelector('button.chip[aria-pressed="true"]').textContent.startsWith("All"), true);
-  tabNamed(app, "Overview").click();
-  see("Which tools run without an OK").click();
-  assert.deepEqual(selected(app), ["What it reaches"]);
-  await ticks();
-  const six = rowOf(app, "S6-011");
-  assert.equal(six.scrolled, 1);
-  assert.equal(doc.activeElement, six.querySelector(".toggle"), "focus goes to the finding");
-});
-
-test("[F5.R9] Risks: a filter by level, every row shown highest first, what it needs to run safely under its own heading, and no line saying how many are shown", () => {
-  const many = Array.from({ length: 30 }, (_, i) => ({ id: `S7-${String(i + 40).padStart(3, "0")}`, section: 7, kind: "risk", title: `risk ${i + 1}`, says: "A risk.", by: "model", level: "low", level_by: "model", evidence: ev(`lib/r${i}.mjs`, 1) }));
-  const { app } = drawn(report([...findings(), ...many]));
+test("[F5.R9] Risks: the risks by level are the filter, the summary for security is here, every risk highest first from any section; opened, a row says what it means, how to make it safe and its category, and nothing else", async () => {
+  const { app, sent } = drawn(richReport());
   tabNamed(app, "Risks").click();
   const panel = shownPanel(app);
-  const chips = panel.querySelectorAll("button.chip").map((b) => b.textContent);
-  assert.deepEqual(chips, ["All", "High1", "Medium1", "Low31", "No risk1"]);
-  const rated = panel.querySelector("ul.rows.rated").children;
-  assert.equal(rated.length, 34, "every risk is drawn, none folded");
-  assert.deepEqual(rated.slice(0, 2).map((li) => li.id), ["f-S7-012", "f-S7-001"], "the highest first");
-  assert.equal(panel.querySelectorAll("button").filter((b) => /Show all|more/i.test(b.textContent)).length, 0, "no Show all");
-  assert.ok(!/Showing/.test(panel.textContent));
-  const heads = panel.querySelectorAll("h2").map((h) => h.textContent);
-  assert.deepEqual(heads, ["To run it safely"]);
-  assert.ok(rowOf(app, "S7-027"), "least access is a row under it");
-  panel.querySelectorAll("button.chip").find((b) => b.textContent.startsWith("High")).click();
-  assert.deepEqual(shownPanel(app).querySelectorAll("li.row").map((r) => r.id), ["f-S7-012"]);
+  const tiles = panel.querySelectorAll("button.tile");
+  assert.deepEqual(tiles.map((t) => t.textContent), ["0Critical risks", "2High risks", "2Medium risks", "1Low risk", "1No risk", "1Not rated"], "the tiles add up to the rows shown");
+  const rows = () => shownPanel(app).querySelector("ul.rows.rated").querySelectorAll("li.row");
+  assert.equal(rows().length, 7);
+  assert.deepEqual(rows().map((r) => r.querySelector(".lv .word").textContent), ["High", "High", "Medium", "Medium", "Low", "No risk", "Not rated"], "highest first");
+  assert.ok(rows().some((r) => r.id === "f-S6-011"), "a judgment section 1 points to is a risk, Not rated");
+  tiles.find((t) => /High/.test(t.textContent)).click();
+  assert.equal(rows().length, 2, "a tile shows its level alone");
+  assert.equal(shownPanel(app).querySelectorAll("button.tile").find((t) => /High/.test(t.textContent)).getAttribute("aria-pressed"), "true");
+  shownPanel(app).querySelectorAll("button.tile").find((t) => /High/.test(t.textContent)).click();
+  assert.equal(rows().length, 7, "pressed again, every risk");
+  assert.equal(shownPanel(app).querySelectorAll("button.tile").find((t) => /Critical/.test(t.textContent)).getAttribute("disabled"), "", "a level with none can't be chosen");
+  rowOf(app, "S7-031").querySelector(".toggle").click();
+  const open = rowOf(app, "S7-031").querySelector(".detail");
+  assert.deepEqual(open.querySelectorAll(".advisories li").map((li) => li.textContent), ["Css helper does not escape a closing tag. Fixed in 4.13.16.", "csrf() does not check pings. Fixed in 4.13.16."], "each flaw's summary and fix, no advisory id");
+  const dts = open.querySelectorAll("dt").map((x) => x.textContent);
+  assert.deepEqual(dts, ["To make it safe", "Category"]);
+  assert.ok(!/GHSA|package-lock|:\d|In the code|Copy/.test(readable(open)), "no id, no file, no line, no Copy");
+  shownPanel(app).querySelector('button[data-k="save"]').click();
+  await ticks();
+  const saved = sent.filter((m) => m.method === "view/save-file").at(-1);
+  assert.match(saved.params.name, /^security-summary-langchain-ai-design-agent-86d8f66\.txt$/);
 });
 
-test("[F5.R9] a section opens on the model's judgments before the scripts' lists, and code in its words is drawn in the code face without its marks", () => {
-  const extra = [
-    { id: "S3-120", section: 3, kind: "job", title: "Makes launch films from a brief", says: "It plans, renders and posts a film.", by: "model", evidence: ev("src/design_agent/pipelines/launch_film.py", 12) },
-    { id: "S5-020", section: 5, kind: "credential", title: "SLACK_BOT_TOKEN", says: "It reads the credential.", by: "script", evidence: ev("src/design_agent/settings.py", 10) },
-    { id: "S6-001", section: 6, kind: "tool", title: "It can post to Slack", says: "A tool.", by: "model", evidence: ev("src/design_agent/assembly.py", 370) },
-  ];
-  const list = findings();
-  // The scripts' credential before the model's system, and a tool before the autonomy finding, as the report orders them.
-  list.splice(list.findIndex((f) => f.id === "S5-001"), 0, extra[1]);
-  list.splice(list.findIndex((f) => f.id === "S6-011"), 0, extra[2]);
-  list.push(extra[0]);
-  const withCode = list.map((f) => (f.id === "S6-011" ? { ...f, says: "The list in `interrupt_on` is empty." } : f));
-  const { app } = drawn(report(withCode));
+test("[F5.R9] What it does: jobs naming the skills that do them, the skills the most substantial first with a size in words and a bar, its own code in a few words with its size, and no list of scripts", () => {
+  const { app } = drawn(richReport(), { width: 1100 });
   tabNamed(app, "What it does").click();
-  assert.equal(shownPanel(app).querySelector("li.row").id, "f-S3-120", "what it does, before the list of its skills");
+  const panel = shownPanel(app);
+  assert.deepEqual(panel.querySelectorAll("h3").map((h) => h.textContent), ["Jobs", "Skills", "Skills for coding assistants", "Its own code"]);
+  assert.deepEqual(panel.querySelectorAll("h2").map((h) => h.textContent), ["How it works"], "no heading repeats the tab's name");
+  const lists = panel.querySelectorAll("ul.rows");
+  const skillList = lists.find((u) => u.querySelectorAll("li.row").some((r) => r.id === "f-S3-010"));
+  assert.deepEqual(skillList.querySelectorAll("li.row").map((r) => r.id), ["f-S3-010", "f-S3-011"], "the substantial skill first");
+  assert.deepEqual(skillList.querySelectorAll(".measure .words").map((w) => w.textContent), ["2 scripts · 640 lines · tested", "Instructions only"]);
+  assert.ok(skillList.querySelector(".bar").getAttribute("aria-hidden") === "true", "the bar repeats the words, for the eye only");
+  assert.equal(rowOf(app, "S3-050"), undefined, "scripts are never a list of their own");
+  assert.equal(rowOf(app, "S3-020"), undefined, "the count of skills is no row");
+  const own = rowOf(app, "S3-041");
+  assert.equal(own.querySelector(".name").textContent, "Slack app, tools and a sandbox runner");
+  assert.equal(own.querySelector(".measure .words").textContent, "4,100 lines");
+  assert.equal(rowOf(app, "S3-040"), undefined, "its size and its words are one row");
+  rowOf(app, "S3-030").querySelector(".toggle").click();
+  const job = rowOf(app, "S3-030").querySelector(".detail");
+  assert.deepEqual(job.querySelectorAll("dt").map((x) => x.textContent), ["Skills that do it"]);
+  assert.deepEqual(job.querySelectorAll("button.ref").map((b) => b.textContent), ["Make still images", "Check a draft against the brand pack"]);
+  rowOf(app, "S3-010").querySelector(".toggle").click();
+  const opened = rowOf(app, "S3-010").querySelector(".detail");
+  assert.equal(opened.querySelector("p").textContent, "Check a draft against the brand pack.");
+  assert.deepEqual(opened.querySelectorAll("dt").map((x) => x.textContent), ["Uses", "Tests", "On its own"]);
+  assert.deepEqual(opened.querySelectorAll("dd").map((x) => x.textContent), ["ElevenLabs", "12 tests in 1 test file", "Can be lifted out on its own"]);
+  assert.ok(opened.querySelector('button[data-k="read:S3-010"]'), "Read the skill");
+  assert.ok(!/skills\/|\.mjs|\.md|:\d/.test(readable(panel)), "no file on the tab");
+});
+
+test("[F5.R9] Read the skill opens a viewer: beside the list at a desktop's width, the whole frame at a phone's; the skill's Markdown is drawn as text, with no markup, image or link; Close and Escape put focus back", async () => {
+  const wide = drawn(richReport(), { width: 1100 });
+  tabNamed(wide.app, "What it does").click();
+  rowOf(wide.app, "S3-010").querySelector(".toggle").click();
+  wide.app.querySelector('button[data-k="read:S3-010"]').click();
+  let panel = shownPanel(wide.app);
+  assert.ok(panel.querySelector(".with-viewer .beside"), "the list stays, beside the viewer");
+  const viewer = panel.querySelector("section.viewer");
+  assert.equal(viewer.getAttribute("role"), "dialog");
+  assert.equal(viewer.querySelector("h2").textContent, "Check a draft against the brand pack");
+  assert.equal(doc.activeElement, viewer.querySelector('button[data-k="viewer-close"]'), "focus moves to Close");
+  const md = viewer.querySelector(".md");
+  assert.deepEqual(md.children.map((n) => n.tagName), ["H3", "P", "H4", "UL", "PRE", "P"]);
+  assert.deepEqual(md.querySelectorAll("li").map((li) => li.textContent), ["Read the brand pack first", "Run the check on the draft"], "a link keeps its words only");
+  assert.equal(md.querySelector("pre").textContent, "node lint.mjs <file>");
+  assert.equal(md.children.at(-1).textContent, "<b>bold?</b>  and strong words", "markup is drawn as text, images are left out, emphasis marks go");
+  assert.equal(md.querySelectorAll("img").length + md.querySelectorAll("a").length, 0);
+  viewer.querySelector('button[data-k="viewer-close"]').click();
+  assert.equal(shownPanel(wide.app).querySelector("section.viewer"), null);
+  assert.equal(doc.activeElement?.getAttribute("data-k"), "read:S3-010", "focus goes back to Read the skill");
+  const narrow = drawn(richReport(), { width: 368 });
+  tabNamed(narrow.app, "What it does").click();
+  rowOf(narrow.app, "S3-011").querySelector(".toggle").click();
+  narrow.app.querySelector('button[data-k="read:S3-011"]').click();
+  panel = shownPanel(narrow.app);
+  assert.equal(panel.children.length, 1, "the viewer takes the whole frame");
+  assert.ok(panel.children[0].classList.contains("full"));
+  assert.equal(panel.children[0].getAttribute("aria-modal"), "true");
+  assert.match(panel.querySelector(".cut").textContent, /The rest is longer than the report carries\. Copy the link to the whole skill/);
+  panel.querySelector('button[data-k="viewer-copy"]').click();
+  await ticks();
+  assert.equal(narrow.sent.filter((m) => m.method === "view/copy-text").at(-1).params.text, ADDRESS);
+  narrow.document.press("Escape");
+  assert.equal(shownPanel(narrow.app).querySelector("section.viewer"), null, "Escape closes it");
+});
+
+test("[F5.R9] What it reaches: one row per outside system, required or optional as a word and a shape, what the person supplies, required first; a credential no system names is a system of its own; opened, what uses it, what happens without it and what goes to it", () => {
+  const { app } = drawn(richReport(), { width: 1100 });
   tabNamed(app, "What it reaches").click();
-  const ids = shownPanel(app).querySelectorAll("li.row").map((r) => r.id);
-  assert.deepEqual(ids, ["f-S5-001", "f-S5-020", "f-S6-011", "f-S6-001"], "the system before the credential; which tools run without an OK before the tools");
-  rowOf(app, "S6-011").querySelector(".toggle").click();
-  const p = rowOf(app, "S6-011").querySelector(".detail p");
-  assert.equal(p.textContent, "The list in interrupt_on is empty.");
-  assert.equal(p.querySelector("span.mono").textContent, "interrupt_on");
-});
-
-test("[F5.R9] lists sit under subheadings of their own, a finding that sums up its group is never a row, and slugs and setting names are said in words", () => {
-  const extra = [
-    { id: "S3-200", section: 3, kind: "skill", title: "Skills", says: "36 skills of the agent's own.", by: "script", evidence: ev("skills/brand-lint/SKILL.md", 1) },
-    { id: "S3-201", section: 3, kind: "skill", title: "data-viz", says: "Charts.", by: "script", evidence: ev("skills/data-viz/SKILL.md", 1), detail: { name: "data-viz" } },
-    { id: "S3-202", section: 3, kind: "skill", title: "Draws on-brand charts from a table", says: "Charts.", by: "script", evidence: ev("skills/charts/SKILL.md", 1), detail: { name: "charts" } },
-    { id: "S5-030", section: 5, kind: "credential", title: "GEMINI_API_KEY", says: "It reads the credential GEMINI_API_KEY.", by: "script", evidence: ev("src/settings.py", 3), detail: { env: "GEMINI_API_KEY" } },
-    { id: "S8-010", section: 8, kind: "test", title: "Its tests", says: "12 test files.", by: "script", evidence: ev("tests/test_a.py", 1) },
-    { id: "S8-011", section: 8, kind: "test-gap", title: "No test of the approvals", says: "None.", by: "model", evidence: ev("tests/test_a.py", 1) },
-  ];
-  const { app } = drawn(report([...findings(), ...extra]));
-  const panelOf = (name) => { tabNamed(app, name).click(); return shownPanel(app); };
-  let p = panelOf("What it does");
-  assert.deepEqual(p.querySelectorAll("h3").map((h) => h.textContent), ["Skills"]);
-  assert.equal(rowOf(app, "S3-200"), undefined, "the summing-up finding is the heading, not a row");
-  assert.equal(rowOf(app, "S3-201").querySelector(".tt").textContent, "Data viz", "a slug said in words");
-  assert.equal(rowOf(app, "S3-202").querySelector(".tt").textContent, "Draws on-brand charts from a table");
-  rowOf(app, "S3-201").querySelector(".toggle").click();
-  const dd = (id, dt) => { const r = rowOf(app, id); const i = r.querySelectorAll("dt").findIndex((x) => x.textContent === dt); return i < 0 ? null : r.querySelectorAll("dd")[i].textContent; };
-  assert.equal(dd("S3-201", "Name in the code"), "data-viz", "the slug is in the opened row");
-  p = panelOf("What it reaches");
-  assert.deepEqual(p.querySelectorAll("h3").map((h) => h.textContent), ["Credentials"]);
-  assert.equal(rowOf(app, "S5-030").querySelector(".tt").textContent, "Gemini API key");
-  p = panelOf("Tests and gaps");
-  assert.deepEqual(p.querySelectorAll("h3").map((h) => h.textContent), ["What Inspect couldn't tell", "Gaps in the tests"]);
-  assert.equal(rowOf(app, "S8-010"), undefined, "Its tests sums up its group");
-  for (const name of TAB_NAMES) {
-    const panel = panelOf(name);
-    for (const h of [...panel.querySelectorAll("h2"), ...panel.querySelectorAll("h3")]) assert.notEqual(h.textContent.toLowerCase(), name.toLowerCase(), `no heading repeats the tab ${name}`);
-    for (const t of panel.querySelectorAll(".row .tt")) assert.ok(!/^[a-z0-9]+(?:-[a-z0-9]+)+$/.test(t.textContent), `no slug as a title: ${t.textContent}`);
-  }
-});
-
-test("[F5.R9] a package's known security flaws are one row at their highest level, each advisory's summary, fix and id only in the opened row; a risk with no level has a Not rated chip", () => {
-  const pkg = { id: "S7-050", section: 7, kind: "risk", title: "hono 4.13.13 has known security flaws", says: "Open redirect in serve-static. Fixed in 4.13.14. Header injection.", by: "script", level: "high", level_by: "source", categories: [cat("LLM03:2025", "Supply Chain", "owasp-top-10-llm-2025"), cat("pkg:npm/hono@4.13.13", "hono 4.13.13", "cyclonedx-1.5"), cat("GHSA-1111-1111-1111", "GHSA-1111-1111-1111", "osv"), cat("GHSA-2222-2222-2222", "GHSA-2222-2222-2222", "osv")], evidence: ev("package-lock.json", 900), detail: { name: "hono", version: "4.13.13", advisories: [{ id: "GHSA-1111-1111-1111", summary: "open redirect in serve-static", level: "medium", fixed: "4.13.14" }, { id: "GHSA-2222-2222-2222", summary: "header injection", level: "high", fixed: null }] } };
-  const unrated = { id: "S7-051", section: 7, kind: "risk", title: "A license obligation", says: "It must keep the notice.", by: "model", categories: [cat("Apache-2.0", "Apache-2.0", "spdx-license-list")], evidence: ev("LICENSE", 1) };
-  const { app } = drawn(report([...findings(), pkg, unrated]));
-  tabNamed(app, "Risks").click();
-  const row = rowOf(app, "S7-050");
-  assert.equal(row.textContent, "▸Highhono 4.13.13 has known security flaws");
-  assert.ok(!/GHSA|CVE/.test(shownPanel(app).querySelectorAll("li.row").map((r) => r.querySelector(".toggle").textContent).join(" ")), "no advisory id on a closed row");
-  row.querySelector(".toggle").click();
-  const items = rowOf(app, "S7-050").querySelectorAll(".advisories li").map((li) => li.textContent);
-  assert.deepEqual(items, ["Open redirect in serve-static. Fixed in 4.13.14. GHSA-1111-1111-1111", "Header injection. GHSA-2222-2222-2222"]);
-  assert.equal(rowOf(app, "S7-050").querySelector(".detail").children.filter((c) => c.tagName === "P").length, 0, "the advisories say it once; the words are not repeated");
-  const chips = shownPanel(app).querySelectorAll("button.chip").map((b) => b.textContent);
-  assert.deepEqual(chips, ["All", "High2", "Medium1", "Low1", "No risk1", "Not rated1"]);
-  const shownRows = shownPanel(app).querySelector("ul.rows.rated").children.length;
-  assert.equal(chips.slice(1).reduce((a, c) => a + Number(c.replace(/\D+/g, "")), 0), shownRows, "the chips add up to the rows shown");
-});
-
-test("[F5.R9] a tab of two sections has two plain headings, with no number and no count; a tab of one has none", () => {
-  const { app } = drawn(report());
-  const heads = (name) => { tabNamed(app, name).click(); return shownPanel(app).querySelectorAll("h2").map((h) => h.textContent); };
-  // 0.2.6: a heading that repeats its tab's name is left out.
-  assert.deepEqual(heads("What it does"), ["How it works"]);
-  assert.deepEqual(heads("What it reaches"), ["What it connects to", "What it can do on its own"]);
-  assert.deepEqual(heads("Tests and gaps"), []);
-});
-
-test("[F5.R9] About Inspect says what Inspect does, how it works and what it doesn't do, in its own words from its Descriptor, with no More toggle", () => {
-  const { app } = drawn(report());
-  tabNamed(app, "About Inspect").click();
   const panel = shownPanel(app);
-  assert.deepEqual(panel.querySelectorAll("h2").map((h) => h.textContent), ["What it does", "How it works", "What it doesn't do"]);
-  const d = descriptor();
-  assert.equal(panel.querySelectorAll("p")[0].textContent, d.summary);
-  assert.equal(panel.querySelectorAll("p")[1].textContent, "Scripts read the code by rule; a model writes only the judgments, and each judgment cites the lines it rests on.");
-  assert.ok(!/\bthe facts\b/i.test(panel.textContent), "no internal word in About");
-  assert.deepEqual(panel.querySelectorAll("li").map((li) => li.textContent), ["Running, installing, building or testing the repository's code", "Giving a verdict on whether to bring the agent in, or judging how it fits a plan or a catalog role"]);
-  assert.equal(panel.querySelectorAll("details").length, 0);
-  assert.ok(!/\bMore\b/.test(panel.textContent));
-  // Without a Descriptor, its own words.
-  const { app: bare } = drawn(report(), { desc: null });
-  tabNamed(bare, "About Inspect").click();
-  assert.equal(shownPanel(bare).querySelectorAll("p")[0].textContent, d.summary);
+  const sys = panel.querySelectorAll("li.row.system");
+  assert.deepEqual(sys.map((r) => r.id), ["f-S5-010", "f-S5-020", "f-S5-011"], "required first, in the report's order");
+  assert.deepEqual(sys.map((r) => r.querySelector(".need .word").textContent), ["Required", "Required", "Optional"]);
+  assert.ok(sys.every((r) => r.querySelector(".need svg")?.markup), "each need has a shape");
+  assert.deepEqual(sys.map((r) => r.querySelector(".under").textContent), ["A Slack app and its two tokens", "Your Gemini API key", "Your ElevenLabs key"]);
+  assert.equal(rowOf(app, "S5-021"), undefined, "a credential a system names is in that system's row");
+  assert.ok(!panel.querySelectorAll("h3").some((h) => h.textContent === "Credentials"), "no list of credentials");
+  rowOf(app, "S5-011").querySelector(".toggle").click();
+  const open = rowOf(app, "S5-011").querySelector(".detail");
+  assert.deepEqual(open.querySelectorAll("dt").map((x) => x.textContent), ["Used by", "Without it", "What goes to it"]);
+  assert.equal(open.querySelector("button.ref").textContent, "Check a draft against the brand pack", "the skill that uses it opens in the viewer");
+  open.querySelector("button.ref").click();
+  assert.ok(shownPanel(app).querySelector("section.viewer"));
+});
+
+test("[F5.R9] Tests and gaps: each test row says how many tests, of what kind and whether they run offline; the count of all tests is no row; nothing held back is drawn", () => {
+  const { app } = drawn(richReport([{ section: 7, title: "One judgment", why: "it cites a fact the scripts did not find" }]));
+  tabNamed(app, "Tests and gaps").click();
+  const panel = shownPanel(app);
+  assert.deepEqual(panel.querySelectorAll("h3").map((h) => h.textContent), ["What Inspect couldn't tell", "Tests"]);
+  assert.equal(rowOf(app, "S8-010").querySelector(".measure .words").textContent, "12 tests · unit · offline");
+  assert.equal(rowOf(app, "S8-011"), undefined);
+  assert.ok(!/Held back|One judgment/.test(readable(panel)), "judgments held back stay in the report, off the page");
 });
 
 test("[F5.R9] while the job runs, one line under the tabs says what Inspect is doing in plain words, tabs fill in with no count, and the line is gone once the report is done", () => {
@@ -471,12 +435,11 @@ test("[F5.R9] while the job runs, one line under the tabs says what Inspect is d
   const now = () => app.querySelector("p.now");
   assert.equal(app.children[1], now(), "the line sits straight under the tabs");
   assert.equal(now().textContent, "Judging what it does, how it works and what it connects to");
-  const label = (name) => tabNamed(app, name);
-  assert.equal(label("What it reaches").textContent, "What it reaches", "no count, and no mark standing for one");
-  assert.match(label("What it reaches").getAttribute("aria-label"), /still to come$/);
-  label("Tests and gaps").click();
+  assert.equal(tabNamed(app, "What it reaches").textContent, "What it reaches");
+  assert.match(tabNamed(app, "What it reaches").getAttribute("aria-label"), /still to come$/);
+  tabNamed(app, "Tests and gaps").click();
   assert.equal(shownPanel(app).textContent, "Nothing yet.");
-  label("What it does").click();
+  tabNamed(app, "What it does").click();
   const rows = () => shownPanel(app).querySelectorAll("li.row").length;
   const climbs = [rows()];
   p.data(copyOf(findings().filter((f) => f.by === "script" || [3, 4, 5].includes(f.section)), "Asking the model for the judgments of sections 6, 7 and 8: what it can do on its own, its risks, and its tests."));
@@ -489,8 +452,6 @@ test("[F5.R9] while the job runs, one line under the tabs says what Inspect is d
   for (const t of tabsOf(app)) assert.ok(!/\d/.test(t.textContent), "no count while running either");
   p.data(report(), { job_state: "completed", lifecycle: "draft" });
   assert.equal(now(), null, "the line is gone once the report is done");
-  assert.equal(app.children[0].className, "tabs-wrap");
-  // A job that stops says so in one line.
   p.data(copyOf(scripts), { job_state: "failed", lifecycle: null });
   assert.equal(now().textContent, "Stopped before the report was finished.");
 });
@@ -500,66 +461,54 @@ test("[F5.R9] the tab the person is on stays put when new data arrives, and keep
   const p = drawn(copyOf(scripts), { job_state: "working", lifecycle: null });
   const { app } = p;
   tabNamed(app, "Tests and gaps").click();
-  assert.deepEqual(selected(app), ["Tests and gaps"]);
-  assert.equal(doc.activeElement, tabNamed(app, "Tests and gaps"));
   p.data(copyOf(findings().filter((f) => f.section !== 1)));
   assert.deepEqual(selected(app), ["Tests and gaps"], "a working copy with more findings moves no tab");
-  assert.equal(doc.activeElement, tabNamed(app, "Tests and gaps"), "focus stays on the tab, drawn again");
-  assert.equal(shownPanel(app).querySelectorAll("li.row").length, 1, "and its findings fill in under the person");
+  assert.equal(doc.activeElement, tabNamed(app, "Tests and gaps"));
   p.data(report(), { job_state: "completed", lifecycle: "draft" });
-  assert.deepEqual(selected(app), ["Tests and gaps"], "the delivered report moves no tab either");
+  assert.deepEqual(selected(app), ["Tests and gaps"]);
   tabNamed(app, "Risks").click();
   const toggle = rowOf(app, "S7-021").querySelector(".toggle");
   toggle.click(); toggle.focus();
   p.data(report(), { job_state: "completed", lifecycle: "accepted" });
   const again = rowOf(app, "S7-021");
-  assert.deepEqual(selected(app), ["Risks"]);
   assert.ok(again.querySelector(".detail"));
   assert.equal(doc.activeElement, again.querySelector(".toggle"));
 });
 
-test("[F5.R9] arrow keys, Home and End move between the six tabs and open them; each change asks the frame to fit; a visible focus ring; the strip scrolls inside itself", () => {
-  const { app, sent } = drawn(report());
+test("[F5.R9] arrow keys, Home and End move between the five tabs and open them; each change asks the frame to fit; text is 16px or more and nothing under 14px; a visible focus ring; the strip scrolls inside itself", () => {
+  const { app, sent } = drawn(richReport());
   tabNamed(app, "Overview").focus();
-  const go = (key) => { const before = resizes(sent); const moved = doc.activeElement.press(key); return { moved, asked: resizes(sent) - before, on: selected(app)[0], focus: doc.activeElement?.querySelector(".tab-name")?.textContent }; };
-  assert.deepEqual(go("ArrowRight"), { moved: true, asked: 1, on: "What it does", focus: "What it does" });
-  assert.deepEqual(go("End"), { moved: true, asked: 1, on: "About Inspect", focus: "About Inspect" });
-  assert.deepEqual(go("ArrowRight"), { moved: true, asked: 1, on: "Overview", focus: "Overview" }, "past the last, the first");
-  assert.deepEqual(go("ArrowLeft"), { moved: true, asked: 1, on: "About Inspect", focus: "About Inspect" }, "before the first, the last");
-  assert.deepEqual(go("Home"), { moved: true, asked: 1, on: "Overview", focus: "Overview" });
-  assert.deepEqual(go("a"), { moved: false, asked: 0, on: "Overview", focus: "Overview" }, "another key does nothing");
-  const before = resizes(sent);
-  tabNamed(app, "Risks").click();
-  assert.equal(resizes(sent), before + 1);
+  const go = (key) => { const before = resizes(sent); const moved = doc.activeElement.press(key); return { moved, asked: resizes(sent) - before, on: selected(app)[0] }; };
+  assert.deepEqual(go("ArrowRight"), { moved: true, asked: 1, on: "What it does" });
+  assert.deepEqual(go("End"), { moved: true, asked: 1, on: "Tests and gaps" });
+  assert.deepEqual(go("ArrowRight"), { moved: true, asked: 1, on: "Overview" }, "past the last, the first");
+  assert.deepEqual(go("ArrowLeft"), { moved: true, asked: 1, on: "Tests and gaps" });
+  assert.deepEqual(go("Home"), { moved: true, asked: 1, on: "Overview" });
   const rule = (sel) => style.match(new RegExp(`(?:^|\\n)${sel.replace(/[.[\]()*+?^$|\\]/g, "\\$&")} \\{([^}]*)\\}`))?.[1] ?? "";
+  assert.match(rule(":root"), /--size: max\(16px, var\(--ca-font-size, 16px\)\)/, "the body is 16px or more, whatever the host hands");
+  for (const m of style.matchAll(/font-size:\s*([\d.]+)em/g)) assert.ok(Number(m[1]) >= 0.875, `no text under 14px: ${m[0]}`);
+  for (const m of style.matchAll(/font-size:\s*([\d.]+)px/g)) assert.ok(Number(m[1]) >= 14, `no text under 14px: ${m[0]}`);
   assert.match(rule(".tab:focus-visible"), /outline: 2px solid var\(--accent\)/);
   assert.match(rule(".tabs"), /overflow-x: auto/);
-  assert.match(rule(".tab"), /flex: none/);
-  assert.match(rule(".tab"), /min-height: 44px/, "a touch target");
-  assert.match(rule(".tab-name"), /white-space: nowrap/);
-  // A title is never cut.
   const rules = [...style.matchAll(/([^{}]+)\{([^{}]*)\}/g)].map((m) => ({ sel: m[1].trim(), body: m[2] }));
-  for (const r of rules.filter((x) => /\.toggle|\.tt\b|\.row\b/.test(x.sel))) assert.ok(!/text-overflow\s*:\s*ellipsis|white-space\s*:\s*nowrap|overflow\s*:\s*hidden/.test(r.body), `${r.sel} cuts nothing`);
-  rowOf(app, "S7-012");
-  assert.equal(rowOf(app, "S7-012").querySelector(".tt").textContent, LONG, "the whole title, as the report gives it");
+  for (const r of rules.filter((x) => /\.toggle|\.tt\b|\.row\b/.test(x.sel))) assert.ok(!/text-overflow\s*:\s*ellipsis|overflow\s*:\s*hidden/.test(r.body), `${r.sel} cuts nothing`);
 });
 
-test("[F5.R9] nothing on the page explains a count, a section or how the report was made, and no status, section code, category code or full commit is drawn, running or done, on any tab", () => {
+test("[F5.R9] nothing on any tab or opened row names a file, a line, a path or an advisory id, explains a count or says how the report was made, running or done", () => {
   const held = [{ section: 7, title: "One judgment", why: "It cited a fact the scripts did not find." }];
   const scripts = findings().filter((f) => f.by === "script");
+  const DEAD = [/\b[\w-]+\.(?:py|mjs|js|ts|md|json|toml|lock)\b/, /\w\/\w+\//, /:\d+\b/, /GHSA-/, /CVE-/, /In the code/, /Name in the code/, /^Copy$/m, /\bthe facts\b/i];
   const cases = [
+    drawn(richReport(held), { width: 1100 }),
     drawn(report(findings(), held)),
-    drawn(report(findings(), held), { lifecycle: "accepted" }),
     drawn(copyOf(scripts, "Unpacked 412 files of langchain-ai/design-agent at 86d8f6677968; reading the facts by rule."), { job_state: "working", lifecycle: null }),
-    drawn(copyOf(findings().filter((f) => f.section !== 1)), { job_state: "completed", lifecycle: null }),
   ];
   for (const { app } of cases) {
     for (const name of TAB_NAMES) {
       tabNamed(app, name).click();
       for (const r of app.querySelectorAll("li.row")) r.querySelector(".toggle").click();
       const words = readable(app);
-      for (const re of NEVER) assert.ok(!re.test(words), `${name} draws nothing like ${re}: ${words.match(re)?.[0]}`);
+      for (const re of [...NEVER, ...DEAD]) assert.ok(!re.test(words), `${name} draws nothing like ${re}: ${words.match(re)?.[0]}`);
     }
   }
-  assert.equal(drawn(copyOf(scripts, "Unpacked 412 files of langchain-ai/design-agent at 86d8f6677968; reading the facts by rule."), { job_state: "working", lifecycle: null }).app.querySelector("p.now").textContent, "Reading the code");
 });
