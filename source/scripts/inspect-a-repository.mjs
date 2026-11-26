@@ -40,8 +40,9 @@ import { createEmitter, liveUpdates } from "./emit.mjs";
 import { judge } from "./judge.mjs";
 import { checkDescription, checkDrafts, checkGlance, checkSkillNames } from "./checks.mjs";
 import { buildReport, markdownOf, notJudged, replyOf, scriptFindings } from "./report.mjs";
+import { stepLine } from "./lists.mjs";
 
-export const VERSION = "0.4.2";
+export const VERSION = "0.4.3";
 const DAY_MS = 24 * 60 * 60 * 1000;
 
 /**
@@ -62,7 +63,11 @@ export async function inspect({ text, workDir, env = process.env, fetchImpl = fe
   try {
     let gh, repository, commitRec, recent, bytes, newestOn = null;
     try {
-      onStatus(`Reading GitHub's records of ${owner}/${name} and its archive at ${req.commit ?? "its newest commit"}.`);
+      // 0.4.3: the first working copy goes out the moment the job starts,
+      // before any call to GitHub, with the repository the request names and
+      // no commit yet, so the report's view is up and says the step at once.
+      onStatus(stepLine(1, "Reading the repository"));
+      onStart({ owner, name, url: `https://github.com/${owner}/${name}`, sha: null, checked: false, date: null, version: VERSION, started_at: startedAt });
       gh = githubReader({ owner, name, env, fetchImpl });
       repository = await gh.repository();
       // 0.4.0: no commit named, so the newest on the default branch.
@@ -90,7 +95,7 @@ export async function inspect({ text, workDir, env = process.env, fetchImpl = fe
     const bytesOf = (f) => { try { return readFileSync(join(dir, f)); } catch { return null; } };
     const textFiles = files.filter((f) => { const b = bytesOf(f); return b && looksLikeText(b); }).length;
     const url = String(repository.html_url ?? `https://github.com/${owner}/${name}`);
-    onStatus(`Unpacked ${files.length} files of ${owner}/${name} at ${sha.slice(0, 12)}; reading the facts by rule.`); // cut-ok: a short digest in a status line; the full one is in the report
+    onStatus(stepLine(2, "Reading the code"));
     const collected = collectFacts({ files, read, bytesOf, archive, github: { repository, commit: commitRec, recent, newest_on: newestOn }, owner, name, sha });
     const { facts, byId, add } = collected;
     onStart({ owner, name, url, sha, checked: archive.commit === sha, date: facts.find((f) => f.kind === "commit")?.data?.date ?? null, version: VERSION, started_at: startedAt });
@@ -99,7 +104,7 @@ export async function inspect({ text, workDir, env = process.env, fetchImpl = fe
     const made = makeSbom({ files, read, repository: url, commit: sha, tool: { name: "inspect", version: VERSION } });
     const { bom, gaps } = addUvLock(made.bom, made.gaps, files, read);
     for (const g of gaps) add("bom-gap", g.evidence?.[0] ?? null, { about: g.about, why: g.why });
-    onStatus(`Read ${facts.length} facts; listed ${bom.components.length} dependencies and asking OSV about their known vulnerabilities.`);
+    onStatus(stepLine(2, "Checking its dependencies for known security flaws"));
     const osv = await checkWithOsv(bom.components, { env, fetchImpl });
     if (!osv.ok) add("osv-failed", { source: { system: "vulnerability-database", call: osv.calls.at(-1)?.call ?? "POST /v1/querybatch", field: "status" } }, { said: osv.said });
     for (const v of osv.found) {
@@ -112,7 +117,7 @@ export async function inspect({ text, workDir, env = process.env, fetchImpl = fe
 
     const ctx = contextFor({ files, read });
     const emitter = createEmitter({ onFinding });
-    onStatus(`OSV ${osv.ok ? `names ${osv.found.length} known vulnerabilities` : "could not be asked"}; writing the findings the scripts make.`);
+    onStatus(stepLine(2, "Writing what the code shows"));
     for (const f of scriptFindings({ facts, ctx, owner, name, sha, repoUrl: url, osv, bomGaps: gaps, files, textFiles, skillTexts: collected.skillTexts, cased: collected.cased })) emitter.emitFinding(f);
 
     // The judgments.
@@ -168,7 +173,7 @@ export async function inspect({ text, workDir, env = process.env, fetchImpl = fe
       owner, name, url, sha, checked: archive.commit === sha, date: commitFact?.data?.date ?? null, version: VERSION, now: now().toISOString(),
       findings: emitter.findings(), held, facts, bom, osv, usage,
     }));
-    onStatus(`Done: ${report.counts.findings} findings, ${report.counts.held_back} judgments held back; the report follows as the answer.`);
+    onStatus(stepLine(5, "Finishing the report"));
     return { code: 0, reply: deepScrub(replyOf(report, { notes })), report, bom };
   } finally {
     rmSync(dir, { recursive: true, force: true });

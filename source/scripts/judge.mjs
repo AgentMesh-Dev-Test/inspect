@@ -24,7 +24,7 @@
 //   import { judge, CALL_TOKENS, BUDGETS, estimateTokens } from "./judge.mjs"
 import { callModel, readJson } from "./model-caller.mjs";
 import { factLine } from "./collect.mjs";
-import { KINDS, LEVELS, LLM_TOP_10, AGENTIC_TOP_10 } from "./lists.mjs";
+import { KINDS, LEVELS, LLM_TOP_10, AGENTIC_TOP_10, stepLine } from "./lists.mjs";
 
 /** The most one call's prompt may take, in tokens, so it fits the model's window with room for the answer. */
 export const CALL_TOKENS = 160_000;
@@ -149,10 +149,10 @@ export async function judge({ facts, repo, ask = (prompt, o) => callModel(prompt
   const answerOf = (r) => (r.failed ? { failed: r.failed } : { drafts: draftsOf(r), ...(Array.isArray(r?.doc?.skills) ? { skills: r.doc.skills } : {}) });
   // Each call's answer is handed on the moment it lands (onCall), so its
   // findings are checked and posted while the next call is still running.
-  onStatus("Asking the model for the judgments of sections 3, 4 and 5: what it does, how it works and the systems it uses.");
+  onStatus(stepLine(3, "Judging what it does and the systems it uses"));
   const first = answerOf(await one("first", promptFor("first", firstPrompt), BUDGETS.first, [3, 4, 5]));
   await onCall("first", first);
-  onStatus("Asking the model for the judgments of sections 6, 7 and 8: what it can do on its own, its risks, and its tests.");
+  onStatus(stepLine(4, "Judging its risks and its tests"));
   const second = answerOf(await one("second", promptFor("second", secondPrompt), BUDGETS.second, [6, 7, 8]));
   await onCall("second", second);
   const out = {
@@ -160,7 +160,7 @@ export async function judge({ facts, repo, ask = (prompt, o) => callModel(prompt
     usage, not_made: notMade,
     /** The last call, made once the findings it reads are checked. */
     async glance(findings) {
-      onStatus("Writing section 1, at a glance, from the checked findings.");
+      onStatus(stepLine(5, "Writing the overview"));
       const r = await one("glance", glancePrompt(findings), BUDGETS.glance, [1]);
       return r.failed ? { failed: r.failed } : { drafts: Array.isArray(r.doc?.glance) ? r.doc.glance : [], description: typeof r.doc?.description === "string" ? r.doc.description : null };
     },

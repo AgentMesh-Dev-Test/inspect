@@ -101,3 +101,10 @@ export const KINDS = {
 
 /** The sections whose findings another agent reads, and so must be precise. */
 export const PRECISE = new Set([3, 4, 5]);
+
+/** How many steps a job takes, as its status lines count them (0.4.3). */
+export const STEPS = 5;
+/** A status line, in the words the report's view draws: "Step 3 of 5:
+ *  Judging what it does and the systems it uses." Plain words only: no
+ *  section numbers, no digests, no internal words (0.4.3). */
+export const stepLine = (n, words) => `Step ${n} of ${STEPS}: ${words}.`;

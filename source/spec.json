@@ -2,7 +2,7 @@
   "format": "spec-v1",
   "product": {
     "name": "inspect",
-    "version": "0.4.2",
+    "version": "0.4.3",
     "kind": "agent"
   },
   "purpose": "Inspect takes a public GitHub repository address and a commit, reads the agent's code at that commit without running any of it, and hands back an inspection report on what the agent does and how safe it is. The report is a list of findings in eight sections, each finding standing on its own and citing a file and line at the commit. Its reader is the person in charge of a department's agents, deciding whether to bring in an outside agent before anything is installed or given a credential. It judges no fit with anyone's plan, matches the agent to no catalog role and gives no bring-it-in-or-not verdict.",
@@ -29,7 +29,7 @@
       "inputs": [
         {
           "name": "repository",
-          "kind": "url",
+          "kind": "identifier",
           "about": "The public GitHub repository, as https://github.com/<owner>/<name> or <owner>/<name>, on a line of the message (repository: ...) or anywhere in it.",
           "required": true,
           "given_by": "either"
@@ -48,7 +48,7 @@
           "kind": "input",
           "priority": "must",
           "verify": "test",
-          "shall": "The agent shall take the repository as a https://github.com/<owner>/<name> address or as <owner>/<name>, and the commit, when the message names one, as 7 to 40 hexadecimal characters, from repository: and commit: lines of the message or from one https://github.com/<owner>/<name>/commit/<digest> or /tree/<digest> address that names both.",
+          "shall": "The agent shall take the repository as a https://github.com/<owner>/<name> address or as <owner>/<name>, and shall declare it so either form reaches it (kind identifier, 0.4.3), and the commit, when the message names one, as 7 to 40 hexadecimal characters, from repository: and commit: lines of the message or from one https://github.com/<owner>/<name>/commit/<digest> or /tree/<digest> address that names both.",
           "source": {
             "said": "Inspect takes a GitHub repository address and a commit"
           }
@@ -711,8 +711,12 @@
                 "additionalProperties": false,
                 "properties": {
                   "sha": {
-                    "type": "string",
-                    "pattern": "^[0-9a-f]{40}$"
+                    "type": [
+                      "string",
+                      "null"
+                    ],
+                    "pattern": "^[0-9a-f]{40}$",
+                    "description": "the commit's full digest; null only in the first working copy, posted before GitHub's record names the commit"
                   },
                   "checked": {
                     "type": "boolean",
@@ -1375,7 +1379,7 @@
           "kind": "interface",
           "priority": "must",
           "verify": "test",
-          "shall": "The agent shall pass every finding, from the scripts and from the model, through one function that emits a finding, in the order it is found and with the id it has in the report, and that function shall post each finding to the running job as a piece named by its id, with a status line as each stage of the inspection begins (adapter 0.102.0: lines of the job folder's updates.jsonl), written together once per turn of the event loop, each write ending with the working copy of the report: the report so far, under the report's own name inspection, marked partial with the stage it is at, whole in one piece of at most 60,000 characters, each finding carrying the fields of its detail the view draws while there is room for them, so no field on the page is empty while the job runs; the first working copy is posted as soon as GitHub's records name the commit, before the archive is read.",
+          "shall": "The agent shall pass every finding, from the scripts and from the model, through one function that emits a finding, in the order it is found and with the id it has in the report, and that function shall post each finding to the running job as a piece named by its id, with a status line as each stage of the inspection begins (adapter 0.102.0: lines of the job folder's updates.jsonl), written together once per turn of the event loop, each write ending with the working copy of the report: the report so far, under the report's own name inspection, marked partial with the stage it is at, whole in one piece of at most 60,000 characters, each finding carrying the fields of its detail the view draws while there is room for them, so no field on the page is empty while the job runs; the first working copy is posted the moment the job starts, before any call to GitHub, with the repository it names and no commit yet, and each status line is the step in plain words (Step 1 of 5: Reading the repository).",
           "source": {
             "said": "Shape its code so that posting each finding as it is found is a small later change (one place that emits a finding)."
           }

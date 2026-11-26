@@ -88,3 +88,10 @@ test("[F5.R9] the descriptor's words for a person: a name, one short sentence, a
   assert.equal(md.kind, "text/markdown");
   assert.equal(md.presentation, "document");
 });
+
+test("[F5.R9] the repository is declared so a name or an address both reach Inspect: no input is kind url, which a door would hold to a web address, and the words say both forms", () => {
+  const inputs = d.offerings[0].inputs;
+  assert.deepEqual(inputs.map((i) => [i.name, i.kind]), [["repository", "identifier"], ["commit", "identifier"]]);
+  assert.match(inputs[0].about, /address or as owner and name, such as langchain-ai\/design-agent/);
+  assert.doesNotMatch(d.summary, /at one commit/, "the commit is optional, so the summary names none");
+});

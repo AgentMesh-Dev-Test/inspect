@@ -559,10 +559,14 @@ button { font: inherit; color: inherit; cursor: pointer; }
     if (!running(p, d) && d?.partial) return "Finished without the full report.";
     return null;
   }
-  // The step Inspect is on, and its words.
+  // The step Inspect is on, and its words: since 0.4.3 the status line says
+  // both ("Step 3 of 5: Judging what it does and the systems it uses."); an
+  // older working copy's stage is read by its words.
   function stepOf(d) {
     const s = one(d?.partial?.stage);
     if (!s) return { n: 1, words: "Starting" };
+    const said = /^Step (\d) of \d+: (.+?)\.?$/.exec(s);
+    if (said && Number(said[1]) >= 1 && Number(said[1]) <= STEP_COUNT) return { n: Number(said[1]), words: said[2] };
     const hit = STAGES.find(([re]) => re.test(s));
     return hit ? { n: hit[1], words: hit[2] } : { n: 1, words: s.replace(/\s*\(.*?\)/g, "").replace(/[.;:]+$/, "") };
   }

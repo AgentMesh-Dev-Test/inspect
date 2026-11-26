@@ -520,6 +520,12 @@ test("[F5.R9] while the job runs, one status under the tabs says Inspect is work
   p.data(copyOf(findings().filter((f) => f.section !== 1), "Writing section 1, at a glance, from the checked findings."));
   climbs.push(rows());
   assert.equal(status().querySelector("p.now").textContent, "Inspecting · Step 5 of 5: Writing the overview");
+  // 0.4.3: a status line that says its step is drawn in its own words.
+  p.data(copyOf(findings().filter((f) => f.section !== 1), "Step 5 of 5: Writing the overview."));
+  assert.equal(status().querySelector("p.now").textContent, "Inspecting · Step 5 of 5: Writing the overview");
+  p.data(copyOf([], "Step 1 of 5: Reading the repository."));
+  assert.equal(status().querySelector("p.now").textContent, "Inspecting · Step 1 of 5: Reading the repository");
+  p.data(copyOf(findings().filter((f) => f.section !== 1), "Step 5 of 5: Writing the overview."));
   assert.deepEqual(climbs, [1, 2, 2], "the tab fills in under the person");
   for (const t of tabsOf(app)) assert.ok(!/\d/.test(t.textContent), "no count while running either");
   p.data(report(), { job_state: "completed", lifecycle: "draft" });

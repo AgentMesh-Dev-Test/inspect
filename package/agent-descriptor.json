@@ -1,18 +1,18 @@
 {
   "format": "agent-descriptor-v1",
-  "agent_version": "0.4.2",
+  "agent_version": "0.4.3",
   "name": "Inspect",
-  "summary": "Reads an outside agent's code on GitHub at one commit, without running any of it, and reports what it does and how safe it is.",
-  "does": "Inspect reads an outside agent's code in a public GitHub repository at one commit, without running any of it, and hands back an inspection report on what the agent does and how safe it is: a list of findings in eight sections, each citing a file and line at the commit. Scripts read the code by rule; a model writes only the judgments, and each judgment cites the lines it rests on. It gives no verdict on bringing the agent in and judges no fit with anyone's plan.",
+  "summary": "Reads an outside agent's code on GitHub, without running any of it, and reports what it does and how safe it is.",
+  "does": "Inspect reads an outside agent's code in a public GitHub repository, at its newest commit or one you name, without running any of it, and hands back an inspection report on what the agent does and how safe it is: a list of findings in eight sections, each citing a file and line at the commit. Scripts read the code by rule; a model writes only the judgments, and each judgment cites the lines it rests on. It gives no verdict on bringing the agent in and judges no fit with anyone's plan.",
   "offerings": [
     {
       "id": "inspect-a-repository",
       "name": "Inspect a repository",
-      "does": "Inspects one public GitHub repository at one commit and hands back the inspection report, a copy of it to read, the dependency list and a short summary.",
+      "does": "Inspects one public GitHub repository, at its newest commit or one you name, and hands back the inspection report, a copy of it to read, the dependency list and a short summary.",
       "inputs": [
         {
           "name": "repository",
-          "kind": "url",
+          "kind": "identifier",
           "required": true,
           "given_by": "either",
           "about": "The public GitHub repository to inspect, as its address or as owner and name, such as langchain-ai/design-agent."
@@ -114,8 +114,12 @@
                 "additionalProperties": false,
                 "properties": {
                   "sha": {
-                    "type": "string",
-                    "pattern": "^[0-9a-f]{40}$"
+                    "type": [
+                      "string",
+                      "null"
+                    ],
+                    "pattern": "^[0-9a-f]{40}$",
+                    "description": "the commit's full digest; null only in the first working copy, posted before GitHub's record names the commit"
                   },
                   "checked": {
                     "type": "boolean",
@@ -824,7 +828,7 @@
         "output": "inspection"
       },
       "file": "views/report.html",
-      "digest": "sha256:798de65f1ed4e8edc13fd6577e6c156615014d7d697361dd7d01ca286b039f77",
+      "digest": "sha256:cddca1a8e92241d6cdbb5d88fea11904b3320b18f0ed4eff17d9a753b9c018aa",
       "requests": [
         "resize",
         "copy-text",

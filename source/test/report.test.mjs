@@ -168,7 +168,12 @@ test("[F5.R4] in an inspection the stages are said in order, and sections 3 to 5
   await inTemp((at) => inspect({ text: "repository: acme/helper\ncommit: 86d8f66", workDir: at, env: ENV, fetchImpl: world({ files: smallAgent() }).fetchImpl, ask: model(answers).ask,
     onFinding: (f) => events.push(["finding", f]), onStatus: (s) => events.push(["status", s]) }));
   const statuses = events.filter(([k]) => k === "status").map(([, s]) => s);
-  for (const [i, word] of ["Reading GitHub", "Unpacked", "Read ", "OSV", "sections 3, 4 and 5", "sections 6, 7 and 8", "section 1", "Done"].entries()) assert.ok(statuses[i]?.includes(word), `status ${i + 1} says ${word}: ${statuses[i]}`);
+  // 0.4.3: each status line is the step in plain words, as the view draws it.
+  assert.deepEqual(statuses, [
+    "Step 1 of 5: Reading the repository.", "Step 2 of 5: Reading the code.", "Step 2 of 5: Checking its dependencies for known security flaws.", "Step 2 of 5: Writing what the code shows.",
+    "Step 3 of 5: Judging what it does and the systems it uses.", "Step 4 of 5: Judging its risks and its tests.", "Step 5 of 5: Writing the overview.", "Step 5 of 5: Finishing the report.",
+  ]);
+  for (const line of statuses) assert.doesNotMatch(line, /facts|section|OSV|[0-9a-f]{7,}|\/|by rule/i, "no internal word, digest or path in a status line");
   const second = events.findIndex(([k]) => k === "second call");
   const sectionFour = events.findIndex(([k, f]) => k === "finding" && f.section === 4 && f.by === "model");
   assert.ok(sectionFour >= 0 && sectionFour < second, "the model's finding of section 4 was posted before the second call was made");
@@ -265,4 +270,12 @@ test("[F5.R4] the working copy carries the fields of each finding's detail the v
   assert.ok(JSON.stringify(big).length <= WORKING_COPY_CHARS);
   assert.equal(big.partial.says_left_out, true, "the words go first");
   assert.ok(big.findings.every((f) => f.detail?.size), "the fields the view draws stay while they fit");
+});
+
+test("[F5.R4] the first working copy, posted before GitHub names the commit, fits the report's schema with no commit yet, and the view draws it as the first step with placeholders", () => {
+  const first = workingCopy({ about: { owner: "acme", name: "helper", url: "https://github.com/acme/helper", sha: null, checked: false, date: null, version: "0.4.3", started_at: "2026-11-26T18:00:00Z" }, findings: [], stage: "Step 1 of 5: Reading the repository." });
+  assert.deepEqual(schemaProblems(first, reportSchema()), []);
+  assert.equal(first.commit.sha, null);
+  const delivered = reportSchema().properties.commit.properties.sha;
+  assert.match(delivered.description, /null only in the first working copy/);
 });
