@@ -42,7 +42,7 @@ import { checkDescription, checkDrafts, checkGlance, checkSkillNames } from "./c
 import { buildReport, markdownOf, notJudged, replyOf, scriptFindings } from "./report.mjs";
 import { stepLine } from "./lists.mjs";
 
-export const VERSION = "0.4.3";
+export const VERSION = "0.4.4";
 const DAY_MS = 24 * 60 * 60 * 1000;
 
 /**

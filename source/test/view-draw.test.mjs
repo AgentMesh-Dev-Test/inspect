@@ -495,8 +495,9 @@ test("[F5.R9] while the job runs, one status under the tabs says Inspect is work
   const sk = (name) => { tabNamed(app, name).click(); return shownPanel(app); };
   const over = sk("Overview");
   assert.ok(over.querySelector(".sk-lead"), "the description still to come is a placeholder");
-  const sys = over.querySelector("ul.size-tiles").querySelectorAll("li").find((t) => t.querySelector(".k").textContent === "Systems required");
-  assert.ok(sys.querySelector(".v").querySelector(".sk"), "a count still to come is a placeholder, never a blank or a zero");
+  const tiles = over.querySelector("ul.size-tiles").querySelectorAll("li");
+  assert.ok(tiles.some((t) => t.querySelector(".v").querySelector(".sk")), "a count still to come is a placeholder, never a blank or a zero");
+  assert.ok(tiles.every((t) => t.querySelector(".v").querySelector(".sk") || /d/.test(t.querySelector(".v").textContent)), "every tile is a number or a placeholder");
   const does = sk("What it does");
   assert.deepEqual(does.querySelectorAll("h3").map((h) => h.textContent).slice(0, 1), ["Jobs"]);
   assert.ok(does.querySelector("ul.sk-rows"), "the jobs still to come are placeholders");
@@ -616,4 +617,12 @@ test("[F5.R9] a system whose supply the model could not name shows only that the
   const row = rowOf(app, "S5-013");
   assert.equal(row.querySelector(".need .word").textContent, "Not clear from the code");
   assert.equal(row.querySelector(".supply"), null);
+});
+
+test("[F5.R9] at the first step, before any of the scripts' facts, the Overview's five tiles are all placeholders, never one tile alone", () => {
+  const p = drawn(copyOf([], "Step 1 of 5: Reading the repository."), { job_state: "working", lifecycle: null });
+  const tiles = shownPanel(p.app).querySelector("ul.size-tiles").querySelectorAll("li");
+  assert.equal(tiles.length, 5);
+  assert.ok(tiles.every((t) => t.querySelector(".sk")), "each a placeholder");
+  assert.ok(!/Systems required/.test(readable(shownPanel(p.app))), "no tile's words before its number");
 });

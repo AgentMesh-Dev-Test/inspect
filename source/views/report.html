@@ -757,7 +757,10 @@ button { font: inherit; color: inherit; cursor: pointer; }
     if (desc?.says) out.push(el("p", { class: "lead" }, prose(desc.says)));
     else if (pending.has(1)) out.push(skLead());
     const tiles = sizeOf(d, pending);
-    if (tiles.length) out.push(el("ul", { class: "size-tiles" }, tiles.map((t) => el("li", {}, icon(t.icon, 22), el("span", { class: "v" }, t.v === null ? skInline() : t.v), el("span", { class: "k", text: t.k }), t.v === null ? el("span", { class: "sr", text: SOON }) : null))));
+    // 0.4.4: until the first of the scripts' facts arrive, all five tiles
+    // are placeholders, never one wide tile alone.
+    const known = tiles.some((t) => t.v !== null);
+    if (tiles.length && (known || !(pending.has(2) || pending.has(3)))) out.push(el("ul", { class: "size-tiles" }, tiles.map((t) => el("li", {}, icon(t.icon, 22), el("span", { class: "v" }, t.v === null ? skInline() : t.v), el("span", { class: "k", text: t.k }), t.v === null ? el("span", { class: "sr", text: SOON }) : null))));
     else if (pending.has(2) || pending.has(3)) out.push(el("ul", { class: "size-tiles", role: "img", "aria-label": SOON }, ["skills", "scripts", "code", "tests", "systems"].map((k) => el("li", {}, icon(k, 22), el("span", { class: "v" }, skInline()), el("span", { class: "k" }, sk("70%"))))));
     const rows = inspected(d);
     if (rows.length) out.push(el("h2", { text: "What was inspected" }), el("dl", { class: "facts" }, rows.flatMap(([k, v]) => [el("dt", { text: k }), el("dd", {}, v)])));

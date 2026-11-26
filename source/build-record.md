@@ -433,3 +433,7 @@ The 0.4.3 install and proof on dev:
 - Inspect posts within a second of starting. The other 17 seconds are the platform's: about nine from the adapter having the message to the worker starting Inspect, and about seven from Inspect's first piece to the view drawn (the adapter reading the job folder's updates, the Task, Next's poll and the frame).
 - The cut pass on the shots at 5 s, 20 s and done found one thing: at step 1, before any of the scripts' facts, the Overview drew "Systems required" as a single wide placeholder tile. Its fix (all five tiles as placeholders until the first facts arrive) was not deployed this round, which allowed one deploy; it waits on a branch.
 - The test account was closed afterwards. Production is untouched.
+
+## 0.4.4, waiting on a deploy turn: the Overview's tiles at the first step
+
+The fix for 0.4.3's cut-pass finding. Until the first of the scripts' facts arrive, the Overview draws all five tiles as placeholders, each with its icon, where 0.4.3 drew "Systems required" as one wide tile alone. test/view-draw.test.mjs holds it; the stand-in host draws it at 1440 and 400. The suite: 108 tests, 107 pass, one skipped. Packed as 0.4.4 on branch inspect-0.4.4-step1-tiles; not filed on dev.
