@@ -84,7 +84,7 @@ export function secondPrompt(factText, { repo }) {
     "Write the findings of these sections, with the security reviewer's words: what it may reach, what it may spend, and what it must never do.",
     `Section 6 "What it can do on its own": kind tool (each tool it gives its model; detail {name, does: "shell" | "file-write" | "browser" | "send-message" | "network" | "other", needs_ok: "yes" | "no" | "unknown"}), kind autonomy (which tools run without a person's OK).`,
     `Section 7 "Risks, and what it needs to run safely": kind risk, for where outside content can reach an action (the prompt-injection path), where data leaves, scripts that run at install, committed secrets, known vulnerabilities in dependencies that have no level yet, and license obligations. Every risk has "level", one of ${LEVELS.join(", ")} (the CVSS v4.0 qualitative words), and "categories", one or more of: ${Object.keys(LLM_TOP_10).map((k) => `${k} ${LLM_TOP_10[k]}`).join("; ")}; ${Object.keys(AGENTIC_TOP_10).map((k) => `${k} ${AGENTIC_TOP_10[k]}`).join("; ")}; or, for a license obligation, the license's SPDX identifier, or for a dependency, its package URL or OSV id. Every risk also has detail {safe: "<how to make it safe, in one or two plain sentences: the least access it needs, or what to put behind a person's OK>"}, so a risk and its fix are one finding.`,
-    `Section 8 "Tests, and what Inspect couldn't tell": kind test (what its tests cover, citing the test-file facts it rests on), kind test-gap (what they miss), kind could-not-tell (what could not be settled without running it), kind question (a question for the publisher).`,
+    `Section 8 "Tests, and what Inspect couldn't tell": kind test (what its tests cover, citing the test-file facts it rests on), kind test-gap (what they miss), kind could-not-tell (what could not be settled without running it, ending with the question to ask the publisher, so a gap and its question are one finding).`,
     "",
     SAY_ONCE,
     "Write at most 50 findings in all, the most serious first, each in at most three sentences.",
@@ -163,5 +163,5 @@ export async function judge({ facts, repo, ask = (prompt, o) => callModel(prompt
 }
 
 /** The kinds the model may write in each section. */
-export const MODEL_KINDS = { 3: ["job", "input", "output", "code"], 4: ["model", "how-it-runs", "memory", "human-step"], 5: ["system", "spend"], 6: ["tool", "autonomy"], 7: ["risk"], 8: ["test", "test-gap", "could-not-tell", "question"] };
+export const MODEL_KINDS = { 3: ["job", "input", "output", "code"], 4: ["model", "how-it-runs", "memory", "human-step"], 5: ["system", "spend"], 6: ["tool", "autonomy"], 7: ["risk"], 8: ["test", "test-gap", "could-not-tell"] };
 for (const [s, ks] of Object.entries(MODEL_KINDS)) for (const k of ks) if (!KINDS[s].includes(k)) throw new Error(`the kind ${k} is not one of section ${s}'s`);

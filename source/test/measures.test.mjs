@@ -100,3 +100,10 @@ test("[F5.R10] the model is asked for the description, each system's need and wh
   assert.match(glance, /"description": /);
   assert.deepEqual(MODEL_KINDS[7], ["risk"], "a risk and its fix are one finding");
 });
+
+test("[F5.R10] a gap and the question to ask the publisher about it are one finding, so neither repeats the other", async () => {
+  const { secondPrompt, MODEL_KINDS } = await import("../scripts/judge.mjs");
+  assert.match(secondPrompt("", { repo: "x" }), /ending with the question to ask the publisher/);
+  assert.doesNotMatch(secondPrompt("", { repo: "x" }), /kind question/);
+  assert.deepEqual(MODEL_KINDS[8], ["test", "test-gap", "could-not-tell"]);
+});

@@ -344,3 +344,7 @@ The owner used 0.2.7's page: "if it does no good, you shouldn't put it on there 
 - The viewer lines up with the row it was opened from, not with its button.
 - The note under Skills and the two lines about Inspect are 16px, like the rest of the body text (they were 15px).
 - Single-underscore emphasis in a skill's Markdown ("_into_") loses its marks, as the other emphasis does.
+
+## 0.3.2: a gap and its question are one finding
+
+0.3.1 was running on dev by 10:03 pm Mountain time on 2026-11-25 (view at sha256:66de2a2816dc7833fce6d64fdf7cc1b2b5f483e0dfac88394b182223c0e2d181); one live run as a new test account, job 01a2163d-5c4d-7001-b12c-fa942f722f4d, sent 10:04 pm, delivered 10:07 pm. Its cut pass found Tests and gaps still saying one thing twice in other words: "What the approval list holds at run time" (what Inspect couldn't tell) beside "Which tools wait for a person by default?" (a question for the publisher). Different words, so the title check could not see it; the cause is two kinds for one thing. The model no longer writes kind question: each could-not-tell finding ends with the question to ask the publisher, so a gap and its question are one row. The suite: 94 tests, 93 pass, one skipped.
