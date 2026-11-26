@@ -337,7 +337,8 @@ test("[F5.R9] What it does: jobs naming the skills that do them, the skills the 
   const { app } = drawn(richReport(), { width: 1100 });
   tabNamed(app, "What it does").click();
   const panel = shownPanel(app);
-  assert.deepEqual(panel.querySelectorAll("h3").map((h) => h.textContent), ["Jobs", "Skills", "Skills for coding assistants", "Its own code"]);
+  assert.deepEqual(panel.querySelectorAll("h3").map((h) => h.textContent), ["Jobs", "Skills", "Its own code"]);
+  assert.equal(rowOf(app, "S3-012"), undefined, "the coding assistants' skills are counted on the Overview, never listed");
   assert.deepEqual(panel.querySelectorAll("h2").map((h) => h.textContent), ["How it works"], "no heading repeats the tab's name");
   const lists = panel.querySelectorAll("ul.rows");
   const skillList = lists.find((u) => u.querySelectorAll("li.row").some((r) => r.id === "f-S3-010"));

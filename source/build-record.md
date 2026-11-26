@@ -335,3 +335,12 @@ The owner used 0.2.7's page: "if it does no good, you shouldn't put it on there 
 - **Tests and gaps.** Each test row says how many tests, of what kind, and whether they run offline (from the test-file facts it cites, which now carry their kind and whether they need live keys). The model is told to say each thing once, and checks.mjs nearSame holds back a title that says or asks what another of its section and kind says. Judgments held back stay in the report, off the page.
 - **Words.** Skill names keep the repository's own capitals ("PR to video", "HyperFrames CLI", "ElevenLabs"; collect.mjs casedFrom), a folded YAML description is read, and the Markdown gives the commit's date only, never the inspection's, which a reader's time zone may move. Body text is 16px or more and nothing is under 14px.
 - The suite: 93 tests, 92 pass, one skipped. A local run on the real repository with a stand-in model: 155 findings, the report 943 KB.
+
+## 0.3.1: the cut pass on 0.3.0's live run
+
+0.3.0 was running on dev by 9:52 pm Mountain time on 2026-11-25 (view at sha256:f21740062774ff937b58c3024f73cbe9a5c4a6521a359cebb97bc7fe789d5c29); one live run from the Next app as a new test account, job 01a21633-69d4-7000-b8ca-00f49659ba91, sent 9:53 pm, delivered 9:57 pm. Its cut pass:
+
+- **One more thing removed:** the fifteen skills kept for coding assistants that work on the repository were a list of instructions-only rows that tell the person nothing about the agent; they are counted on the Overview and in the report, and no longer listed.
+- The viewer lines up with the row it was opened from, not with its button.
+- The note under Skills and the two lines about Inspect are 16px, like the rest of the body text (they were 15px).
+- Single-underscore emphasis in a skill's Markdown ("_into_") loses its marks, as the other emphasis does.

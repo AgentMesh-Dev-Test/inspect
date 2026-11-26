@@ -116,7 +116,7 @@ button { font: inherit; color: inherit; cursor: pointer; }
 .panel h2 { font-size: 1.1em; font-weight: 650; margin: calc(var(--s) * 3) 0 calc(var(--s) * 0.75); }
 .panel h3 { font-size: 0.94em; font-weight: 650; color: var(--muted); letter-spacing: 0.01em; margin: calc(var(--s) * 2.5) 0 calc(var(--s) * 0.6); }
 .panel > h2:first-child, .panel > h3:first-child, .beside > h2:first-child, .beside > h3:first-child { margin-top: 0; }
-.note { color: var(--muted); font-size: 0.94em; margin: 0 0 calc(var(--s) * 0.75); }
+.note { color: var(--muted); font-size: 1em; margin: 0 0 calc(var(--s) * 0.75); }
 .quiet { color: var(--muted); padding: calc(var(--s) * 0.75) 0; }
 
 /* Overview: the description, how much is there, what was inspected */
@@ -124,7 +124,7 @@ button { font: inherit; color: inherit; cursor: pointer; }
 .facts { display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: calc(var(--s) * 0.6) calc(var(--s) * 2.5); margin: 0; align-items: baseline; }
 .facts dt { color: var(--muted); }
 .facts dd { margin: 0; min-width: 0; overflow-wrap: anywhere; }
-.about-foot { margin-top: calc(var(--s) * 3.5); padding-top: calc(var(--s) * 1.5); border-top: 1px solid var(--border); color: var(--muted); font-size: 0.94em; display: grid; gap: calc(var(--s) * 0.5); max-width: 72ch; }
+.about-foot { margin-top: calc(var(--s) * 3.5); padding-top: calc(var(--s) * 1.5); border-top: 1px solid var(--border); color: var(--muted); font-size: 1em; display: grid; gap: calc(var(--s) * 0.5); max-width: 72ch; }
 .about-foot .k { font-weight: 650; color: var(--text); }
 
 /* Levels and needs: a shape and a word, never a color alone */
@@ -755,12 +755,10 @@ button { font: inherit; color: inherit; cursor: pointer; }
     // size); the finding that only counts them is never a row.
     const listed = three.filter((f) => f.kind === "skill" && !(f.detail && "own" in f.detail) && !sumsUp(f, "Skills"));
     const mine = listed.filter((s) => !s.detail?.for_coding_assistants);
-    const helpers = listed.filter((s) => s.detail?.for_coding_assistants);
     const most = Math.max(0, ...listed.map(linesOf));
     const bySize = (list) => list.map((f, i) => [f, i]).sort((a, b) => linesOf(b[0]) - linesOf(a[0]) || (Number(b[0].detail?.size?.instructions_chars) || 0) - (Number(a[0].detail?.size?.instructions_chars) || 0) || a[1] - b[1]).map(([f]) => f);
     const skillRows = (list) => drawRows(d, bySize(list), { measured: true, per: (f) => ({ side: measureOf(f) ? el("span", { class: "measure" }, el("span", { class: "words", text: measureOf(f) }), bar(linesOf(f), most)) : null }), detail: (f) => skillDetail(d, f) });
     if (mine.length) out.push(el("h3", { text: "Skills" }), el("p", { class: "note", text: "Size and tests show how much is there, not whether it's good." }), skillRows(mine));
-    if (helpers.length) out.push(el("h3", { text: "Skills for coding assistants" }), skillRows(helpers));
     const code = three.find((f) => f.kind === "code" && f.by === "script");
     const covers = three.find((f) => f.kind === "code" && f.by === "model");
     if (code || covers) {
@@ -938,8 +936,9 @@ button { font: inherit; color: inherit; cursor: pointer; }
     state.viewerFrom = from?.getAttribute?.("data-k") ?? null;
     // Beside the row it was opened from, at a desktop's width.
     let top = 0;
-    for (let n = from; n && !n.classList?.contains("panel"); n = n.offsetParent ?? n.parentNode) top += Number(n.offsetTop) || 0;
-    state.viewerTop = Math.max(0, top - 8);
+    const row = from?.closest?.("li.row") ?? from;
+    for (let n = row; n && !n.classList?.contains("panel"); n = n.offsetParent ?? n.parentNode) top += Number(n.offsetTop) || 0;
+    state.viewerTop = Math.max(0, top);
     draw();
     keyed.get("viewer-close")?.focus({ preventScroll: true });
     if (narrow()) app.scrollIntoView?.({ block: "start" });
@@ -1017,7 +1016,8 @@ button { font: inherit; color: inherit; cursor: pointer; }
     .replace(/!\[[^\]]*\]\([^)]*\)/g, "")
     .replace(/\[([^\]]+)\]\([^)]*\)/g, "$1")
     .replace(/(\*\*|__)(?=\S)(.+?)(?<=\S)\1/g, "$2")
-    .replace(/(^|[^\w*])\*(?=\S)([^*]+?)(?<=\S)\*(?!\w)/g, "$1$2"));
+    .replace(/(^|[^\w*])\*(?=\S)([^*]+?)(?<=\S)\*(?!\w)/g, "$1$2")
+    .replace(/(^|[^\w])_(?=\S)([^_]+?)(?<=\S)_(?!\w)/g, "$1$2"));
 
   function drawPanel(d, p, t, pending) {
     if (t.id === "overview") return drawOverview(d);
