@@ -136,6 +136,36 @@ export function checkDescription(text, findings, { most = 700 } = {}) {
   return { kept: { section: 1, kind: "description", title: "What it is", says, by: "model", based_on, ...(evidence.length ? { evidence } : {}), ...(source.length ? { source } : {}) }, held: [] };
 }
 
+/**
+ * The model's name and words for each skill (0.3.3): {kept: Map(fact id →
+ * {title, does}), held: [...]}. A title is three to eight plain words (two to
+ * ten are taken) with no full stop; its words are one or two plain sentences
+ * that do not say the title again and give no verdict. One that breaks a rule
+ * is held back with why, and the skill keeps the scripts' title.
+ */
+export function checkSkillNames(entries, byId) {
+  const kept = new Map(); const held = [];
+  for (const e of Array.isArray(entries) ? entries : []) {
+    const id = trim(e?.skill); const fact = byId.get(id);
+    const title = plainWords(trim(e?.title)).replace(/\s+/g, " "); const does = plainWords(trim(e?.does)).replace(/\s+/g, " ");
+    const hold = (why) => held.push({ section: 3, title: title || "(a skill with no name)", ...(does ? { says: does } : {}), why });
+    if (!fact || fact.kind !== "skill") { hold(`it names ${JSON.stringify(e?.skill ?? null)}, which is not a skill the scripts found`); continue; }
+    if (kept.has(id)) continue;
+    const words = title.split(" ").filter(Boolean).length;
+    if (words < 2 || words > 10 || /[.!?;:]$/.test(title)) { hold("its name is not a short plain name of three to eight words"); continue; }
+    const sentences = does.split(/(?<=[.!?])\s+/).filter(Boolean).length;
+    if (!does || sentences > 2 || does.length > 320) { hold("its words are not one or two plain sentences"); continue; }
+    if (does.toLowerCase().includes(title.toLowerCase())) { hold("its words say its name again"); continue; }
+    if (/^(?:use|invoke|run|call|trigger)\b|\b(?:use (?:this|it) (?:when|for)|route by)\b/i.test(does)) { hold("its words are written for a model, not a person"); continue; }
+    const p = notPlain(`${title} ${does}`);
+    if (p) { hold(plainWhy(p)); continue; }
+    const v = VERDICT.exec(unquoted(does));
+    if (v) { hold(`it gives a verdict or judges fit ("${v[0]}"), which Inspect does not`); continue; }
+    kept.set(id, { title: `${title[0].toUpperCase()}${title.slice(1)}`, does });
+  }
+  return { kept, held };
+}
+
 /** A category the draft names, resolved against the lists and the facts: {list, id, name} or null. */
 export function resolveCategory(raw, { spdx = new Set(), purls = new Set(), osv = new Set() } = {}) {
   const s = trim(typeof raw === "string" ? raw : raw?.id).replace(/^(\S+)\s.*$/, "$1");

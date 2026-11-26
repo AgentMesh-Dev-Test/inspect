@@ -32,6 +32,10 @@
   - Tests and gaps: what Inspect couldn't tell, the gaps in the tests and
     the tests, each test row with how many tests, of what kind, and whether
     they run offline.
+  Since 0.3.3 a skill is named and described in the model's plain words for
+  the person; its own description, written for the model that runs it, is
+  only in the viewer. The host's header links the repository, so the
+  Overview names only the commit.
   Nothing on the page names a file, a line or an advisory id: this frame
   opens no link, so a reference would be dead text. A skill's own
   instructions open in a viewer, beside the list at a desktop's width and in
@@ -116,7 +120,6 @@ button { font: inherit; color: inherit; cursor: pointer; }
 .panel h2 { font-size: 1.1em; font-weight: 650; margin: calc(var(--s) * 3) 0 calc(var(--s) * 0.75); }
 .panel h3 { font-size: 0.94em; font-weight: 650; color: var(--muted); letter-spacing: 0.01em; margin: calc(var(--s) * 2.5) 0 calc(var(--s) * 0.6); }
 .panel > h2:first-child, .panel > h3:first-child, .beside > h2:first-child, .beside > h3:first-child { margin-top: 0; }
-.note { color: var(--muted); font-size: 1em; margin: 0 0 calc(var(--s) * 0.75); }
 .quiet { color: var(--muted); padding: calc(var(--s) * 0.75) 0; }
 
 /* Overview: the description, how much is there, what was inspected */
@@ -607,8 +610,6 @@ button { font: inherit; color: inherit; cursor: pointer; }
     const of = (kind) => two.find((f) => f.kind === kind);
     const lead = (s) => one(s).split(/(?<=\.)\s/)[0].replace(/\.$/, "");
     const rows = [];
-    const at = repoAt(d);
-    rows.push(["Repository", at ? [repoName(d), " ", el("button", { class: "copy-link", type: "button", "data-k": "copy-repo", "aria-label": `Copy the link to ${repoName(d)} at this commit`, onclick: () => copyLink(at) }, "Copy link")] : repoName(d)]);
     const sha = d.commit?.sha;
     if (sha) rows.push(["Commit", `${short(sha)}${dateOf(d.commit?.date) ? `, ${dateOf(d.commit.date)}` : ""}`]);
     const lic = of("license");
@@ -635,13 +636,6 @@ button { font: inherit; color: inherit; cursor: pointer; }
       rows.push(["Publisher", `${pub.detail.login}${type ? `, ${/^[aeiou]/.test(type) ? "an" : "a"} ${type}` : ""}`]);
     }
     return rows;
-  }
-  function repoAt(d) {
-    let u;
-    try { u = new URL(String(d.repository?.url ?? "")); } catch { return null; }
-    const sha = String(d.commit?.sha ?? "");
-    if (u.protocol !== "https:" || u.hostname !== "github.com" || !/^[0-9a-f]{40}$/.test(sha)) return null;
-    return `${u.origin}${u.pathname.replace(/\/+$/, "")}/tree/${sha}`;
   }
   async function copyLink(url) {
     const r = await ask("view/copy-text", { text: url });
@@ -758,7 +752,7 @@ button { font: inherit; color: inherit; cursor: pointer; }
     const most = Math.max(0, ...listed.map(linesOf));
     const bySize = (list) => list.map((f, i) => [f, i]).sort((a, b) => linesOf(b[0]) - linesOf(a[0]) || (Number(b[0].detail?.size?.instructions_chars) || 0) - (Number(a[0].detail?.size?.instructions_chars) || 0) || a[1] - b[1]).map(([f]) => f);
     const skillRows = (list) => drawRows(d, bySize(list), { measured: true, per: (f) => ({ side: measureOf(f) ? el("span", { class: "measure" }, el("span", { class: "words", text: measureOf(f) }), bar(linesOf(f), most)) : null }), detail: (f) => skillDetail(d, f) });
-    if (mine.length) out.push(el("h3", { text: "Skills" }), el("p", { class: "note", text: "Size and tests show how much is there, not whether it's good." }), skillRows(mine));
+    if (mine.length) out.push(el("h3", { text: "Skills" }), skillRows(mine));
     const code = three.find((f) => f.kind === "code" && f.by === "script");
     const covers = three.find((f) => f.kind === "code" && f.by === "model");
     if (code || covers) {
@@ -785,7 +779,7 @@ button { font: inherit; color: inherit; cursor: pointer; }
     if (z) pairs.push(["Tests", tests]);
     pairs.push(["On its own", lift]);
     return [
-      el("p", {}, prose(one(f.detail?.description) || one(f.says).split(/(?<=[.!?])\s/)[0])),
+      typeof f.detail?.does === "string" && one(f.detail.does) ? el("p", {}, prose(f.detail.does)) : null,
       pairsOf(pairs),
       typeof f.detail?.instructions === "string" && f.detail.instructions ? el("button", { class: "btn", type: "button", "data-k": `read:${f.id}`, onclick: (e) => openViewer(f.id, e.currentTarget) }, "Read the skill") : null,
     ];
@@ -824,7 +818,6 @@ button { font: inherit; color: inherit; cursor: pointer; }
     if (!five.length && !six.length) return [el("p", { class: "quiet", text: pending.has(5) ? "Nothing yet." : "None found." })];
     const systems = systemsOf(d);
     const { skillsOf } = indexOf(d);
-    out.push(el("h2", { text: titleOf(d, 5) || "What it connects to" }));
     if (systems.length) {
       const byFinding = new Map(systems.map((x) => [x.finding, x]));
       out.push(drawRows(d, systems.map((x) => x.finding), { cls: "system", per: (f) => {
@@ -962,6 +955,7 @@ button { font: inherit; color: inherit; cursor: pointer; }
         el("h2", { id: "viewer-title" }, prose(displayTitle(f))),
         el("button", { class: "btn", type: "button", "data-k": "viewer-close", onclick: closeViewer }, "Close")),
       m ? el("p", { class: "muted" }, m) : null,
+      one(f.detail?.description) ? el("p", { class: "own" }, prose(one(f.detail.description))) : null,
       el("div", { class: "md" }, text ? markdown(text) : el("p", { class: "muted", text: "This report does not carry its instructions." })),
       f.detail?.instructions_cut && f.detail?.instructions_address
         ? el("p", { class: "cut" }, "The rest is longer than the report carries. ", el("button", { class: "copy-link", type: "button", "data-k": "viewer-copy", onclick: () => copyLink(f.detail.instructions_address) }, "Copy the link to the whole skill"))

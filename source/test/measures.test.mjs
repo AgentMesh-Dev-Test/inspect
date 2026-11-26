@@ -107,3 +107,39 @@ test("[F5.R10] a gap and the question to ask the publisher about it are one find
   assert.doesNotMatch(secondPrompt("", { repo: "x" }), /kind question/);
   assert.deepEqual(MODEL_KINDS[8], ["test", "test-gap", "could-not-tell"]);
 });
+
+test("[F5.R10] each skill gets a short plain name and plain words for the team from the model; one that breaks a rule is held back and the skill keeps the scripts' title", async () => {
+  const { checkSkillNames } = await import("../scripts/checks.mjs");
+  const byId = new Map([["F0001", { id: "F0001", kind: "skill" }], ["F0002", { id: "F0002", kind: "setting" }]]);
+  const r = checkSkillNames([
+    { skill: "F0001", title: "captions for talking-head videos", does: "It adds captions to footage of one person talking, without editing the footage." },
+    { skill: "F0002", title: "Not a skill", does: "It is a setting." },
+    { skill: "F0009", title: "Unknown", does: "Nothing." },
+  ], byId);
+  assert.deepEqual(r.kept.get("F0001"), { title: "Captions for talking-head videos", does: "It adds captions to footage of one person talking, without editing the footage." });
+  assert.equal(r.held.length, 2);
+  const breaks = [
+    { title: "Captions", does: "It adds captions." },
+    { title: "Captions for talking-head videos.", does: "It adds captions." },
+    { title: "Captions for talking-head videos", does: "Captions for talking-head videos, made fast." },
+    { title: "Captions for talking-head videos", does: "Use for plain verbatim captions. Route by visual identity." },
+    { title: "Captions for talking-head videos", does: "It runs `embed.mjs` on the footage." },
+    { title: "Captions for talking-head videos", does: "One. Two. Three." },
+  ];
+  for (const b of breaks) assert.equal(checkSkillNames([{ skill: "F0001", ...b }], byId).kept.size, 0, JSON.stringify(b));
+  const files = {
+    ...smallAgent(),
+    "skills/brand-lint/SKILL.md": "---\nname: brand-lint\ndescription: Use when a draft must be checked. Route by brand pack.\n---\n# Brand lint\n\nRun the check.\n",
+  };
+  const first = (prompt) => {
+    const id = /^(F\d+) \[skill\] skills\/brand-lint\/SKILL\.md/m.exec(prompt)?.[1];
+    return { text: JSON.stringify({ findings: [], skills: [{ skill: id, title: "Brand check for drafts", does: "It flags colours, fonts and logos that break the team's brand pack." }] }) };
+  };
+  const out = await inTemp((at) => inspect({ text: "repository: acme/helper\ncommit: 86d8f66", workDir: at, env: ENV, fetchImpl: world({ files }).fetchImpl, ask: model([first]).ask }));
+  const skill = out.report.findings.find((f) => f.kind === "skill" && f.detail?.name === "brand-lint");
+  assert.equal(skill.title, "Brand check for drafts");
+  assert.equal(skill.detail.does, "It flags colours, fonts and logos that break the team's brand pack.");
+  assert.equal(skill.detail.description, "Use when a draft must be checked. Route by brand pack.", "its own words stay, for the viewer");
+  assert.ok(skill.says.startsWith("It flags colours"), "the Markdown says what it does in plain words");
+  assert.ok(!skill.says.includes("Route by"));
+});

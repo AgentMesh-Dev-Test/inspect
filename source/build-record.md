@@ -348,3 +348,13 @@ The owner used 0.2.7's page: "if it does no good, you shouldn't put it on there 
 ## 0.3.2: a gap and its question are one finding
 
 0.3.1 was running on dev by 10:03 pm Mountain time on 2026-11-25 (view at sha256:66de2a2816dc7833fce6d64fdf7cc1b2b5f483e0dfac88394b182223c0e2d181); one live run as a new test account, job 01a2163d-5c4d-7001-b12c-fa942f722f4d, sent 10:04 pm, delivered 10:07 pm. Its cut pass found Tests and gaps still saying one thing twice in other words: "What the approval list holds at run time" (what Inspect couldn't tell) beside "Which tools wait for a person by default?" (a question for the publisher). Different words, so the title check could not see it; the cause is two kinds for one thing. The model no longer writes kind question: each could-not-tell finding ends with the question to ask the publisher, so a gap and its question are one row. The suite: 94 tests, 93 pass, one skipped.
+
+## 0.3.3: each skill in plain words, and nothing the header says
+
+0.3.2 was running on dev by 10:13 pm Mountain time on 2026-11-25; one live run as a new test account, job 01a21646-6a49-7001-9829-fd3453ceef01, sent 10:14 pm, delivered 10:18 pm. The coordinator's cut pass on it:
+
+- **A skill's rows repeated themselves in words written for a model.** The title was the skill's own trigger description cut short, and the opened row the same description in full ("Use for plain verbatim captions… Route by visual identity…"). The first call now answers "skills" as well: for each of the agent's own skills, a short plain name of three to eight words and one or two plain sentences on what it does for the team (judge.mjs SKILL_NAMES). checks.mjs checkSkillNames keeps a name of two to ten words with no full stop, and words of one or two plain sentences that don't say the name again, aren't written for a model and give no verdict; one that breaks a rule is held back and the skill keeps the scripts' title. The name becomes the finding's title and the words its says (detail.does); the skill's own description stays in detail.description and is shown only in the viewer, above its instructions. The first call's output budget is 20,000 tokens.
+- **The note under Skills** ("Size and tests show how much is there, not whether it's good") was a disclaimer; it is gone.
+- **"What it connects to"** under What it reaches meant the same as the tab; it is gone.
+- **The repository row on the Overview** repeated the header and needed a Copy link because the frame opens no link. It is gone; the Next app's header now links the subject to the job's main input when that is an https address (AgentMesh PR, job-page.ts jobSubjectLink). The Overview keeps the commit.
+- The suite: 95 tests, 94 pass, one skipped.

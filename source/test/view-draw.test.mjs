@@ -236,7 +236,7 @@ function rich() {
     ...base,
     { id: "S3-020", section: 3, kind: "skill", title: "Skills", says: "2 skills of the agent's own, and 1 skill kept for coding assistants.", by: "script", based_on: ["F0001"], evidence: ev("skills/brand-lint/SKILL.md", 1), detail: { own: 2, for_coding_assistants: 1 } },
     skill("S3-011", "Make still images", { name: "stills", path: "skills/stills", description: "Make still images on brand.", instructions_only: true, size: { scripts: 0, lines: 0, instructions_chars: 900, tests: { files: 0, cases: 0 } }, instructions: "Make stills.", instructions_cut: true, instructions_address: ADDRESS }),
-    skill("S3-010", "Check a draft against the brand pack", { name: "brand-lint", path: "skills/brand-lint", description: "Check a draft against the brand pack.", lift_out: "yes", size: { scripts: 2, lines: 640, instructions_chars: 400, tests: { files: 1, cases: 12 } }, instructions: SKILL_TEXT, instructions_cut: false, instructions_address: null }),
+    skill("S3-010", "Check a draft against the brand pack", { name: "brand-lint", path: "skills/brand-lint", description: "Check a draft against the brand pack.", does: "It flags colours, fonts and logos that break the brand pack.", plain: true, lift_out: "yes", size: { scripts: 2, lines: 640, instructions_chars: 400, tests: { files: 1, cases: 12 } }, instructions: SKILL_TEXT, instructions_cut: false, instructions_address: null }),
     skill("S3-012", "Release check", { name: "release-check", path: ".claude/skills/release-check", for_coding_assistants: true, instructions_only: true, size: { scripts: 0, lines: 0, instructions_chars: 200, tests: { files: 0, cases: 0 } }, instructions: "Check a release." }),
     { id: "S3-030", section: 3, kind: "job", title: "Makes on-brand still images", says: "It turns a request in Slack into images that follow the brand pack.", by: "model", based_on: ["F0002", "F0001"], evidence: ev("skills/stills/SKILL.md", 1) },
     { id: "S3-040", section: 3, kind: "code", title: "Its own code", says: "40 files and 4,100 lines of code outside its skills and its tests.", by: "script", based_on: ["F0007"], evidence: ev("src/app.py", 1), detail: { files: 40, lines: 4100 } },
@@ -279,7 +279,7 @@ test("[F5.R9] the view is one row of five tabs with nothing above it, in the ARI
   assert.match(risks.getAttribute("aria-label"), /, the highest High$/);
 });
 
-test("[F5.R9] Overview describes the whole agent: the description first, how much is there, what was inspected with the repository's link to copy, and two lines about Inspect at the foot; no risk on it", async () => {
+test("[F5.R9] Overview describes the whole agent: the description first, how much is there, what was inspected with the commit and no repository row, and two lines about Inspect at the foot; no risk on it", async () => {
   const { app, sent } = drawn(richReport());
   const panel = shownPanel(app);
   assert.equal(panel.children[0].className, "lead", "the description is the answer, first");
@@ -291,11 +291,7 @@ test("[F5.R9] Overview describes the whole agent: the description first, how muc
   const shown = pairs(facts);
   assert.equal(shown.Commit, "86d8f66, Nov 24, 2026");
   assert.equal(shown.License, "Apache-2.0");
-  assert.match(shown.Repository, /^langchain-ai\/design-agent Copy link$/);
-  panel.querySelector("button.copy-link").click();
-  await ticks();
-  const copied = sent.filter((m) => m.method === "view/copy-text").at(-1);
-  assert.equal(copied.params.text, `https://github.com/langchain-ai/design-agent/tree/${SHA}`, "the repository at the commit, copied: this frame opens no link");
+  assert.equal(shown.Repository, undefined, "the header names the repository and links it; the Overview keeps the commit");
   const foot = panel.querySelector(".about-foot");
   assert.equal(foot.querySelectorAll("p").length, 2);
   assert.match(foot.textContent, /^About Inspect\./);
@@ -357,7 +353,8 @@ test("[F5.R9] What it does: jobs naming the skills that do them, the skills the 
   assert.deepEqual(job.querySelectorAll("button.ref").map((b) => b.textContent), ["Make still images", "Check a draft against the brand pack"]);
   rowOf(app, "S3-010").querySelector(".toggle").click();
   const opened = rowOf(app, "S3-010").querySelector(".detail");
-  assert.equal(opened.querySelector("p").textContent, "Check a draft against the brand pack.");
+  assert.equal(opened.querySelector("p").textContent, "It flags colours, fonts and logos that break the brand pack.", "what it does for the team, in plain words, never its title again");
+  assert.ok(!readable(opened).includes("Check a draft against the brand pack."), "its own description stays in the viewer");
   assert.deepEqual(opened.querySelectorAll("dt").map((x) => x.textContent), ["Uses", "Tests", "On its own"]);
   assert.deepEqual(opened.querySelectorAll("dd").map((x) => x.textContent), ["ElevenLabs", "12 tests in 1 test file", "Can be lifted out on its own"]);
   assert.ok(opened.querySelector('button[data-k="read:S3-010"]'), "Read the skill");
@@ -374,6 +371,7 @@ test("[F5.R9] Read the skill opens a viewer: beside the list at a desktop's widt
   const viewer = panel.querySelector("section.viewer");
   assert.equal(viewer.getAttribute("role"), "dialog");
   assert.equal(viewer.querySelector("h2").textContent, "Check a draft against the brand pack");
+  assert.equal(viewer.querySelector("p.own").textContent, "Check a draft against the brand pack.", "the skill's own words are in the viewer");
   assert.equal(doc.activeElement, viewer.querySelector('button[data-k="viewer-close"]'), "focus moves to Close");
   const md = viewer.querySelector(".md");
   assert.deepEqual(md.children.map((n) => n.tagName), ["H3", "P", "H4", "UL", "PRE", "P"]);
@@ -414,6 +412,7 @@ test("[F5.R9] What it reaches: one row per outside system, required or optional 
   rowOf(app, "S5-020").querySelector(".toggle").click();
   assert.equal(rowOf(app, "S5-020").querySelector(".detail p").textContent, "The code stops without it.", "in words, never the setting as the code writes it");
   assert.ok(!panel.querySelectorAll("h3").some((h) => h.textContent === "Credentials"), "no list of credentials");
+  assert.ok(!panel.querySelectorAll("h2").some((h) => h.textContent === "What it connects to"), "no heading that means the same as the tab");
   rowOf(app, "S5-011").querySelector(".toggle").click();
   const open = rowOf(app, "S5-011").querySelector(".detail");
   assert.deepEqual(open.querySelectorAll("dt").map((x) => x.textContent), ["Used by", "Without it", "What goes to it"]);

@@ -29,7 +29,7 @@ import { KINDS, LEVELS, LLM_TOP_10, AGENTIC_TOP_10 } from "./lists.mjs";
 /** The most one call's prompt may take, in tokens, so it fits the model's window with room for the answer. */
 export const CALL_TOKENS = 160_000;
 /** Each call's output budget. */
-export const BUDGETS = { first: 16_000, second: 24_000, glance: 6_000 };
+export const BUDGETS = { first: 20_000, second: 24_000, glance: 6_000 };
 
 /** A cautious count of the tokens a text takes: a token for every three characters. */
 export const estimateTokens = (text) => Math.ceil(String(text ?? "").length / 3);
@@ -43,6 +43,11 @@ export const KINDS_FOR = {
 /** How a title and its words are written (0.2.6): for a manager, never with
  *  code in them. checks.mjs notPlain holds back a judgment that breaks it. */
 export const PLAIN_RULE = "Write every title and every sentence for a manager, in plain words. Never put in them a file or folder name, a path or a line number; a setting, variable or function name as the code writes it (anything with an underscore, a dot between words or brackets); a command line or a command-line tool's name; a package name with a version tag such as @latest; an advisory id (GHSA or CVE); backquotes; or the word facts (say the code shows, or the code does not show). Name each thing as a person would: the Slack connection, the Gemini key, its list of tools that need an OK. Files, lines and names as the code writes them belong only in based_on.";
+
+/** Each skill named and said for a person (0.3.3): a skill's own description is
+ *  written for the model that runs it ("Use for… Route by…"), not for the
+ *  person deciding; checks.mjs checkSkillNames keeps the plain ones. */
+export const SKILL_NAMES = 'Also answer "skills": one entry for each of the agent\'s own skills (each skill fact whose data.for_coding_assistants is false), with "skill" its fact id, "title" a short plain name of three to eight words for what it makes or does for the team (such as Captions for talking-head videos), and "does" one or two plain sentences on what it does for the team. Write both for a manager: never the trigger words the skill\'s own description writes for a model (use for, invoke when, route by), and never the title again in its sentences.';
 
 /** Each thing said once (0.3.0): checks.mjs nearSame holds back a title that repeats another. */
 export const SAY_ONCE = "Within a section, never write two findings that say or ask the same thing, even in other words (which tools need approval, and which tools should wait for a person, are one finding); merge them into one.";
@@ -71,7 +76,8 @@ export function firstPrompt(factText, { repo }) {
     "",
     SAY_ONCE,
     "Write at most 40 findings in all, the most telling first, each in at most three sentences.",
-    `Answer: ${SHAPE}`,
+    SKILL_NAMES,
+    `Answer: ${SHAPE.replace(/\}$/, ", \"skills\": [{\"skill\": \"F0012\", \"title\": \"<three to eight plain words>\", \"does\": \"<one or two plain sentences>\"}]}")}`,
   ].join("\n");
 }
 
@@ -140,7 +146,7 @@ export async function judge({ facts, repo, ask = (prompt, o) => callModel(prompt
     }
   }
   const draftsOf = (r) => (Array.isArray(r?.doc?.findings) ? r.doc.findings : []);
-  const answerOf = (r) => (r.failed ? { failed: r.failed } : { drafts: draftsOf(r) });
+  const answerOf = (r) => (r.failed ? { failed: r.failed } : { drafts: draftsOf(r), ...(Array.isArray(r?.doc?.skills) ? { skills: r.doc.skills } : {}) });
   // Each call's answer is handed on the moment it lands (onCall), so its
   // findings are checked and posted while the next call is still running.
   onStatus("Asking the model for the judgments of sections 3, 4 and 5: what it does, how it works and what it connects to.");

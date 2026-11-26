@@ -38,10 +38,10 @@ import { collectFacts } from "./collect.mjs";
 import { addUvLock, checkWithOsv, lineOfComponent } from "./deps.mjs";
 import { createEmitter, liveUpdates } from "./emit.mjs";
 import { judge } from "./judge.mjs";
-import { checkDescription, checkDrafts, checkGlance } from "./checks.mjs";
+import { checkDescription, checkDrafts, checkGlance, checkSkillNames } from "./checks.mjs";
 import { buildReport, markdownOf, notJudged, replyOf, scriptFindings } from "./report.mjs";
 
-export const VERSION = "0.3.2";
+export const VERSION = "0.3.3";
 const DAY_MS = 24 * 60 * 60 * 1000;
 
 /**
@@ -124,6 +124,20 @@ export async function inspect({ text, workDir, env = process.env, fetchImpl = fe
         const c = checkDrafts(r.drafts, { sections, byId, ctx, known });
         for (const f of c.kept) emitter.emitFinding(f);
         held.push(...c.held);
+        // 0.3.3: each skill's plain name and words replace the title its own
+        // description gave it; that description stays in its detail, for the viewer.
+        if (r.skills) {
+          const s = checkSkillNames(r.skills, byId);
+          for (const f of emitter.findings()) {
+            const id = f.kind === "skill" ? f.based_on?.find((x) => s.kept.has(x)) : null;
+            if (!id) continue;
+            const { title, does } = s.kept.get(id);
+            f.detail = { ...(f.detail ?? {}), plain: true, does, ...(f.title !== title ? { title_by_scripts: f.title } : {}) };
+            f.title = title;
+            f.says = `${does}${f.says && f.detail.description && f.says.startsWith(f.detail.description) ? f.says.slice(f.detail.description.length) : ""}`.trim();
+          }
+          held.push(...s.held);
+        }
       };
       const j = await judge({ facts, repo: `${owner}/${name} at ${sha}`, ...(ask ? { ask } : {}), onStatus, onCall });
       const g = await j.glance(emitter.findings());
