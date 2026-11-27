@@ -227,3 +227,11 @@ test("[F4.A11] a hook's words that only say what starts it, or that it runs, are
   const ok = checkHookWords([{ hook: "F0040", does: "Adds the plugin's own instructions to every new session." }], byId);
   assert.equal(ok.kept.get("F0040"), "Adds the plugin's own instructions to every new session.");
 });
+
+test("[F5.A7] a plugin's commands keep their instructions however many skills it has: they have a budget of their own (0.5.4)", async () => {
+  const skills = Object.fromEntries(Array.from({ length: 40 }, (_, i) => [`skills/s${i}/SKILL.md`, md({ name: `s${i}`, description: `Skill number ${i}.` }, "Step. ".repeat(1500))]));
+  const out = await run(claudePlugin(skills));
+  const cmd = out.report.findings.find((f) => f.kind === "slash-command");
+  assert.ok(cmd.detail.instructions.length > 0, "the command's instructions travel with it");
+  assert.ok(out.report.findings.filter((f) => f.kind === "skill" && f.detail?.instructions_cut).length > 0, "the skills' own budget still holds");
+});
