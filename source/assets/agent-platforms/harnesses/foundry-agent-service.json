@@ -1,0 +1,76 @@
+{
+  "$schema": "../harness.schema.json",
+  "id": "foundry-agent-service",
+  "name": "Microsoft Foundry Agent Service",
+  "vendor": "Microsoft",
+  "kind": "cloud-runtime",
+  "summary": "Microsoft's managed service in Microsoft Foundry that runs prompt agents defined by configuration and hosted agents packaged as containers, with managed endpoints, scaling and a Microsoft Entra agent identity.",
+  "platform": "microsoft",
+  "plugin_formats": [],
+  "documentation": [
+    "https://learn.microsoft.com/en-us/agent-framework/",
+    "https://learn.microsoft.com/en-us/azure/foundry/",
+    "https://learn.microsoft.com/en-us/microsoft-copilot-studio/",
+    "https://github.com/microsoft/"
+  ],
+  "checked": "2026-11-27",
+  "supports": {
+    "skills": {
+      "support": "partial",
+      "what": "Foundry Skills (preview) are folders with a SKILL.md file in the Agent Skills format, stored as versioned skills that a prompt agent using the Microsoft Copilot harness (preview) references, a toolbox serves to MCP clients, or a hosted agent downloads.",
+      "sources": [
+        { "url": "https://learn.microsoft.com/en-us/azure/foundry/agents/how-to/tools/skills", "title": "Use skills with Microsoft Foundry agents (preview) - Microsoft Foundry" },
+        { "url": "https://learn.microsoft.com/en-us/azure/foundry/agents/how-to/use-tools-skills-copilot-harness", "title": "Use the Microsoft Copilot harness with prompt agents - Microsoft Foundry" }
+      ],
+      "checked": "2026-11-27"
+    },
+    "mcp": {
+      "support": "yes",
+      "what": "The MCP tool connects prompt agents to remote MCP server endpoints, and a toolbox serves curated tools, including MCP servers, to prompt and hosted agents through one managed MCP-compatible endpoint; the pages checked describe remote servers only.",
+      "sources": [
+        { "url": "https://learn.microsoft.com/en-us/azure/foundry/agents/how-to/tools/model-context-protocol", "title": "Connect agents to MCP server endpoints - Microsoft Foundry" },
+        { "url": "https://learn.microsoft.com/en-us/azure/foundry/agents/overview", "title": "What is Microsoft Foundry Agent Service? - Microsoft Foundry" }
+      ],
+      "checked": "2026-11-27"
+    },
+    "plugins": {
+      "support": "unknown",
+      "what": "Not found in Microsoft's documentation.",
+      "sources": [],
+      "checked": "2026-11-27"
+    },
+    "hooks": {
+      "support": "unknown",
+      "what": "Not found in Microsoft's documentation.",
+      "sources": [],
+      "checked": "2026-11-27"
+    },
+    "a2a": {
+      "support": "partial",
+      "what": "Incoming A2A exposes a prompt agent or hosted agent as an A2A endpoint with an agent card (A2A v1.0 generally available, v0.3 in preview), and the A2A tool lets an agent call remote A2A endpoints; hosted-agent A2A endpoints accept single-turn SendMessage calls only.",
+      "sources": [
+        { "url": "https://learn.microsoft.com/en-us/azure/foundry/agents/how-to/enable-agent-to-agent-endpoint", "title": "Enable incoming A2A on a Foundry agent - Microsoft Foundry" },
+        { "url": "https://learn.microsoft.com/en-us/azure/foundry/agents/concepts/hosted-agents", "title": "Hosted agents in Foundry Agent Service - Microsoft Foundry" }
+      ],
+      "checked": "2026-11-27"
+    },
+    "scheduled-work": {
+      "support": "yes",
+      "what": "Routines run one prompt agent or hosted agent when a trigger fires: a one-time timer, a recurring cron-style schedule (minimum interval five minutes) or an event such as a GitHub issue or Teams channel message; a hosted agent can also schedule its own follow-up through a reminder tool.",
+      "sources": [
+        { "url": "https://learn.microsoft.com/en-us/azure/foundry/agents/concepts/routines", "title": "Routines in Foundry Agent Service - Microsoft Foundry" }
+      ],
+      "checked": "2026-11-27"
+    },
+    "sandboxes": {
+      "support": "partial",
+      "what": "The Code Interpreter tool runs agent-written Python in a Microsoft-managed sandbox on Azure Container Apps dynamic sessions isolated by a Hyper-V boundary; hosted agents run each session in a VM-isolated sandbox, and the Microsoft Copilot harness (preview) runs shell commands in a service-managed sandbox.",
+      "sources": [
+        { "url": "https://learn.microsoft.com/en-us/azure/foundry/agents/how-to/tools/code-interpreter", "title": "Use Code Interpreter with Microsoft Foundry agents - Microsoft Foundry" },
+        { "url": "https://learn.microsoft.com/en-us/azure/foundry/agents/concepts/hosted-agents", "title": "Hosted agents in Foundry Agent Service - Microsoft Foundry" },
+        { "url": "https://learn.microsoft.com/en-us/azure/foundry/agents/how-to/use-tools-skills-copilot-harness", "title": "Use the Microsoft Copilot harness with prompt agents - Microsoft Foundry" }
+      ],
+      "checked": "2026-11-27"
+    }
+  }
+}

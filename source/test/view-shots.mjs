@@ -15,7 +15,8 @@
 // scrolls inside itself.
 //
 // This is a check a person runs and looks at, not a test of the suite: it
-// starts a browser. Nothing here touches a network; the host and the view
+// starts a browser (KEEP_PROFILE=1 leaves its profile folder in place).
+// Nothing here touches a network; the host and the view
 // load nothing. The browser's profile is a temporary folder, removed after.
 import { spawn } from "node:child_process";
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
@@ -120,7 +121,7 @@ try {
     await cdp.send("Page.navigate", { url: HOST }, page);
     for (let i = 0; i < 50 && (await inHost("document.readyState").catch(() => "")) !== "complete"; i += 1) await pause(100);
     await inHost(`window.host.start(${JSON.stringify(VIEW)}, ${JSON.stringify({ scheme: c.scheme, box: c.box })})`);
-    await inHost(`window.host.data(${JSON.stringify(text)}, ${JSON.stringify({ ...st, descriptor: DESCRIPTOR })})`);
+    await inHost(`window.host.data(${JSON.stringify(text)}, ${JSON.stringify({ ...st, descriptor: DESCRIPTOR, ...(c.host_settings ? { host_settings: c.host_settings } : {}) })})`);
     await settled();
     if (c.tab) await inView(`document.getElementById(${JSON.stringify(`tab-${c.tab}`)})?.click()`);
     for (const id of c.open ?? []) await inView(`document.getElementById(${JSON.stringify(`f-${id}`)})?.querySelector(".toggle")?.click()`);
@@ -169,5 +170,5 @@ try {
   try { await cdp?.send("Browser.close"); } catch { /* already gone */ }
   await pause(500);
   if (edge.exitCode === null) edge.kill();
-  for (let i = 0; i < 10; i += 1) { try { rmSync(profile, { recursive: true, force: true }); break; } catch { await pause(300); } }
+  if (!process.env.KEEP_PROFILE) for (let i = 0; i < 10; i += 1) { try { rmSync(profile, { recursive: true, force: true }); break; } catch { await pause(300); } }
 }

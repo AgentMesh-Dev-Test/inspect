@@ -1,0 +1,67 @@
+{
+  "$schema": "../harness.schema.json",
+  "id": "gemini",
+  "name": "Gemini",
+  "vendor": "Google",
+  "kind": "assistant",
+  "summary": "Google's Gemini assistant: the Gemini app for personal and Workspace accounts, and Gemini Enterprise for organizations, which takes Agent Skills, custom MCP servers and A2A agents.",
+  "platform": "google",
+  "plugin_formats": [],
+  "documentation": [
+    "https://support.google.com/gemini/",
+    "https://docs.cloud.google.com/gemini/enterprise/"
+  ],
+  "checked": "2026-11-27",
+  "supports": {
+    "skills": {
+      "support": "yes",
+      "what": "Gemini Enterprise skills are packages with a required SKILL.md (name and description front matter) and optional scripts, references and assets; an admin turns the feature on, and Frontline edition can use but not upload skills.",
+      "sources": [
+        { "url": "https://docs.cloud.google.com/gemini/enterprise/docs/skills", "title": "Create and manage skills" }
+      ],
+      "checked": "2026-11-27"
+    },
+    "mcp": {
+      "support": "yes",
+      "what": "Gemini Enterprise connects to a custom MCP server set up as a data store in the app, over HTTPS with the StreamableHTTP transport only (SSE is not supported).",
+      "sources": [
+        { "url": "https://docs.cloud.google.com/gemini/enterprise/docs/connectors/custom-mcp-server/set-up-custom-mcp-server", "title": "Set up your custom MCP server data store" }
+      ],
+      "checked": "2026-11-27"
+    },
+    "plugins": {
+      "support": "unknown",
+      "what": "Not found in Google's documentation.",
+      "sources": [],
+      "checked": "2026-11-27"
+    },
+    "hooks": {
+      "support": "unknown",
+      "what": "Not found in Google's documentation.",
+      "sources": [],
+      "checked": "2026-11-27"
+    },
+    "a2a": {
+      "support": "partial",
+      "what": "Administrators register A2A agents hosted on any platform so users can reach them in the Gemini Enterprise web app (preview, A2A v0.3); serving Gemini's own agents over A2A was not found.",
+      "sources": [
+        { "url": "https://docs.cloud.google.com/gemini/enterprise/docs/register-and-manage-an-a2a-agent", "title": "Register and manage A2A agents" }
+      ],
+      "checked": "2026-11-27"
+    },
+    "scheduled-work": {
+      "support": "yes",
+      "what": "Schedules (scheduled actions) in the Gemini app run recurring prompts in the background before a chosen delivery time, up to 10 active, for personal accounts (rolling out) and qualifying Workspace editions.",
+      "sources": [
+        { "url": "https://support.google.com/gemini/answer/16316416?hl=en", "title": "Schedules in Gemini Apps" }
+      ],
+      "checked": "2026-11-27"
+    },
+    "sandboxes": {
+      "support": "unknown",
+      "what": "Not found in Google's documentation.",
+      "sources": [],
+      "checked": "2026-11-27"
+    }
+  }
+}

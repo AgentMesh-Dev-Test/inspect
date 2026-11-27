@@ -86,12 +86,12 @@
         "note": "ADK's eval file formats and criteria are ADK's own and open source (Apache-2.0), and run locally. The Agent Platform evaluation service is a hosted Google Cloud service with its own API; the docs name no open evaluation standard."
       },
       "evidence": [
-        { "kind": "cli", "value": "adk eval" },
-        { "kind": "file", "value": ".evalset.json" },
-        { "kind": "file", "value": ".test.json" },
-        { "kind": "call", "value": "AgentEvaluator.evaluate", "language": "python" },
-        { "kind": "call", "value": "client.evals.run_inference", "language": "python" },
-        { "kind": "call", "value": "client.evals.create_evaluation_run", "language": "python" }
+        { "kind": "cli", "value": "adk eval", "openness": "open-source" },
+        { "kind": "file", "value": ".evalset.json", "openness": "open-source" },
+        { "kind": "file", "value": ".test.json", "openness": "open-source" },
+        { "kind": "call", "value": "AgentEvaluator.evaluate", "language": "python", "openness": "open-source" },
+        { "kind": "call", "value": "client.evals.run_inference", "language": "python", "openness": "proprietary" },
+        { "kind": "call", "value": "client.evals.create_evaluation_run", "language": "python", "openness": "proprietary" }
       ],
       "sources": [
         { "url": "https://adk.dev/evaluate/", "title": "Why evaluate agents - Agent Development Kit (ADK)" },
@@ -150,12 +150,12 @@
         "note": "DatabaseSessionService and the in-memory services are open source and run anywhere, storing data in ADK's own layout. Agent Platform Sessions and Memory Bank are hosted Google Cloud services reached through Google's own API."
       },
       "evidence": [
-        { "kind": "import", "value": "from google.adk.sessions import DatabaseSessionService", "language": "python" },
-        { "kind": "call", "value": "VertexAiSessionService", "language": "any" },
-        { "kind": "call", "value": "VertexAiMemoryBankService", "language": "any" },
-        { "kind": "import", "value": "from google.adk.tools import load_memory", "language": "python" },
+        { "kind": "import", "value": "from google.adk.sessions import DatabaseSessionService", "language": "python", "openness": "open-source" },
+        { "kind": "call", "value": "VertexAiSessionService", "language": "any", "openness": "proprietary" },
+        { "kind": "call", "value": "VertexAiMemoryBankService", "language": "any", "openness": "proprietary" },
+        { "kind": "import", "value": "from google.adk.tools import load_memory", "language": "python", "openness": "open-source" },
         { "kind": "cli", "value": "--memory_service_uri" },
-        { "kind": "package", "value": "google-adk[gcp]", "language": "python" }
+        { "kind": "package", "value": "google-adk[gcp]", "language": "python", "openness": "proprietary" }
       ],
       "sources": [
         { "url": "https://adk.dev/sessions/session/", "title": "Session: Tracking individual conversations" },
@@ -309,12 +309,12 @@
         "note": "Skills follow the Agent Skills specification, which the ADK docs link, so they can move to other tools that read SKILL.md. The project layout and Agent Config YAML are ADK's own open-source formats."
       },
       "evidence": [
-        { "kind": "call", "value": "SkillToolset", "language": "any" },
-        { "kind": "import", "value": "from google.adk.skills import load_skill_from_dir", "language": "python" },
-        { "kind": "file", "value": "SKILL.md" },
-        { "kind": "file", "value": "root_agent.yaml" },
-        { "kind": "cli", "value": "adk create --type=config" },
-        { "kind": "import", "value": "from google.adk.tools import skill_toolset", "language": "python" }
+        { "kind": "call", "value": "SkillToolset", "language": "any", "openness": "open-standard", "standard": "Agent Skills" },
+        { "kind": "import", "value": "from google.adk.skills import load_skill_from_dir", "language": "python", "openness": "open-standard", "standard": "Agent Skills" },
+        { "kind": "file", "value": "SKILL.md", "openness": "open-standard", "standard": "Agent Skills" },
+        { "kind": "file", "value": "root_agent.yaml", "openness": "open-source" },
+        { "kind": "cli", "value": "adk create --type=config", "openness": "open-source" },
+        { "kind": "import", "value": "from google.adk.tools import skill_toolset", "language": "python", "openness": "open-standard", "standard": "Agent Skills" }
       ],
       "sources": [
         { "url": "https://adk.dev/skills/", "title": "Skills for ADK agents" },

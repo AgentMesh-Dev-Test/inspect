@@ -1,0 +1,75 @@
+{
+  "$schema": "../harness.schema.json",
+  "id": "microsoft-copilot",
+  "name": "Microsoft 365 Copilot",
+  "vendor": "Microsoft",
+  "kind": "assistant",
+  "summary": "Microsoft's work assistant across Microsoft 365, including Copilot Cowork and agents built with Agent Builder or Copilot Studio, which takes Agent Skills, remote MCP connectors and plugins packaged as Microsoft 365 app packages.",
+  "platform": "microsoft",
+  "plugin_formats": [
+    "Microsoft 365 app package"
+  ],
+  "documentation": [
+    "https://learn.microsoft.com/"
+  ],
+  "checked": "2026-11-27",
+  "supports": {
+    "skills": {
+      "support": "yes",
+      "what": "Copilot Cowork skills are SKILL.md folders following the Agent Skills open standard, packaged in a plugin; a Microsoft 365 Copilot license is required.",
+      "sources": [
+        { "url": "https://learn.microsoft.com/en-us/microsoft-365/copilot/cowork/cowork-plugin-development", "title": "Build plugins for Copilot Cowork" }
+      ],
+      "checked": "2026-11-27"
+    },
+    "mcp": {
+      "support": "yes",
+      "what": "Copilot Cowork connectors are remote MCP servers at an HTTPS URL, with admin consent for MCP registration; Copilot Studio agents use MCP tools and resources with generative orchestration turned on.",
+      "sources": [
+        { "url": "https://learn.microsoft.com/en-us/microsoft-365/copilot/cowork/cowork-plugin-development", "title": "Build plugins for Copilot Cowork" },
+        { "url": "https://learn.microsoft.com/en-us/microsoft-copilot-studio/agent-extend-action-mcp", "title": "Extend your agent with Model Context Protocol - Microsoft Copilot Studio" }
+      ],
+      "checked": "2026-11-27"
+    },
+    "plugins": {
+      "support": "yes",
+      "what": "Copilot Cowork plugins are Microsoft 365 app packages (manifest.json with agentSkills and agentConnectors); Claude Code, Cursor and Agent Plugins 1.0.0 plugins are converted with wiqd or atk import, not installed as they are.",
+      "sources": [
+        { "url": "https://learn.microsoft.com/en-us/microsoft-365/copilot/cowork/cowork-plugin-development", "title": "Build plugins for Copilot Cowork" }
+      ],
+      "checked": "2026-11-27"
+    },
+    "hooks": {
+      "support": "no",
+      "what": "Plugin hooks (hooks/ event handlers) are listed as not yet supported in the Microsoft 365 manifest.",
+      "sources": [
+        { "url": "https://learn.microsoft.com/en-us/microsoft-365/copilot/cowork/cowork-plugin-development", "title": "Build plugins for Copilot Cowork" }
+      ],
+      "checked": "2026-11-27"
+    },
+    "a2a": {
+      "support": "partial",
+      "what": "A Copilot Studio agent can connect to and delegate tasks to an external agent over the Agent2Agent protocol; serving Copilot agents over A2A was not found in these pages.",
+      "sources": [
+        { "url": "https://learn.microsoft.com/en-us/microsoft-copilot-studio/add-agent-agent-to-agent", "title": "Connect to an agent over the Agent2Agent (A2A) protocol - Microsoft Copilot Studio" }
+      ],
+      "checked": "2026-11-27"
+    },
+    "scheduled-work": {
+      "support": "yes",
+      "what": "Scheduled prompts (now scheduled tasks, in the Work IQ tab) run Copilot prompts at set times and frequencies, up to 10 active per user, with a Copilot license.",
+      "sources": [
+        { "url": "https://learn.microsoft.com/copilot/microsoft-365/scheduled-prompts", "title": "Manage Scheduled Prompts for Microsoft Copilot" }
+      ],
+      "checked": "2026-11-27"
+    },
+    "sandboxes": {
+      "support": "yes",
+      "what": "Code interpreter in Microsoft 365 Copilot and its agents runs Python in a fresh isolated Azure virtual machine per session, with no inbound or outbound network traffic.",
+      "sources": [
+        { "url": "https://learn.microsoft.com/en-us/microsoft-365-copilot/extensibility/code-interpreter-security", "title": "Code Interpreter Security Architecture in Microsoft 365 Copilot" }
+      ],
+      "checked": "2026-11-27"
+    }
+  }
+}

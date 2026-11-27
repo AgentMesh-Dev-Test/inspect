@@ -1,0 +1,76 @@
+{
+  "$schema": "../harness.schema.json",
+  "id": "openai-agents-api",
+  "name": "Agents API",
+  "vendor": "OpenAI",
+  "kind": "cloud-runtime",
+  "summary": "OpenAI's hosted agent API (beta) that runs a managed Codex harness in durable sessions, with OpenAI managing orchestration and recovery while the agent works in an OpenAI-hosted or self-hosted sandbox.",
+  "platform": "openai",
+  "plugin_formats": [
+    "Codex"
+  ],
+  "documentation": [
+    "https://openai.github.io/openai-agents-python/",
+    "https://openai.github.io/openai-agents-js/",
+    "https://developers.openai.com/",
+    "https://github.com/openai/",
+    "https://help.openai.com/"
+  ],
+  "checked": "2026-11-27",
+  "supports": {
+    "skills": {
+      "support": "partial",
+      "what": "Agents API sessions discover Agent Skills (directories with a SKILL.md, compatible with the open Agent Skills standard) in the sandbox directories listed in environment.capability_directories; the Agents API is in beta.",
+      "sources": [
+        { "url": "https://developers.openai.com/api/docs/guides/tools-skills", "title": "Skills" },
+        { "url": "https://developers.openai.com/api/docs/guides/agents-api/overview", "title": "Agents API" }
+      ],
+      "checked": "2026-11-27"
+    },
+    "mcp": {
+      "support": "yes",
+      "what": "MCP connections reach HTTP servers from OpenAI (connection_origin \"service\", the default) or from the session's environment (connection_origin \"environment\"), and the executor can start a server over stdio inside the environment.",
+      "sources": [
+        { "url": "https://developers.openai.com/api/docs/guides/agents-api/tools/mcp", "title": "MCP connections" }
+      ],
+      "checked": "2026-11-27"
+    },
+    "plugins": {
+      "support": "yes",
+      "what": "Plugins package skills, MCP configuration or both in the .codex-plugin/plugin.json layout, registered through environment.capability_directories in a self-hosted sandbox or uploaded as a ZIP in environment.plugins for an OpenAI-hosted sandbox.",
+      "sources": [
+        { "url": "https://developers.openai.com/api/docs/guides/agents-api/tools/plugins", "title": "Plugins" }
+      ],
+      "checked": "2026-11-27"
+    },
+    "hooks": {
+      "support": "unknown",
+      "what": "Not found in OpenAI's documentation.",
+      "sources": [],
+      "checked": "2026-11-27"
+    },
+    "a2a": {
+      "support": "unknown",
+      "what": "Not found in OpenAI's documentation.",
+      "sources": [],
+      "checked": "2026-11-27"
+    },
+    "scheduled-work": {
+      "support": "yes",
+      "what": "Scheduled automations start new sessions or continue an existing session on a cron schedule with a time zone, and the automations tool lets an agent schedule its own follow-ups.",
+      "sources": [
+        { "url": "https://developers.openai.com/api/docs/guides/agents-api/sessions/automations", "title": "Scheduled automations" }
+      ],
+      "checked": "2026-11-27"
+    },
+    "sandboxes": {
+      "support": "yes",
+      "what": "An OpenAI-hosted sandbox (environment.type openai_hosted) gives the agent a Linux workspace with a chosen container size and network access controls, or a self-hosted sandbox runs commands through the codex exec-server executor on the customer's own compute.",
+      "sources": [
+        { "url": "https://developers.openai.com/api/docs/guides/agents-api/environments/openai-hosted", "title": "OpenAI-hosted sandboxes" },
+        { "url": "https://developers.openai.com/api/docs/guides/agents-api/environments/self-hosted", "title": "Self-hosted sandboxes" }
+      ],
+      "checked": "2026-11-27"
+    }
+  }
+}

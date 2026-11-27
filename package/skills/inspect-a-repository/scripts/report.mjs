@@ -556,7 +556,8 @@ export function portabilityCopy(p, full = true) {
     database: p.database, built_on: { ...p.built_on, platforms: (p.built_on?.platforms ?? []).map(({ platform, name, vendor }) => ({ platform, name, vendor })) },
     uses: (p.uses ?? []).map(({ category, title, level, outside, swap, code_files, plugin_part, needs, choices, sources }) => ({ category, title, level, outside, swap, code_files, ...(plugin_part ? { plugin_part } : {}), needs, choices, sources: sources.map(({ platform, vendor, standard, tools, rating, level: l }) => ({ platform, ...(vendor ? { vendor } : {}), ...(standard ? { standard } : {}), ...(tools ? { tools } : {}), rating, level: l, what: "" })) })),
     not_used: p.not_used, not_applicable: p.not_applicable,
-    destinations: (p.destinations ?? []).map(({ platform, name, vendor, shown, also_used, language_fits, cells }) => ({ platform, name, vendor, shown, also_used, language_fits, cells: cells.map(({ category, title, rating }) => ({ category, title, rating })) })),
+    ...(p.guidance ? { guidance: p.guidance } : {}),
+    harnesses: (p.harnesses ?? []).map(({ harness, name, vendor, kind, house_stack, takes, lines }) => ({ harness, name, vendor, kind, ...(house_stack ? { house_stack } : {}), takes, lines: lines.map(({ capability, title, state }) => ({ capability, title, state, says: "" })) })),
     words_left_out: true,
   };
   const noEvidence = (x) => { const { evidence, ...rest } = x; return rest; };
@@ -564,7 +565,7 @@ export function portabilityCopy(p, full = true) {
     ...p,
     built_on: { ...p.built_on, platforms: (p.built_on?.platforms ?? []).map(noEvidence) },
     uses: (p.uses ?? []).map((r) => ({ ...r, sources: r.sources.map((s) => { const x = noEvidence(s); if (!full) delete x.note; return x; }) })),
-    destinations: (p.destinations ?? []).map((d) => ({ ...d, ...(d.runtime ? { runtime: { ...d.runtime, deployment: { rating: d.runtime.deployment.rating, ...(full ? { what: d.runtime.deployment.what } : {}) } } } : {}), cells: d.cells.map((c) => (full ? c : { category: c.category, title: c.title, rating: c.rating, level: c.level, outside: c.outside, swap: c.swap })) })),
+    harnesses: (p.harnesses ?? []).map((h) => ({ ...h, lines: h.lines.map((l) => (full ? l : { ...l, says: "" })) })),
     ...(full ? {} : { words_left_out: true }),
   };
 }
@@ -727,7 +728,7 @@ export function markdownOf(report) {
   for (const s of SECTIONS.filter((x) => x.number > 1)) {
     const list = sorted(r.findings.filter((f) => f.section === s.number));
     lines.push(`## ${s.title}`, "", ...(list.length ? list.map((f) => findingLine(f, r)) : ["- None found."]), "");
-    // 0.6.0: Could it move?, after the systems it uses, as the view has it.
+    // 0.6.0: Portability (Could it move? before 0.7.0), after the systems it uses, as the view has it.
     if (s.number === 5 && r.portability) lines.push(...portabilityMarkdown(r));
   }
   if (r.held_back?.length) {
@@ -736,7 +737,7 @@ export function markdownOf(report) {
   return lines.join("\n");
 }
 
-// ── Could it move? as Markdown (0.6.0) ──
+// ── Portability as Markdown (0.6.0; renamed 0.7.0) ──
 export const OPENNESS_WORDS = { proprietary: "The vendor's own", mixed: "Partly open", "open-source": "Open source", "open-standard": "Open standard", unknown: "Not known", "not-applicable": "Not offered" };
 export const OFFER_WORDS = { native: "Offers it", standard: "Offers it through an open standard", partial: "Only partly", none: "Not offered", unknown: "Not in its documentation" };
 const cap1 = (s) => { const x = String(s ?? "").trim(); return x ? `${x[0].toUpperCase()}${x.slice(1)}` : ""; };
@@ -757,9 +758,17 @@ function placesOf(r, list, most = 5) {
  *  category it uses, with every place in the code that shows it, and for
  *  every other platform the work to move it, what it would lose and what
  *  replaces each feature, in the database's own words. */
+export const GUIDANCE_STATE_WORDS = { followed: "Followed", missing: "Missing", unknown: "Not known", "not-applicable": "Does not apply" };
+export const HARNESS_STATE_WORDS = { kept: "Kept", partly: "Partly", lost: "Lost", unknown: "Not known", gained: "Gained" };
 export function portabilityMarkdown(r) {
   const p = r.portability;
-  const out = ["## Could it move?", ""];
+  const out = ["## Portability", ""];
+  const g = p.guidance;
+  if (g) {
+    out.push(`Follows ${g.followed} of ${g.of} basics in [AgentMesh's portability guidance for builders](${g.url}).`, "");
+    for (const x of [...g.basics, ...g.extras]) out.push(`- ${GUIDANCE_STATE_WORDS[x.state] ?? x.state}: **${mdText(x.title)}**. ${mdText(sentence(x.says))}`);
+    out.push("");
+  }
   const b = p.built_on ?? {};
   const plats = (b.platforms ?? []);
   if (b.kind) out.push(`Runs in ${and(b.tools ?? []) || "a person's coding tool"}${b.also_for?.length ? `, also packaged for ${and(b.also_for)}` : ""}.${plats.length ? ` Its code also imports from ${and(plats.map((x) => `${mdText(x.vendor)}'s platform`))}.` : ""}${placesOf(r, plats.flatMap((x) => x.evidence ?? []))}`, "");
@@ -775,24 +784,14 @@ export function portabilityMarkdown(r) {
   const title = (k) => (p.uses.find((u) => u.category === k)?.title ?? k);
   if (p.not_applicable?.length) out.push(`- Does not apply to a ${b.kind === "skills" ? "repository of skills" : "plugin"}: ${p.not_applicable.map((k) => mdText(CATEGORY_TITLES[k] ?? k)).join(", ")}.`);
   if (p.not_used?.length && p.uses.length) out.push(`- Not used: ${p.not_used.map((k) => mdText(CATEGORY_TITLES[k] ?? k)).join(", ")}.`);
-  out.push("", "### Moving it", "");
-  for (const d of p.destinations) {
-    out.push(`#### ${mdText(d.name)}`, "");
-    const work = [];
-    const swaps = d.swaps.map(title);
-    if (swaps.length) work.push(`swap ${and(swaps.map((x) => mdText(x.toLowerCase())))}`);
-    if (d.runtime) work.push(`re-host its own code${d.runtime.frameworks?.length ? `, written with ${and(d.runtime.frameworks.map(mdText))}` : ""}${Number.isFinite(d.runtime.own_files) ? ` (${d.runtime.own_files.toLocaleString("en-US")} files, ${Number(d.runtime.own_lines ?? 0).toLocaleString("en-US")} lines)` : ""}, on ${mdText(d.name)}'s deployment: ${mdText(d.runtime.deployment.what)}`);
-    if (work.length) out.push(`- The work: ${work.join("; and ")}`.replace(/\.?$/, "."));
-    // Its deployment is the re-host line above, said once (as the view does).
-    const by = (rating) => d.cells.filter((c) => c.rating === rating && !(d.runtime && c.category === "deployment"));
-    for (const c of by("none")) out.push(`- Would lose **${mdText(c.title.toLowerCase())}**: ${mdText(c.what)}`);
-    for (const c of by("partial")) out.push(`- Only partly, **${mdText(c.title.toLowerCase())}**: ${mdText(c.what)}`);
-    for (const c of by("unknown")) out.push(`- Not in its documentation, **${mdText(c.title.toLowerCase())}**: ${mdText(c.what)}`);
-    for (const c of [...by("standard"), ...by("native")]) out.push(`- Replaced by, for **${mdText(c.title.toLowerCase())}**: ${mdText(c.what)}`);
-    if (!d.cells.length && !work.length) out.push("- Nothing it uses is rated here.");
+  out.push("", "### Run it in", "");
+  for (const h of p.harnesses ?? []) {
+    out.push(`#### ${mdText(h.name)}${h.house_stack ? " (AgentMesh's House Stack runs agents in it)" : ""}`, "");
+    out.push(`- What it takes: ${mdText(sentence(h.takes))}`);
+    for (const l of h.lines) out.push(`- ${HARNESS_STATE_WORDS[l.state] ?? l.state}, **${mdText(l.title.toLowerCase())}**: ${mdText(sentence(l.says))}`);
     out.push("");
   }
-  out.push(`From the agent platforms database at AgentMesh commit ${String(p.database?.commit ?? "").slice(0, 7)}, checked ${p.database?.checked ?? "on an unknown date"}. Every rating and description of a platform is the database's, from the vendor's own documentation.`, "");
+  out.push(`From the agent platforms database at AgentMesh commit ${String(p.database?.commit ?? "").slice(0, 7)}, checked ${p.database?.checked ?? "on an unknown date"}. Every rating and description of a platform or a harness is the database's, from the maker's own documentation.`, "");
   return out;
 }
 const CATEGORY_TITLES = { tracing: "Tracing and telemetry", evaluations: "Evaluations", "prompt-management": "Prompt management", "keys-and-secrets": "Keys and secrets", "memory-and-state": "Memory and saved state", "human-approval": "Human approval steps", deployment: "Deployment and scaling", sandboxes: "Sandboxes and code execution", "tool-connections": "Tool connections", "agent-to-agent": "Agent-to-agent", "identity-and-access": "Identity and access", packaging: "Packaging" };

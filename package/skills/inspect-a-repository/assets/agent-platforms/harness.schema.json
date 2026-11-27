@@ -1,0 +1,99 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/jeffrschneider/AgentMesh/blob/main/data/agent-platforms/harness.schema.json",
+  "title": "Harness entry",
+  "description": "One place people run agents, plugins and skills, named by its own name: a harness (the program that thinks when work arrives, such as opencode or Claude Code), a personal assistant that takes open pieces (Agent Skills, MCP connectors), or a cloud runtime that hosts an agent's own code. What it supports, capability by capability, with the vendor documentation each claim comes from. One file per harness in data/agent-platforms/harnesses/. tools/ci/check-agent-platforms.mjs validates every file against this schema.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["id", "name", "vendor", "kind", "summary", "documentation", "checked", "supports"],
+  "properties": {
+    "$schema": { "type": "string" },
+    "id": {
+      "description": "Lower-case id, the same as the file name without .json. For a harness AgentMesh also runs trials under, the same name as its entry in the adlc repository's agents/image/bases/tenant-harnesses.json.",
+      "type": "string",
+      "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$"
+    },
+    "name": { "description": "The harness as its maker names it, for example 'Claude Code' or 'opencode'.", "type": "string", "minLength": 1 },
+    "vendor": { "description": "The company or project that makes it.", "type": "string", "minLength": 1 },
+    "kind": {
+      "description": "harness: a program that runs an agent's skills, tools and plugins (opencode, the Claude Agent SDK, Claude Code, Cursor, Codex). assistant: a personal assistant a person uses directly that accepts open pieces such as Agent Skills or MCP connectors (the Claude apps, ChatGPT, Microsoft Copilot, Gemini). cloud-runtime: a hosted service that runs an agent's own code as a service.",
+      "enum": ["harness", "assistant", "cloud-runtime"]
+    },
+    "summary": { "description": "One neutral sentence on what it is.", "type": "string", "minLength": 1 },
+    "platform": {
+      "description": "The id of the entry in platforms/ that this harness belongs to, when there is one (for example the Claude Agent SDK belongs to anthropic).",
+      "type": "string",
+      "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$"
+    },
+    "house_stack": {
+      "description": "True for the harness AgentMesh's House Stack runs agents in. Only one entry may say so.",
+      "type": "boolean"
+    },
+    "plugin_formats": {
+      "description": "The plugin formats it installs, in the names Inspect gives a plugin's tools: 'Agent Plugins 1.0.0', 'Claude Code', 'Cursor', 'Codex' and the like. Empty when it installs none.",
+      "type": "array",
+      "items": { "type": "string", "minLength": 1 }
+    },
+    "documentation": {
+      "description": "URL prefixes where the maker's own documentation lives. Every source URL in this file starts with one of them.",
+      "type": "array",
+      "minItems": 1,
+      "items": { "type": "string", "pattern": "^https://[^/]+/" }
+    },
+    "checked": { "$ref": "#/$defs/date" },
+    "supports": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["skills", "mcp", "plugins", "hooks", "a2a", "scheduled-work", "sandboxes"],
+      "properties": {
+        "skills": { "title": "Skills", "description": "It loads skills in the Agent Skills format (a folder with a SKILL.md).", "$ref": "#/$defs/cell" },
+        "mcp": { "title": "Tool servers (MCP)", "description": "It connects the agent to MCP servers: remote servers over HTTP, local programs over stdio, or both; what says which.", "$ref": "#/$defs/cell" },
+        "plugins": { "title": "Plugins", "description": "It installs a plugin, a package of skills, tool servers and the rest: Agent Plugins 1.0.0 or its own format; what says which.", "$ref": "#/$defs/cell" },
+        "hooks": { "title": "Hooks", "description": "It runs programs a plugin or the agent declares on events (a session starting, before a tool call).", "$ref": "#/$defs/cell" },
+        "a2a": { "title": "Agent-to-agent (A2A)", "description": "It calls agents elsewhere, or serves the agent to them, over the Agent2Agent protocol.", "$ref": "#/$defs/cell" },
+        "scheduled-work": { "title": "Scheduled work", "description": "It runs the agent's work on a timetable without a person starting it.", "$ref": "#/$defs/cell" },
+        "sandboxes": { "title": "Sandboxes", "description": "It runs code the agent writes in an isolated environment it provides.", "$ref": "#/$defs/cell" }
+      }
+    }
+  },
+  "$defs": {
+    "date": {
+      "description": "A calendar date, YYYY-MM-DD.",
+      "type": "string",
+      "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$"
+    },
+    "cell": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["support", "what", "sources", "checked"],
+      "properties": {
+        "support": {
+          "description": "yes: the documentation says it does. partial: only part of it (what says which part), or only in preview or beta. no: the documentation says it does not. unknown: not found in the documentation on the date checked, never a guess.",
+          "enum": ["yes", "partial", "no", "unknown"]
+        },
+        "what": { "description": "One short factual sentence, as the maker names the feature, saying preview or beta where the maker does.", "type": "string", "minLength": 1 },
+        "sources": {
+          "description": "The maker's own documentation pages the claim comes from, each one opened on the date checked.",
+          "type": "array",
+          "items": { "$ref": "#/$defs/source" }
+        },
+        "checked": { "$ref": "#/$defs/date" }
+      },
+      "allOf": [
+        {
+          "if": { "properties": { "support": { "enum": ["yes", "partial", "no"] } } },
+          "then": { "properties": { "sources": { "minItems": 1 } } }
+        }
+      ]
+    },
+    "source": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["url", "title"],
+      "properties": {
+        "url": { "type": "string", "pattern": "^https://" },
+        "title": { "type": "string", "minLength": 1 }
+      }
+    }
+  }
+}

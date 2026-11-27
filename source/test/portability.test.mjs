@@ -20,6 +20,7 @@ import { createHash } from "node:crypto";
 import { readFileSync, readdirSync } from "node:fs";
 import { join } from "node:path";
 import { CATEGORY_KEYS, loadDatabase, platformUses, readingOf, codeOnly } from "../scripts/platforms.mjs";
+import { guidanceOf, pinned } from "../scripts/guidance.mjs";
 import { checkPortability } from "../scripts/checks.mjs";
 import { firstPrompt, secondPrompt, judge } from "../scripts/judge.mjs";
 import { markdownOf, workingCopy } from "../scripts/report.mjs";
@@ -104,26 +105,82 @@ test("[F6.A3] a name counts only where the code imports that platform; a module 
   assert.deepEqual(codeOnly("a.ts", ["const u = 'https://x.test/a'; // evaluate", "/* Memory", "*/ go()"]), ["const u = 'https://x.test/a'; ", "", " go()"]);
 });
 
-test("[F6.A4] moving it: AgentMesh first, then the two that keep the most, the rest under Every platform; what it would lose and what replaces each are the destination's own cells, by one rule for every vendor", () => {
+test("[F6.A4] 0.7.0: Run it in: one reading per harness of the catalogue, never AgentMesh; a line for each capability it uses, in the harness's own words; what running it there takes, by rule", () => {
   const files = langgraphAgent({ "src/maker/score.py": "from langsmith import Client\n\nclient = Client()\nclient.evaluate(lambda x: x)\n" });
   const { reading } = readOf(files);
-  assert.ok(reading.uses.some((r) => r.category === "evaluations"), "client.evaluate in the agent's own code is use");
-  const d = reading.destinations;
-  assert.equal(d.length, 8, "every platform but the one it is built on");
-  assert.equal(d[0].platform, "agentmesh");
-  assert.deepEqual(d.map((x) => x.shown), [true, true, true, false, false, false, false, false]);
-  for (const x of d) {
-    const p = db.platforms.find((y) => y.id === x.platform);
-    assert.deepEqual(x.cells.map((c) => c.category), reading.uses.map((r) => r.category), `${x.name}: a cell for each category used, and no other`);
-    for (const c of x.cells) { assert.equal(c.rating, p.categories[c.category].rating); assert.equal(c.what, p.categories[c.category].what); }
-    assert.deepEqual(x.loses, x.cells.filter((c) => c.rating === "none").map((c) => c.category), `${x.name}: what it would lose is what it rates none`);
-    assert.deepEqual(x.partly, x.cells.filter((c) => c.rating === "partial").map((c) => c.category));
-    assert.equal(x.runtime.deployment.what, p.categories.deployment.what);
-    assert.deepEqual(x.swaps, reading.uses.filter((r) => r.outside).map((r) => r.category), "the services to swap, the same rule everywhere");
+  const h = reading.harnesses;
+  assert.equal(h.length, db.harnesses.length, "every harness in the catalogue");
+  assert.ok(h.length >= 17);
+  assert.ok(!h.some((x) => /agentmesh/i.test(x.harness) || /AgentMesh/.test(x.name)), "AgentMesh is not a harness");
+  assert.ok(!("destinations" in reading), "no destinations any more");
+  const house = h.filter((x) => x.house_stack);
+  assert.deepEqual(house.map((x) => x.harness), ["opencode"], "opencode is the House Stack's");
+  for (const x of h) {
+    const e = db.harnesses.find((y) => y.id === x.harness);
+    for (const l of x.lines) {
+      assert.ok(["kept", "partly", "lost", "unknown", "gained"].includes(l.state));
+      const want = { yes: ["kept", "gained"], partial: ["partly"], no: ["lost"], unknown: ["unknown"] }[e.supports[l.capability].support];
+      assert.ok(want.includes(l.state), `${x.name} ${l.capability}: ${l.state} from ${e.supports[l.capability].support}`);
+    }
+    assert.ok(x.takes.length > 10);
   }
-  assert.ok(d[0].loses.includes("evaluations"), "AgentMesh's none for evaluations shows like anyone else's");
-  const rest = d.slice(1, 3);
-  for (const x of d.slice(3)) for (const y of rest) assert.ok(!(x.language_fits && !y.language_fits), "a platform in its language comes before one that is not");
+  const caps = new Set(h[0].lines.map((l) => l.capability));
+  assert.ok(caps.has("sandboxes"), "it uses LangChain's sandboxes");
+  const sdk = h.find((x) => x.harness === "langsmith-agent-server");
+  assert.match(sdk.takes, /^Built for it/, "the runtime of the platform it is built on");
+  const cc = h.find((x) => x.harness === "claude-code");
+  assert.match(cc.takes, /as a tool server Claude Code connects to/);
+  const bedrock = h.find((x) => x.harness === "bedrock-agentcore");
+  assert.match(bedrock.takes, /^Re-hosting its own code/);
+  const gained = h.filter((x) => x.lines.some((l) => l.state === "gained"));
+  assert.ok(gained.length > 0, "a harness with its own sandbox gains what LangChain's service gives today");
+  for (const x of gained) assert.match(x.lines.find((l) => l.state === "gained").says, /in place of LangChain's service/);
+});
+
+test("[F6.A10] 0.7.0 (debt 939): a use of a mixed cell's open part reads open; its vendor's own part does not", () => {
+  const open = readOf(langgraphAgent({ "src/maker/deep.py": "from deepagents import create_deep_agent\n\nagent = create_deep_agent(tools=[], skills=['./skills/'])\n" }));
+  const pk = open.reading.uses.find((r) => r.category === "packaging");
+  if (pk) {
+    const lc = pk.sources.find((s) => s.platform === "langchain");
+    if (lc) { assert.notEqual(lc.level, "mixed", "create_deep_agent's skills are Agent Skills"); assert.ok(lc.by_evidence); }
+  }
+  const tied = readOf(langgraphAgent({ "langgraph.json": "{\"graphs\": {\"a\": \"./src/maker/graph.py:graph\"}}\n" }));
+  const dep = tied.reading.uses.find((r) => r.category === "packaging")?.sources.find((s) => s.platform === "langchain");
+  if (dep) assert.equal(dep.level, "proprietary", "langgraph.json is LangChain's own");
+});
+
+test("[F6.A11] 0.7.0: the portability guidance's basics, by rule from the files: followed, missing, not known, or not applicable; unknown is never a guess", () => {
+  const files = {
+    "plugin.json": JSON.stringify({ name: "x", version: "1.0.0", description: "Does x.", keywords: ["x"] }),
+    "skills/draft/SKILL.md": "---\nname: draft\ndescription: Drafts. Use when asked.\n---\nBody\n",
+    ".mcp.json": JSON.stringify({ mcpServers: { crm: { type: "http", url: "https://mcp.example.com/crm" }, files: { command: "npx", args: ["-y", "@example/files-mcp"] } } }),
+    "LICENSE": "MIT", "README.md": "# x",
+    "package.json": JSON.stringify({ dependencies: { a: "^1.0.0" } }), "package-lock.json": "{}",
+  };
+  const g = guidanceOf({ all: Object.keys(files), read: (f) => files[f] ?? null, facts: [], portability: { uses: [] }, tags: null });
+  const by = Object.fromEntries(g.basics.map((x) => [x.id, x]));
+  assert.equal(by.plugin.state, "followed");
+  assert.equal(by.skills.state, "followed");
+  assert.equal(by.mcp.state, "missing", "npx without a version");
+  assert.match(by.mcp.says, /files is fetched at start without a fixed version/);
+  assert.equal(by.files.state, "missing");
+  assert.equal(by.files.says, "No AGENTS.md");
+  assert.equal(by.secrets.state, "followed");
+  assert.equal(by.locks.state, "followed");
+  assert.equal(by.release.state, "unknown", "GitHub did not say");
+  assert.equal(by.samples.state, "missing");
+  assert.equal(by.extras.state, "not-applicable");
+  assert.equal(g.of, g.basics.filter((x) => x.state !== "not-applicable").length);
+  assert.equal(g.followed, 4);
+  assert.match(g.url, /portability-guidance-for-builders/);
+  const tagged = guidanceOf({ all: Object.keys(files), read: (f) => files[f] ?? null, facts: [{ kind: "credential-shape", file: "a.py", line: 1, data: {} }], portability: { uses: [{ category: "agent-to-agent", outside: false }] }, tags: { count: 1 } });
+  const t = Object.fromEntries(tagged.basics.map((x) => [x.id, x]));
+  assert.equal(t.release.state, "followed");
+  assert.equal(t.secrets.state, "missing");
+  assert.deepEqual(tagged.extras.map((x) => [x.id, x.state]), [["a2a", "missing"]], "called by other agents with no card");
+  assert.equal(pinned("@example/files-mcp@1.4.2"), true);
+  assert.equal(pinned("@example/files-mcp@latest"), false);
+  assert.equal(pinned("mcp-server-git==0.6.2"), true);
 });
 
 test("[F6.A5] a plugin is read for what applies to it: how it is packaged, the MCP servers it connects to, and its tool's own hooks and commands; the rest is said not to apply", () => {
@@ -137,7 +194,9 @@ test("[F6.A5] a plugin is read for what applies to it: how it is packaged, the M
   assert.equal(reading.uses.find((r) => r.category === "hooks").level, "proprietary");
   assert.deepEqual(reading.not_applicable, CATEGORY_KEYS.filter((k) => !["packaging", "tool-connections"].includes(k)));
   assert.deepEqual(reading.built_on.tools, ["Claude Code", "Cursor"]);
-  for (const d of reading.destinations) { assert.equal(d.runtime, null, "a plugin has no runtime to re-host"); assert.ok(d.cells.every((c) => ["packaging", "tool-connections"].includes(c.category))); }
+  for (const h of reading.harnesses) assert.ok(h.lines.every((l) => ["skills", "mcp", "plugins", "hooks"].includes(l.capability)), `${h.name}: only what a plugin uses`);
+  assert.match(reading.harnesses.find((h) => h.harness === "claude-code").takes, /^Installs as it is, as a Claude Code plugin/);
+  assert.match(reading.harnesses.find((h) => h.harness === "opencode").takes, /^Its skills load as they are; its Claude Code and Cursor manifest does not install there/);
 });
 
 test("[F6.A6] the model says only what each outside service is needed for: asked in the first call with the facts that show it, never in the second; its words are held to plain facts", () => {
@@ -187,10 +246,12 @@ test("[F6.A7] the report carries the reading, with the evidence, and fits its sc
     for (const e of sandbox.sources[0].evidence) assert.ok(r.facts.some((f) => f.id === e.fact && f.kind === "platform-use" && f.file === e.file && f.line === e.line), "each place is a fact of the report");
     assert.doesNotMatch(m.asked[1].prompt, /\[platform-use\]/, "the second call reads what it read before");
     const md = markdownOf(r);
-    const at5 = md.indexOf("## Systems it uses"); const atMove = md.indexOf("## Could it move?"); const at6 = md.indexOf("## What it can do on its own");
+    const at5 = md.indexOf("## Systems it uses"); const atMove = md.indexOf("## Portability"); const at6 = md.indexOf("## What it can do on its own");
     assert.ok(at5 > 0 && atMove > at5 && at6 > atMove, "after Systems it uses, before what it can do on its own");
     assert.match(md, /\[`src\/maker\/sandbox\.py:6`\]\(https:\/\/github\.com\/acme\/helper\/blob\/86d8f66\/src\/maker\/sandbox\.py#L6\)/);
-    assert.match(md, /#### AgentMesh/);
+    assert.match(md, /#### Claude Code/); assert.doesNotMatch(md, /#### AgentMesh/);
+    assert.match(md, /Follows \d+ of \d+ basics in \[AgentMesh's portability guidance for builders\]\(https:\/\/agentmesh\.ai\/draft\/articles\/portability-guidance-for-builders\.html\)/);
+    assert.equal(r.portability.guidance.basics.length, 9, "nine basics");
     assert.match(md, /From the agent platforms database at AgentMesh commit [0-9a-f]{7}, checked \d{4}-\d{2}-\d{2}\./);
     const withReading = starts.filter((s) => s.portability);
     assert.ok(withReading.length >= 1);
@@ -244,15 +305,16 @@ test("[F6.A2] 0.6.3: a requirements file names frameworks; a type-only import is
   const { reading } = readOf(adk, [{ framework: "Google ADK", package: "google-adk", file: "pyproject.toml", line: 4 }]);
   const mem = reading.uses.find((r) => r.category === "memory-and-state");
   assert.ok(mem, "memory is a row");
-  assert.equal(mem.outside, false); assert.equal(mem.swap, "in-process");
-  assert.ok(reading.destinations.every((d) => !d.swaps.includes("memory-and-state")), "nothing to swap");
+  // 0.7.0 (debt 939): ADK's own session classes are the open-source part of the cell, by their evidence.
+  assert.equal(mem.outside, false); assert.ok(["in-process", "library"].includes(mem.swap), mem.swap);
+  assert.ok(!reading.uses.filter((r) => r.outside).some((r) => r.category === "memory-and-state"), "nothing to swap");
   const vertex = { ...adk, "bot/run.py": "from google.adk.sessions import VertexAiSessionService\nVertexAiSessionService()\n" };
   assert.equal(readOf(vertex, [{ framework: "Google ADK", package: "google-adk", file: "pyproject.toml", line: 4 }]).reading.uses.find((r) => r.category === "memory-and-state").outside, true, "Vertex's sessions are a service");
-  // A destination's deployment is its re-host line, never again as a cell.
+  // 0.7.0: Run it in names each harness once, never AgentMesh, with what running it there takes.
   const { portabilityMarkdown } = await import("../scripts/report.mjs");
-  const withDeploy = { ...reading, destinations: reading.destinations.map((d) => ({ ...d, cells: [...d.cells, { category: "deployment", title: "Deployment and scaling", rating: "native", what: "Runs it.", level: "proprietary" }] })) };
-  const md = portabilityMarkdown({ portability: withDeploy, repository: "https://github.com/x/y", commit: { sha: "0123456789abcdef" } }).join("\n");
-  assert.match(md, /on AgentMesh's deployment:/); assert.doesNotMatch(md, /for \*\*deployment and scaling\*\*/);
+  const md = portabilityMarkdown({ portability: reading, repository: "https://github.com/x/y", commit: { sha: "0123456789abcdef" } }).join("\n");
+  assert.match(md, /### Run it in/); assert.match(md, /#### opencode \(AgentMesh's House Stack runs agents in it\)/); assert.doesNotMatch(md, /#### AgentMesh/);
+  assert.match(md, /#### Agent Runtime[^\n]*\n\n- What it takes: Built for it/);
   // A plugin's manifests in its tools' own format.
   const files = claudePlugin();
   const found = platformUses({ files: filesOf(files), read: readerOf(files), db });

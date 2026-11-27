@@ -54,8 +54,9 @@ import { stepLine } from "./lists.mjs";
 import { admit, askerOf } from "./limits.mjs";
 import { loadedSkills, pickPlugin, pluginFacts, scopeOf, shapeOf, subjectOf } from "./plugin-facts.mjs";
 import { loadDatabase, platformUses, readingOf } from "./platforms.mjs";
+import { guidanceOf } from "./guidance.mjs";
 
-export const VERSION = "0.6.5";
+export const VERSION = "0.7.0";
 const DAY_MS = 24 * 60 * 60 * 1000;
 
 /**
@@ -75,7 +76,7 @@ export async function inspect({ text, workDir, env = process.env, fetchImpl = fe
   const dir = join(resolve(workDir), "codebase");
   rmSync(dir, { recursive: true, force: true });
   try {
-    let gh, repository, commitRec, recent, bytes, newestOn = null;
+    let gh, repository, commitRec, recent, bytes, newestOn = null, tags = null;
     try {
       // 0.4.3: the first working copy goes out the moment the job starts,
       // before any call to GitHub, with the repository the request names and
@@ -97,6 +98,9 @@ export async function inspect({ text, workDir, env = process.env, fetchImpl = fe
       const since = new Date(now().getTime() - 90 * DAY_MS).toISOString();
       recent = { ...(await gh.recentCommits(since)), since };
       bytes = await gh.archive(String(commitRec.sha ?? req.commit ?? "").toLowerCase());
+      // 0.7.0: one more call, for the guidance's tagged release; a failure
+      // of any kind leaves it unknown and inspects on.
+      try { tags = await gh.tags(); } catch { tags = null; }
     } catch (e) {
       if (e instanceof GitHubFailed) return { code: e.kind === "no-repository" || e.kind === "no-commit" || e.kind === "too-large" ? 0 : 1, reply: [...notes, e.said].join("\n\n") };
       throw e;
@@ -160,8 +164,11 @@ export async function inspect({ text, workDir, env = process.env, fetchImpl = fe
       found, db, frameworks: frameworkFacts.map((f) => f.data), subject,
       ownCode: facts.find((f) => f.kind === "own-code")?.data ?? null,
       languages: facts.filter((f) => f.kind === "language").map((f) => f.data),
+      schedules: files.some((f) => f.split("/").pop() === "schedules.json"),
       pluginParts: subject ? { hooks: facts.filter((f) => f.kind === "hook"), commands: facts.filter((f) => f.kind === "slash-command" || f.kind === "sub-agent"), mcp: facts.filter((f) => f.kind === "mcp-server"), manifests: facts.filter((f) => f.kind === "plugin-manifest" && f.data?.tool !== "Agent Plugins") } : {},
     });
+    // 0.7.0: how well it follows AgentMesh's portability guidance, by rule.
+    portability.guidance = guidanceOf({ all, root: picked.plugin?.root ?? "", read, facts, portability, tags });
     about.portability = portability;
     onStart(about);
     for (const f of facts) if (!byId.has(f.id)) byId.set(f.id, f);

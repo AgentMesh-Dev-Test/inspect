@@ -1,0 +1,70 @@
+{
+  "$schema": "../harness.schema.json",
+  "id": "claude-managed-agents",
+  "name": "Claude Managed Agents",
+  "vendor": "Anthropic",
+  "kind": "cloud-runtime",
+  "summary": "Anthropic's hosted agent harness (beta) that runs agents in sessions on managed infrastructure, with each session in its own cloud or self-hosted sandbox.",
+  "platform": "anthropic",
+  "plugin_formats": [],
+  "documentation": [
+    "https://platform.claude.com/docs/",
+    "https://code.claude.com/docs/",
+    "https://github.com/anthropics/"
+  ],
+  "checked": "2026-11-27",
+  "supports": {
+    "skills": {
+      "support": "partial",
+      "what": "Agents attach Agent Skills (a directory with a SKILL.md), either Anthropic's pre-built skills or custom skills uploaded to the workspace, and a session also discovers skills in a mounted GitHub repository's .claude/skills folder; Managed Agents is in beta.",
+      "sources": [
+        { "url": "https://platform.claude.com/docs/en/managed-agents/skills", "title": "Skills - Claude Managed Agents" }
+      ],
+      "checked": "2026-11-27"
+    },
+    "mcp": {
+      "support": "partial",
+      "what": "The MCP connector (beta) connects an agent to up to 20 remote MCP servers declared by URL in mcp_servers, with credentials supplied from vaults; the agent definition takes only remote servers (type url).",
+      "sources": [
+        { "url": "https://platform.claude.com/docs/en/managed-agents/mcp-connector", "title": "MCP connector - Claude Managed Agents" }
+      ],
+      "checked": "2026-11-27"
+    },
+    "plugins": {
+      "support": "unknown",
+      "what": "Not found in Anthropic's documentation.",
+      "sources": [],
+      "checked": "2026-11-27"
+    },
+    "hooks": {
+      "support": "unknown",
+      "what": "Not found in Anthropic's documentation.",
+      "sources": [],
+      "checked": "2026-11-27"
+    },
+    "a2a": {
+      "support": "unknown",
+      "what": "Not found in Anthropic's documentation.",
+      "sources": [],
+      "checked": "2026-11-27"
+    },
+    "scheduled-work": {
+      "support": "partial",
+      "what": "Scheduled deployments (beta) run an agent on a recurring cron schedule and keep its run history.",
+      "sources": [
+        { "url": "https://platform.claude.com/docs/en/managed-agents/scheduled-deployments", "title": "Scheduled deployments - Claude Managed Agents" },
+        { "url": "https://platform.claude.com/docs/en/managed-agents/overview", "title": "Claude Managed Agents overview" }
+      ],
+      "checked": "2026-11-27"
+    },
+    "sandboxes": {
+      "support": "partial",
+      "what": "Each session runs in its own isolated sandbox, either an Anthropic cloud sandbox (a fresh Linux container, beta) with limited or unrestricted networking, or a self-hosted sandbox on your own infrastructure.",
+      "sources": [
+        { "url": "https://platform.claude.com/docs/en/managed-agents/environments", "title": "Cloud environment setup - Claude Managed Agents" },
+        { "url": "https://platform.claude.com/docs/en/managed-agents/overview", "title": "Claude Managed Agents overview" }
+      ],
+      "checked": "2026-11-27"
+    }
+  }
+}

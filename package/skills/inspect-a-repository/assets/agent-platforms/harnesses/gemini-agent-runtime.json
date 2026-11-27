@@ -1,0 +1,79 @@
+{
+  "$schema": "../harness.schema.json",
+  "id": "gemini-agent-runtime",
+  "name": "Agent Runtime on Gemini Enterprise Agent Platform",
+  "vendor": "Google",
+  "kind": "cloud-runtime",
+  "summary": "Agent Runtime (formerly Vertex AI Agent Engine) is Google Cloud's fully managed runtime on Gemini Enterprise Agent Platform for deploying, operating and scaling agents built with ADK, other frameworks or a custom container.",
+  "platform": "google",
+  "plugin_formats": [],
+  "documentation": [
+    "https://adk.dev/",
+    "https://google.github.io/adk-docs/",
+    "https://docs.cloud.google.com/",
+    "https://cloud.google.com/",
+    "https://github.com/google/",
+    "https://github.com/googleapis/"
+  ],
+  "checked": "2026-11-27",
+  "supports": {
+    "skills": {
+      "support": "unknown",
+      "what": "Not found in Google's documentation.",
+      "sources": [],
+      "checked": "2026-11-27"
+    },
+    "mcp": {
+      "support": "yes",
+      "what": "Agents on Agent Runtime call MCP tools, and Agent Gateway, which Google manages for Agent Runtime, governs their outbound and inbound MCP tool calls over Server-Sent Events or HTTP POST; ADK agents connect to MCP servers with McpToolset, which deployed agents must define synchronously in agent.py.",
+      "sources": [
+        { "url": "https://docs.cloud.google.com/gemini-enterprise-agent-platform/govern/gateways/agent-gateway-overview", "title": "Agent Gateway overview" },
+        { "url": "https://docs.cloud.google.com/gemini-enterprise-agent-platform/scale/runtime/agent-gateway-runtime-deploy", "title": "Route Agent Runtime traffic through Agent Gateway" },
+        { "url": "https://adk.dev/tools-custom/mcp-tools/", "title": "Model Context Protocol tools - Agent Development Kit (ADK)" }
+      ],
+      "checked": "2026-11-27"
+    },
+    "plugins": {
+      "support": "unknown",
+      "what": "Not found in Google's documentation.",
+      "sources": [],
+      "checked": "2026-11-27"
+    },
+    "hooks": {
+      "support": "partial",
+      "what": "Agent Runtime has no hook mechanism of its own, but ADK agents deployed to it run their ADK callbacks on agent events, such as an after_agent_callback that sends conversation events to Memory Bank; ADK Plugins run code at lifecycle stages through the same callback hooks.",
+      "sources": [
+        { "url": "https://docs.cloud.google.com/gemini-enterprise-agent-platform/scale/memory-bank/use-with-adk", "title": "Use Memory Bank with ADK" },
+        { "url": "https://adk.dev/callbacks/", "title": "Callbacks: Observe, Customize, and Control Agent Behavior - Agent Development Kit (ADK)" },
+        { "url": "https://adk.dev/plugins/", "title": "Plugins - Agent Development Kit (ADK)" }
+      ],
+      "checked": "2026-11-27"
+    },
+    "a2a": {
+      "support": "partial",
+      "what": "Agent Runtime hosts agents built with the Agent2Agent (A2A) protocol through the A2aAgent template, which is labelled Preview, and Agent Gateway governs A2A traffic between agents.",
+      "sources": [
+        { "url": "https://docs.cloud.google.com/gemini-enterprise-agent-platform/build/runtime/create-an-a2a-agent", "title": "Create an Agent2Agent agent" },
+        { "url": "https://docs.cloud.google.com/gemini-enterprise-agent-platform/scale/runtime/use-an-a2a-agent", "title": "Use an Agent2Agent (A2A) agent" },
+        { "url": "https://docs.cloud.google.com/gemini-enterprise-agent-platform/build/runtime/create-an-agent", "title": "Create an agent" }
+      ],
+      "checked": "2026-11-27"
+    },
+    "scheduled-work": {
+      "support": "unknown",
+      "what": "Not found in Google's documentation.",
+      "sources": [],
+      "checked": "2026-11-27"
+    },
+    "sandboxes": {
+      "support": "yes",
+      "what": "Code Execution on Gemini Enterprise Agent Platform runs agent-written code in secure, isolated, managed sandboxes that keep their state for up to 14 days, used from ADK through the Agent Runtime Code Execution tool; Shell and Computer Use sandboxes are generally available.",
+      "sources": [
+        { "url": "https://docs.cloud.google.com/gemini-enterprise-agent-platform/scale/sandbox/code-execution-overview", "title": "Code Execution" },
+        { "url": "https://adk.dev/integrations/code-exec-agent-runtime/", "title": "Agent Runtime Code Execution tool for ADK" },
+        { "url": "https://docs.cloud.google.com/gemini-enterprise-agent-platform/release-notes", "title": "Gemini Enterprise Agent Platform release notes" }
+      ],
+      "checked": "2026-11-27"
+    }
+  }
+}

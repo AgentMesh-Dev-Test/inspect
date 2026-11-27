@@ -66,12 +66,12 @@
         "note": "The Agent Framework evaluation types and LocalEvaluator are open source and provider-agnostic, and .NET builds on Microsoft.Extensions.AI.Evaluation. Foundry evaluators and Copilot Studio agent evaluation run in Microsoft's hosted services; no open evaluation standard is involved."
       },
       "evidence": [
-        { "kind": "call", "value": "evaluate_agent", "language": "python" },
-        { "kind": "call", "value": "LocalEvaluator", "language": "any" },
-        { "kind": "call", "value": "FoundryEvals", "language": "any" },
-        { "kind": "import", "value": "from agent_framework.foundry import FoundryEvals", "language": "python" },
-        { "kind": "call", "value": "EvaluateAsync", "language": "csharp" },
-        { "kind": "import", "value": "using Microsoft.Extensions.AI.Evaluation;", "language": "csharp" }
+        { "kind": "call", "value": "evaluate_agent", "language": "python", "openness": "open-source" },
+        { "kind": "call", "value": "LocalEvaluator", "language": "any", "openness": "open-source" },
+        { "kind": "call", "value": "FoundryEvals", "language": "any", "openness": "proprietary" },
+        { "kind": "import", "value": "from agent_framework.foundry import FoundryEvals", "language": "python", "openness": "proprietary" },
+        { "kind": "call", "value": "EvaluateAsync", "language": "csharp", "openness": "open-source" },
+        { "kind": "import", "value": "using Microsoft.Extensions.AI.Evaluation;", "language": "csharp", "openness": "open-source" }
       ],
       "sources": [
         { "url": "https://learn.microsoft.com/en-us/agent-framework/agents/evaluation", "title": "Evaluation (Microsoft Agent Framework)" },
@@ -134,12 +134,12 @@
         "note": "Agent Framework sessions and checkpoints are the framework's own open-source format, and the CheckpointStorage protocol lets you swap or write a store you run yourself. Foundry conversations, the state store and Memory are hosted Azure services."
       },
       "evidence": [
-        { "kind": "call", "value": "create_session", "language": "python" },
-        { "kind": "call", "value": "FileCheckpointStorage", "language": "python" },
-        { "kind": "call", "value": "CosmosCheckpointStorage", "language": "python" },
-        { "kind": "package", "value": "agent-framework-azure-cosmos", "language": "python" },
-        { "kind": "call", "value": "CheckpointManager", "language": "csharp" },
-        { "kind": "env", "value": "AZURE_COSMOS_ENDPOINT", "language": "python" }
+        { "kind": "call", "value": "create_session", "language": "python", "openness": "open-source" },
+        { "kind": "call", "value": "FileCheckpointStorage", "language": "python", "openness": "open-source" },
+        { "kind": "call", "value": "CosmosCheckpointStorage", "language": "python", "openness": "proprietary" },
+        { "kind": "package", "value": "agent-framework-azure-cosmos", "language": "python", "openness": "proprietary" },
+        { "kind": "call", "value": "CheckpointManager", "language": "csharp", "openness": "open-source" },
+        { "kind": "env", "value": "AZURE_COSMOS_ENDPOINT", "language": "python", "openness": "proprietary" }
       ],
       "sources": [
         { "url": "https://learn.microsoft.com/en-us/agent-framework/workflows/checkpoints", "title": "Microsoft Agent Framework Workflows - Checkpoints" },
@@ -180,11 +180,11 @@
         "note": "Hosted agents run your own container and accept Agent Framework, LangGraph or custom code, but the endpoint, scaling and identity are Foundry's. Agent Framework's self-hosting packages are open source and can serve agents over A2A, MCP or OpenAI Responses from any host."
       },
       "evidence": [
-        { "kind": "file", "value": "azure.yaml" },
-        { "kind": "config", "value": "azure.ai.agent", "note": "Service entry in azure.yaml that declares the hosted agent and its protocols." },
-        { "kind": "import", "value": "using Microsoft.Agents.AI.Foundry.Hosting;", "language": "csharp" },
-        { "kind": "call", "value": "AddFoundryResponses", "language": "csharp" },
-        { "kind": "call", "value": "A2AExecutor", "language": "python" },
+        { "kind": "file", "value": "azure.yaml", "openness": "proprietary" },
+        { "kind": "config", "value": "azure.ai.agent", "openness": "proprietary", "note": "Service entry in azure.yaml that declares the hosted agent and its protocols." },
+        { "kind": "import", "value": "using Microsoft.Agents.AI.Foundry.Hosting;", "language": "csharp", "openness": "proprietary" },
+        { "kind": "call", "value": "AddFoundryResponses", "language": "csharp", "openness": "proprietary" },
+        { "kind": "call", "value": "A2AExecutor", "language": "python", "openness": "open-standard", "standard": "A2A" },
         { "kind": "not-in-code", "value": "Copilot Studio publishing channels", "note": "Copilot Studio agents are published and connected to channels in the Copilot Studio portal." }
       ],
       "sources": [
@@ -293,12 +293,12 @@
         "note": "Skills follow the Agent Skills specification, and Foundry toolboxes serve skills through the MCP Skills extension. Declarative agent YAML (kind: Prompt) is Agent Framework's own open-source format, and Foundry skill versions are stored in the hosted service."
       },
       "evidence": [
-        { "kind": "file", "value": "SKILL.md" },
-        { "kind": "call", "value": "SkillsProvider", "language": "python" },
-        { "kind": "call", "value": "AgentSkillsProvider", "language": "csharp" },
-        { "kind": "cli", "value": "azd ai skill create" },
-        { "kind": "package", "value": "agent-framework-declarative", "language": "python" },
-        { "kind": "config", "value": "kind: Prompt", "note": "First key of an Agent Framework declarative agent YAML file." }
+        { "kind": "file", "value": "SKILL.md", "openness": "open-standard", "standard": "Agent Skills" },
+        { "kind": "call", "value": "SkillsProvider", "language": "python", "openness": "open-standard", "standard": "Agent Skills" },
+        { "kind": "call", "value": "AgentSkillsProvider", "language": "csharp", "openness": "open-standard", "standard": "Agent Skills" },
+        { "kind": "cli", "value": "azd ai skill create", "openness": "proprietary" },
+        { "kind": "package", "value": "agent-framework-declarative", "language": "python", "openness": "open-source" },
+        { "kind": "config", "value": "kind: Prompt", "openness": "open-source", "note": "First key of an Agent Framework declarative agent YAML file." }
       ],
       "sources": [
         { "url": "https://learn.microsoft.com/en-us/agent-framework/agents/skills", "title": "Agent Skills (Microsoft Agent Framework)" },

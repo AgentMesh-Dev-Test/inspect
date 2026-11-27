@@ -1,0 +1,77 @@
+{
+  "$schema": "../harness.schema.json",
+  "id": "langsmith-agent-server",
+  "name": "LangSmith Agent Server",
+  "vendor": "LangChain",
+  "kind": "cloud-runtime",
+  "summary": "LangSmith Agent Server is LangChain's hosted runtime that runs LangGraph agents as a service with assistants, threads, runs and cron jobs, persistence and a task queue, on LangSmith Cloud, hybrid or self-hosted setups.",
+  "platform": "langchain",
+  "plugin_formats": [],
+  "documentation": [
+    "https://docs.langchain.com/",
+    "https://reference.langchain.com/",
+    "https://github.com/langchain-ai/"
+  ],
+  "checked": "2026-11-27",
+  "supports": {
+    "skills": {
+      "support": "partial",
+      "what": "Managed Deep Agents, in beta and running on LangSmith Agent Server, loads skills from `skills/<name>/SKILL.md` folders with `name` and `description` frontmatter; Agent Server itself does not load skills for other graphs.",
+      "sources": [
+        { "url": "https://docs.langchain.com/langsmith/managed-deep-agents-skills", "title": "Add skills to Managed Deep Agents" },
+        { "url": "https://docs.langchain.com/langsmith/python/managed-deep-agents-overview", "title": "Managed Deep Agents" }
+      ],
+      "checked": "2026-11-27"
+    },
+    "mcp": {
+      "support": "partial",
+      "what": "Agent Server exposes deployed agents as tools at a `/mcp` endpoint over Streamable HTTP, graphs can call remote MCP servers from their own code, and Managed Deep Agents (beta) connects to remote MCP servers over Streamable HTTP or SSE but not stdio.",
+      "sources": [
+        { "url": "https://docs.langchain.com/langsmith/server-mcp", "title": "MCP endpoint in Agent Server" },
+        { "url": "https://docs.langchain.com/langsmith/python/managed-deep-agents-mcp-connectors", "title": "Connect to MCP servers" }
+      ],
+      "checked": "2026-11-27"
+    },
+    "plugins": {
+      "support": "unknown",
+      "what": "Not found in LangChain's documentation.",
+      "sources": [],
+      "checked": "2026-11-27"
+    },
+    "hooks": {
+      "support": "partial",
+      "what": "Custom lifespan events (Python only) run code at server startup and shutdown, and webhooks send a POST to a given URL when a run finishes; no events around tool calls are documented for the server.",
+      "sources": [
+        { "url": "https://docs.langchain.com/langsmith/custom-lifespan", "title": "How to add custom lifespan events" },
+        { "url": "https://docs.langchain.com/langsmith/use-webhooks", "title": "Use webhooks" }
+      ],
+      "checked": "2026-11-27"
+    },
+    "a2a": {
+      "support": "partial",
+      "what": "Agent Server serves each assistant over A2A at `/a2a/{assistant_id}` (JSON-RPC binding, v1.0 and v0.3 method names, without `SubscribeToTask` or push notifications); the docs describe no A2A client for calling remote agents.",
+      "sources": [
+        { "url": "https://docs.langchain.com/langsmith/server-a2a", "title": "A2A endpoint in Agent Server" }
+      ],
+      "checked": "2026-11-27"
+    },
+    "scheduled-work": {
+      "support": "yes",
+      "what": "Cron jobs run an assistant on a user-defined cron schedule (in UTC) in the background, sending the same input on each run.",
+      "sources": [
+        { "url": "https://docs.langchain.com/langsmith/cron-jobs", "title": "Use cron jobs" },
+        { "url": "https://docs.langchain.com/langsmith/agent-server", "title": "LangSmith Agent Server" }
+      ],
+      "checked": "2026-11-27"
+    },
+    "sandboxes": {
+      "support": "partial",
+      "what": "Managed Deep Agents (beta) on Agent Server gives the agent an isolated filesystem and shell with an `execute` tool backed by LangSmith Sandboxes; LangSmith Sandboxes are generally available, but their page does not describe a built-in tie to Agent Server for other graphs.",
+      "sources": [
+        { "url": "https://docs.langchain.com/langsmith/python/managed-deep-agents-sandboxes", "title": "Add a sandbox to Managed Deep Agents" },
+        { "url": "https://docs.langchain.com/langsmith/sandboxes", "title": "LangSmith Sandboxes" }
+      ],
+      "checked": "2026-11-27"
+    }
+  }
+}

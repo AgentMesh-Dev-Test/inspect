@@ -26,17 +26,25 @@
     system, with its icon, its name, required or optional as a word and a
     shape, and what the person supplies; then what it spends and what it can
     do on its own.
-  - Could it move? (0.6.0): what it is built on; how tied it is, one row
-    for each category it uses, with how open that is and, for an outside
-    service, what it really needs and how it swaps; and for each other
-    platform (three shown, Every platform for the rest) the work to move it
-    and the platform's own rating and words for each category, from
-    AgentMesh's agent platforms database. Facts by rule, never advice.
+  - Portability (0.7.0, was Could it move? from 0.6.0): first, how many of
+    the basics of AgentMesh's portability guidance for builders it follows,
+    one line each, followed, missing or not known; then what it is built on
+    and how tied it is, one row for each category it uses, with how open
+    that is and how it swaps; then Run it in: one card for each of the
+    organization's preferred harnesses (the host hands them in view/data's
+    host_settings, a Next addition), with what running it there takes and
+    one line for each capability it uses, kept, partly, lost, not known or
+    gained, the harness's own words behind the capability's name. With none
+    picked, one line and Pick your harnesses, which asks the host to open
+    the setting (view/open-page, a Next addition); a host that says nothing
+    of preferences gets the harnesses themselves. From AgentMesh's agent
+    platforms database. Facts by rule, never advice.
   - Risks: the risks by level, which are also the filter, the summary for
     security, and every risk highest first.
-  - Tests and gaps (0.4.0): a document, every item's words shown, under
-    What Inspect couldn't tell, Gaps in the tests and Tests; each test with
-    how many tests, of what kind, and whether they run offline.
+  - Tests and gaps (0.7.0): the answer first, in one line (how many tests,
+    offline or not, and how many gaps and open questions); then Tests, Gaps
+    in the tests and What Inspect couldn't tell, one line an item, its words
+    behind it.
   A plugin or skills (0.5.0): what it is and the tools it installs into,
   under the description; tiles for its commands, sub-agents, hooks and MCP
   servers; the plugins of a repository that holds several, this one marked;
@@ -49,7 +57,9 @@
   Nothing on the page names a file, a line or an advisory id: this frame
   opens no link, so a reference would be dead text. Icons are drawn here, in
   the text's color: the brands' marks from Simple Icons (CC0), and a letter
-  for any other system; nothing is fetched. Body text is 16px or larger and
+  for any other system; nothing is fetched. The two Next additions are used only when the host
+  shows it has them (host_settings in view/data); any other host never sees
+  them. Body text is 16px or larger and
   nothing is under 14px. A level, a need or a step is always a word and a
   shape, never a color alone.
 -->
@@ -236,6 +246,12 @@ button { font: inherit; color: inherit; cursor: pointer; }
 .supply.nothing { color: var(--muted); }
 .rows.systems .detail { padding-left: calc(var(--s) * 0.5 + 1em + 40px + var(--s) * 1.5); }
 
+/* Tests and gaps (0.7.0): the answer, then one line an item */
+.answer { font-size: 1.15em; font-weight: 650; line-height: 1.45; max-width: 80ch; margin: 0 0 calc(var(--s) * 0.5); }
+.rows.lines .toggle { grid-template-columns: 1em minmax(0, 1fr) auto; }
+.rows.lines .measure-word { color: var(--muted); font-size: 0.94em; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.rows.lines .detail p + p { margin-top: calc(var(--s) * 0.6); }
+@media (max-width: 640px) { .rows.lines .toggle { grid-template-columns: 1em minmax(0, 1fr); } .rows.lines .measure-word { grid-column: 2; } }
 /* Tests and gaps: a document to read, every item's words shown (0.4.0) */
 .doc { max-width: 68ch; }
 .doc h3 { font-size: 1.1em; color: var(--text); font-weight: 700; letter-spacing: 0; margin: calc(var(--s) * 3.5) 0 calc(var(--s) * 1); padding-bottom: calc(var(--s) * 0.6); border-bottom: 1px solid var(--border); }
@@ -311,6 +327,34 @@ button { font: inherit; color: inherit; cursor: pointer; }
   .dest { padding: calc(var(--s) * 1.5) calc(var(--s) * 1.25); }
 }
 
+/* Portability (0.7.0): the guidance's basics, then Run it in */
+.guide-lead { display: flex; flex-wrap: wrap; gap: calc(var(--s) * 0.5) calc(var(--s) * 1.5); align-items: baseline; margin-bottom: calc(var(--s) * 1); }
+.guide-lead .v { font-size: 1.25em; font-weight: 700; line-height: 1.3; }
+.marks { list-style: none; margin: 0; padding: 0; border-top: 1px solid var(--border); max-width: 100ch; }
+.marks > li { border-bottom: 1px solid var(--border); padding: calc(var(--s) * 0.6) calc(var(--s) * 0.5); display: grid; grid-template-columns: 8.5em minmax(0, 18em) minmax(0, 1fr); gap: calc(var(--s) * 0.3) calc(var(--s) * 1.5); align-items: baseline; }
+.marks .says { color: var(--muted); overflow-wrap: anywhere; }
+.marks .t { font-weight: 650; }
+.mark { display: inline-flex; gap: 0.45em; align-items: center; color: var(--text); font-weight: 600; white-space: nowrap; }
+.mark.dim { color: var(--muted); font-weight: 500; }
+.sub-h { margin: calc(var(--s) * 2) 0 calc(var(--s) * 0.5); color: var(--muted); font-size: 0.94em; font-weight: 600; }
+.runs { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 26em), 1fr)); gap: calc(var(--s) * 1.25); }
+.run { border: 1px solid var(--border); border-radius: var(--radius); padding: calc(var(--s) * 1.25) calc(var(--s) * 1.75); display: grid; gap: calc(var(--s) * 0.75); align-content: start; min-width: 0; }
+.run-head { display: flex; gap: calc(var(--s) * 1.25); align-items: center; }
+.run-head h3 { margin: 0; color: var(--text); font-size: 1.1em; font-weight: 700; letter-spacing: 0; }
+.run-head .tag { display: block; color: var(--muted); font-size: 0.94em; font-weight: 500; }
+.run .takes { line-height: 1.5; }
+.run ul { list-style: none; margin: 0; padding: 0; display: grid; gap: calc(var(--s) * 0.45); }
+.run li { display: grid; grid-template-columns: 7.5em minmax(0, 1fr); gap: calc(var(--s) * 1); align-items: baseline; }
+.run li .ref { justify-self: start; text-align: left; }
+.pick { display: flex; flex-wrap: wrap; gap: calc(var(--s) * 1) calc(var(--s) * 1.5); align-items: center; }
+.pick p { color: var(--text); }
+.change { margin-top: calc(var(--s) * 1); }
+@media (max-width: 640px) {
+  .marks > li { grid-template-columns: 7.5em minmax(0, 1fr); }
+  .marks > li .says { grid-column: 2; }
+  .run { padding: calc(var(--s) * 1.25); }
+}
+
 .toast { position: fixed; right: calc(var(--s) * 2); bottom: calc(var(--s) * 2); background: var(--text); color: var(--bg); border-radius: var(--radius); padding: calc(var(--s) * 0.75) calc(var(--s) * 1.5); font-size: 0.94em; opacity: 0; transition: opacity 0.2s; pointer-events: none; z-index: 20; }
 .toast.on { opacity: 1; }
 
@@ -358,7 +402,7 @@ button { font: inherit; color: inherit; cursor: pointer; }
     { id: "does", name: "What it does", sections: [3, 4] },
     { id: "systems", name: "Systems it uses", sections: [5, 6] },
     // 0.6.0: from the report's portability member, not from its sections.
-    { id: "move", name: "Could it move?", sections: [] },
+    { id: "move", name: "Portability", sections: [] },
     { id: "risks", name: "Risks", sections: [7] },
     { id: "tests", name: "Tests and gaps", sections: [8] },
   ];
@@ -515,6 +559,12 @@ button { font: inherit; color: inherit; cursor: pointer; }
     high: '<polygon points="8,1.5 15.2,14.5 0.8,14.5" fill="currentColor"/>',
     medium: '<polygon points="8,1 15,8 8,15 1,8" fill="currentColor"/>',
     low: '<circle cx="8" cy="8" r="5.6" fill="none" stroke="currentColor" stroke-width="2.4"/>',
+    // 0.7.0: followed or kept, missing or lost, not known, partly, gained.
+    yes: '<path d="m2.2 8.6 3.8 3.8 7.8-8.6" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/>',
+    no: '<path d="m3.2 3.2 9.6 9.6M12.8 3.2l-9.6 9.6" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/>',
+    part: '<circle cx="8" cy="8" r="5.8" fill="none" stroke="currentColor" stroke-width="2"/><path d="M8 2.2a5.8 5.8 0 0 1 0 11.6z" fill="currentColor"/>',
+    plus: '<path d="M8 2.2v11.6M2.2 8h11.6" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/>',
+    ask: '<circle cx="8" cy="8" r="5.8" fill="none" stroke="currentColor" stroke-width="1.8" stroke-dasharray="2.6 2.2"/><circle cx="8" cy="8" r="1.4" fill="currentColor"/>',
     none: '<rect x="2" y="6.8" width="12" height="2.4" fill="currentColor"/>',
     unrated: '<rect x="2.6" y="2.6" width="10.8" height="10.8" rx="1" fill="none" stroke="currentColor" stroke-width="1.8"/>',
     // 0.5.0: an MCP server is a program on the person's machine (a screen) or
@@ -1330,25 +1380,40 @@ button { font: inherit; color: inherit; cursor: pointer; }
     }
     return out;
   }
+  // 0.7.0: the answer first, in one line; then each group under its
+  // heading, one line an item, its words behind it (a row that opens). The
+  // tests come first: they answer how well it is tested.
+  const TEST_ORDER = ["Tests", "Gaps in the tests", "What Inspect couldn't tell"];
+  function testsAnswer(d, groups) {
+    const { facts } = indexOf(d);
+    const files = [...facts.values()].filter((x) => x?.kind === "test-file");
+    const cases = files.reduce((n, x) => n + (Number(x.data?.cases) || 0), 0);
+    const live = files.filter((x) => x.data?.live).length;
+    const count = (h) => groups.find((g) => g.heading === h)?.rows.length ?? 0;
+    const gaps = count("Gaps in the tests");
+    const open = count("What Inspect couldn't tell");
+    const tested = !files.length ? "No tests" : `${plural(cases, "test")}${live === files.length ? ", all needing live keys" : live ? ", some needing live keys" : ", all offline"}`;
+    return [tested, gaps ? plural(gaps, "gap") : null, open ? `${plural(open, "question")} for its author` : null].filter(Boolean).join(" · ");
+  }
   function drawTests(d, pending) {
     const list = ordered(ofSection(d, 8));
     const coming = pending.has(8);
-    if (!list.length) return coming ? [skDoc(), skDoc()] : [el("p", { class: "quiet", text: "None found." })];
-    const out = [];
-    for (const g of groupsOf(8, list)) {
-      if (g.heading) out.push(el("h3", { text: g.heading }));
-      for (const { f, more } of merged(g.rows)) {
+    if (!list.length) return coming ? [skLead(), skRows(4)] : [el("p", { class: "quiet", text: "None found." })];
+    const groups = groupsOf(8, list).sort((a, b) => TEST_ORDER.indexOf(a.heading) - TEST_ORDER.indexOf(b.heading));
+    const out = [el("p", { class: "answer", text: testsAnswer(d, groups) })];
+    for (const g of groups) {
+      if (g.heading) out.push(el("h2", { text: g.heading }));
+      const items = merged(g.rows);
+      out.push(el("ul", { class: "rows lines" }, items.map(({ f, more }) => {
         const m = testMeasure(d, f);
-        out.push(el("div", { class: "doc-item", id: `f-${f.id}` },
-          el("h4", {}, prose(displayTitle(f))),
-          levelOf(f) ? badge(f) : null,
-          m ? el("p", { class: "meta", text: m }) : null,
-          f.says ? el("p", {}, prose(f.says)) : null,
-          ...more.map((s) => el("p", {}, prose(s)))));
-      }
+        return drawRow(d, f, {
+          side: m ? el("span", { class: "measure-word", text: m }) : levelOf(f) ? badge(f) : null,
+          detail: () => [f.says ? el("p", {}, prose(f.says)) : null, ...more.map((x) => el("p", {}, prose(x)))],
+        });
+      })));
     }
-    if (coming) out.push(skDoc());
-    return [el("article", { class: "doc" }, out)];
+    if (coming) out.push(skRows(2));
+    return out;
   }
 
   // ── The dialog: a skill's own instructions (0.4.0) ──
@@ -1525,21 +1590,24 @@ button { font: inherit; color: inherit; cursor: pointer; }
     .replace(/(^|[^\w*])\*(?=\S)([^*]+?)(?<=\S)\*(?!\w)/g, "$1$2")
     .replace(/(^|[^\w])_(?=\S)([^_]+?)(?<=\S)_(?!\w)/g, "$1$2"));
 
-  // ── Could it move? (0.6.0) ──
-  // What it is built on, how tied it is in each category it uses, and for
-  // each other platform what moving it would take, what it would lose and
-  // what replaces each part, in the database's own words. Facts by rule,
-  // never a recommendation, and nothing that names a file: the places in the
-  // code are in the Markdown and the JSON.
+  // ── Portability (0.7.0; Could it move? from 0.6.0) ──
+  // How well it follows AgentMesh's portability guidance for builders, what
+  // it is built on and how tied it is in each category it uses, and where it
+  // could run: the organization's preferred harnesses. Facts by rule, never
+  // a recommendation, and nothing that names a file: the places in the code
+  // are in the Markdown and the JSON.
   const OPEN = { proprietary: ["high", "Vendor's own"], mixed: ["medium", "Partly open"], "open-source": ["low", "Open source"], "open-standard": ["low", "Open standard"], unknown: ["unrated", "Not known"], "not-applicable": ["unrated", "Not offered"] };
-  const OFFER = { none: ["high", "Not offered"], partial: ["medium", "Only partly"], unknown: ["unrated", "Not documented"], native: ["low", "Offers it"], standard: ["low", "Open standard"] };
-  const OFFER_ORDER = ["none", "partial", "unknown", "native", "standard"];
   const CAT = { tracing: "Tracing and telemetry", evaluations: "Evaluations", "prompt-management": "Prompt management", "keys-and-secrets": "Keys and secrets", "memory-and-state": "Memory and saved state", "human-approval": "Human approval steps", deployment: "Deployment and scaling", sandboxes: "Sandboxes and code execution", "tool-connections": "Tool connections", "agent-to-agent": "Agent-to-agent", "identity-and-access": "Identity and access", packaging: "Packaging" };
-  const STANDARD_WORDS = { MCP: "the MCP library itself", A2A: "the A2A library itself", OpenTelemetry: "the OpenTelemetry library itself", "Agent Skills": "skills in the Agent Skills format", "Agent Plugins 1.0.0": "an Agent Plugins 1.0.0 manifest" };
-  const factBadge = ([s, w], dim = false) => el("span", { class: `lv fact${dim ? " dim" : ""}` }, shape(s), el("span", { class: "word", text: w }));
-  const firstOf = (s) => { const x = one(s); const m = /^(.+?[.!?])(?:\s+(?=[A-Z`(])|$)/.exec(x); return m ? m[1] : x; };
+  const GUIDE = { followed: ["yes", "Followed"], missing: ["no", "Missing"], unknown: ["ask", "Not known"], "not-applicable": ["nothing", "Doesn't apply"] };
+  const RUN = { kept: ["yes", "Kept"], gained: ["plus", "Gained"], partly: ["part", "Partly"], lost: ["no", "Lost"], unknown: ["ask", "Not known"] };
+  const RUN_ORDER = ["lost", "partly", "unknown", "gained", "kept"];
+  const factBadge = ([sh, w], dim = false) => el("span", { class: `lv fact${dim ? " dim" : ""}` }, shape(sh), el("span", { class: "word", text: w }));
+  const mark = ([sh, w], dim = false) => el("span", { class: `mark${dim ? " dim" : ""}` }, shape(sh), el("span", { text: w }));
   const swapLine = (r) => ({ settings: "Light to swap: settings only", "one-file": "Light to swap: its code is in one file" })[r.swap] ?? `${r.code_files >= 5 ? "Heavier" : "Moderate"} to swap: its code is in ${num(r.code_files)} files`;
   const sourceName = (s) => one(s.vendor ?? s.standard ?? andList(s.tools ?? [])) || "Its tool";
+  // The two Next additions, only where the host shows it has them.
+  const hostPrefs = () => { const h = state.params?.host_settings; return h && typeof h === "object" && Array.isArray(h.preferred_harnesses) ? h.preferred_harnesses.map(String) : null; };
+  const openPage = (page) => notify("view/open-page", { page });
   // A working copy short of room carries the reading without its words; the
   // words of an earlier copy, of the same platform and category, are kept.
   function fillWords(now, before) {
@@ -1549,12 +1617,10 @@ button { font: inherit; color: inherit; cursor: pointer; }
       for (const s of r.sources ?? []) { const os = o.sources?.find((x) => (x.platform ?? x.standard) === (s.platform ?? s.standard)); if (os && !one(s.what)) { s.what = os.what; if (os.note && !s.note) s.note = os.note; } }
       if (!r.needs && o.needs) { r.needs = o.needs; r.choices = o.choices; }
     }
-    for (const x of now.destinations ?? []) {
-      const o = (before.destinations ?? []).find((y) => y.platform === x.platform);
+    for (const h of now.harnesses ?? []) {
+      const o = (before.harnesses ?? []).find((y) => y.harness === h.harness);
       if (!o) continue;
-      if (!x.runtime && o.runtime) x.runtime = o.runtime;
-      else if (x.runtime && !x.runtime.deployment?.what && o.runtime?.deployment?.what) x.runtime.deployment = o.runtime.deployment;
-      for (const c of x.cells ?? []) { const oc = o.cells?.find((y) => y.category === c.category); if (oc && !one(c.what)) c.what = oc.what; }
+      for (const l of h.lines ?? []) { const ol = o.lines?.find((y) => y.capability === l.capability); if (ol && !one(l.says)) l.says = ol.says; }
     }
   }
   // A date alone is that day wherever the reader is, never the day before.
@@ -1562,106 +1628,93 @@ button { font: inherit; color: inherit; cursor: pointer; }
   const dbLine = (p) => el("p", { class: "db-line", text: `From the agent platforms database, checked ${dayOf(p.database?.checked) ?? (one(p.database?.checked) || "on a date it does not give")}.` });
   // Names that hold "and" themselves, listed so each reads whole.
   const titles = (xs) => (xs.length < 3 ? xs.join(xs.some((x) => / and /.test(x)) ? ", and " : " and ") : `${xs.slice(0, -1).join(", ")}, and ${xs.at(-1)}`);
+  // The guidance's basics, the answer first: how many it follows.
+  function drawGuidance(p) {
+    const g = p.guidance;
+    if (!g) return [];
+    const prefs = hostPrefs();
+    const out = [el("div", { class: "guide-lead" },
+      el("p", { class: "v", text: `Follows ${num(g.followed)} of ${num(g.of)} basics` }),
+      prefs ? el("button", { class: "ref", type: "button", "data-k": "guidance", onclick: () => openPage("portability-guidance") }, "Portability guidance for builders") : null)];
+    const row = (x) => el("li", {}, mark(GUIDE[x.state] ?? GUIDE.unknown, x.state === "not-applicable"), el("span", { class: "t", text: one(x.title) }), el("span", { class: "says", text: one(x.says) }));
+    out.push(el("ul", { class: "marks" }, (g.basics ?? []).filter((x) => x.state !== "not-applicable").map(row)));
+    if ((g.extras ?? []).length) {
+      out.push(el("p", { class: "sub-h", text: "For what it also does" }));
+      out.push(el("ul", { class: "marks" }, g.extras.map(row)));
+    }
+    return out;
+  }
   function drawMove(d, pending) {
     const p = d.portability;
     if (!p) return pending.has("move") ? [skLead(), skRows(4)] : [el("p", { class: "quiet", text: "This report has no reading of its platform." })];
-    const out = [];
+    const out = [...drawGuidance(p)];
     const b = p.built_on ?? {};
     const plugin = pluginOf(d);
     const main = (b.platforms ?? [])[0];
-    const outside = (p.uses ?? []).filter((r) => r.outside);
-    // The answer first: what it is built on, and the outside services it reaches.
+    // What it is built on, and what ties it to its vendor.
     const name = plugin ? toolList(plugin) || "Its coding tool" : main ? one(main.name) : "None of the platforms in the database";
     // A framework the platform's own name already says is not said again.
     const fws = (b.frameworks ?? []).map(one).filter((f) => f && !one(main?.name).includes(f));
     const under = plugin
       ? [b.also_for?.length ? `Also packaged for ${andList(b.also_for.map(one))}` : null, (b.platforms ?? []).length ? `Its code also imports from ${andList(b.platforms.map((x) => `${one(x.vendor)}'s platform`))}` : null].filter(Boolean).join(" · ") || null
       : [fws.length ? andList(fws) : null, one(b.language) || null, (b.platforms ?? []).length > 1 ? `also ${andList(b.platforms.slice(1).map((x) => `${one(x.vendor)}'s platform`))}` : null].filter(Boolean).join(" · ");
+    out.push(el("h2", { text: "How tied it is" }));
     out.push(el("div", { class: "move-lead" },
       systemIcon(plugin ? (plugin.tools?.[0] ?? name) : one(main?.vendor) || name),
       el("div", {}, el("span", { class: "k", text: plugin ? "Runs in" : "Built on" }), el("p", { class: "v", text: name }), under ? el("p", { class: "under", text: under }) : null)));
-    // What ties it to its vendor: each row the database rates the vendor's
-    // own or partly open, said as the ratings say it and no more.
     // A row whose use is kept in the agent's own memory ties it to nothing.
     const ties = (p.uses ?? []).filter((r) => !r.plugin_part && r.swap !== "in-process" && (r.level === "proprietary" || r.level === "mixed"));
-    // 0.6.4: a plugin is tied to its tools by the parts in their own formats.
     const toolTies = (p.uses ?? []).filter((r) => r.plugin_part);
     out.push(el("p", { class: "ties", text: plugin
       ? (toolTies.length ? `Tied to its tools in ${titles(toolTies.map((r) => r.title.toLowerCase()))}.` : "Nothing it uses ties it to its tools.")
       : ties.length ? `Tied to its vendor in ${titles(ties.map((r) => r.title.toLowerCase()))}.` : (p.uses ?? []).length ? "Nothing it uses ties it to its vendor." : "It uses none of the features the database lists." }));
-
-    // 0.6.5: what moving would take, overall, before the detail.
-    const moveLine = moveWords(p, plugin);
-    if (moveLine) out.push(el("p", { class: "ties move-all", text: moveLine }));
-
-    // With nothing used, the lines above are the whole of How tied it is.
-    if ((p.uses ?? []).length) out.push(el("h2", { text: "How tied it is" }));
     if ((p.uses ?? []).length) {
-      // 0.6.5: one line a row, its rating, the capability and how hard it is
-      // to swap; the database's words, what it needs and what the code also
-      // offers open behind the capability's name.
+      // One line a row: how open, the capability (its words behind its
+      // name), and how hard it is to swap.
       out.push(el("ul", { class: "tie-list" }, p.uses.map((r) => el("li", {},
         factBadge(r.plugin_part ? ["high", "Its tool's own"] : OPEN[r.level] ?? OPEN.unknown),
         el("button", { class: "ref tie-name", type: "button", "data-k": `tie:${r.category}`, onclick: (e) => openViewer(tieCell(p, r), e.currentTarget) }, r.title),
         el("span", { class: "tie-swap", text: rowSwap(r) })))));
     }
-    const notUsed = (plugin ? p.not_applicable : p.not_used) ?? [];
-    if (notUsed.length && (p.uses ?? []).length) out.push(el("p", { class: "not-used", text: `${plugin ? `Doesn't apply to ${plugin.kind === "skills" ? "skills" : "a plugin"}` : "Not used"}: ${andList(notUsed.map((k) => CAT[k] ?? k))}.` }));
-
-    out.push(el("h2", { text: "Moving it" }));
-    const list = (p.destinations ?? []).filter((x) => state.allPlatforms || x.shown);
-    out.push(el("div", { class: "dests" }, list.map((x) => drawDest(p, x, outside))));
-    const rest = (p.destinations ?? []).filter((x) => !x.shown).length;
-    if (rest) out.push(el("p", { class: "more" }, el("button", { class: "btn", type: "button", "aria-expanded": state.allPlatforms ? "true" : "false", "data-k": "every-platform", onclick: () => { state.allPlatforms = !state.allPlatforms; draw(); resize(true); } }, state.allPlatforms ? "Fewer platforms" : "Every platform")));
+    out.push(...drawRunIn(p));
     out.push(dbLine(p));
     return out;
   }
-  // One destination: the two kinds of work kept apart. Its outside services
-  // are swapped one by one, each for the destination's own; its own code is
-  // re-hosted on the destination's deployment, where what it uses comes
-  // along or is replaced. Under each, the destination's rating and words
-  // for every category it uses, what it would lose first.
-  function drawDest(p, x, outside) {
-    const byRating = (a, c) => OFFER_ORDER.indexOf(a.rating) - OFFER_ORDER.indexOf(c.rating);
-    // Its deployment is the work line itself, said once.
-    const cells = [...(x.cells ?? [])].filter((c) => pluginOf(state.doc) || c.category !== "deployment").sort(byRating);
-    // 0.6.5: one line for each capability it uses, what this platform does
-    // for it; the platform's own words open behind the name.
-    // What it would lose, one line each; what it offers in full, one line
-    // for all. The work itself is the same everywhere, said once above.
-    const ref = (c) => el("button", { class: "ref", type: "button", "data-k": `cell:${x.platform}:${c.category}`, onclick: (e) => openViewer(destCell(p, x, c), e.currentTarget) }, c.title);
-    const gaps = cells.filter((c) => c.rating !== "native" && c.rating !== "standard");
-    const full = cells.filter((c) => c.rating === "native" || c.rating === "standard");
-    const out = [el("div", { class: "dest-head" }, systemIcon(one(x.vendor) || one(x.name)), el("h3", { text: one(x.name) }), x.also_used ? el("span", { class: "also", text: "Its code uses it too" }) : null,
-      !pluginOf(state.doc) && x.runtime ? el("button", { class: "ref host", type: "button", "data-k": `host:${x.platform}`, onclick: (e) => openViewer(hostCell(p, x), e.currentTarget) }, "How it hosts agents") : null)];
-    if (gaps.length) out.push(el("ul", { class: "cells" }, gaps.map((c) => el("li", {}, factBadge(OFFER[c.rating] ?? OFFER.unknown), ref(c)))));
-    if (full.length) out.push(el("p", { class: "dest-full" }, factBadge(OFFER.native, true), el("span", {}, ...full.flatMap((c, i) => [i ? (i === full.length - 1 ? (full.length > 2 ? ", and " : " and ") : ", ") : null, ref(c)]).filter(Boolean))));
-    if (!cells.length && pluginOf(state.doc)) out.push(el("p", { class: "quiet", text: "Nothing it uses is rated here." }));
-    return el("section", { class: "dest", "aria-label": one(x.name) }, out);
+  // Run it in: one card for each preferred harness, in the order picked.
+  function drawRunIn(p) {
+    const out = [el("h2", { text: "Run it in" })];
+    const all = p.harnesses;
+    if (!Array.isArray(all)) {
+      out.push(el("p", { class: "quiet", text: "Run Inspect again to see where it runs." }));
+      return out;
+    }
+    const prefs = hostPrefs();
+    if (prefs && !prefs.length) {
+      out.push(el("div", { class: "pick" }, el("p", { text: "Your organization hasn't picked its harnesses yet." }),
+        el("button", { class: "btn", type: "button", "data-k": "pick-harnesses", onclick: () => openPage("preferred-harnesses") }, "Pick your harnesses")));
+      return out;
+    }
+    const shown = prefs ? prefs.map((id) => all.find((h) => h.harness === id)).filter(Boolean) : all.filter((h) => h.kind === "harness");
+    out.push(el("div", { class: "runs" }, shown.map((h) => drawRun(p, h))));
+    if (prefs) out.push(el("p", { class: "change" }, el("button", { class: "ref", type: "button", "data-k": "change-harnesses", onclick: () => openPage("preferred-harnesses") }, "Change your harnesses")));
+    return out;
+  }
+  function drawRun(p, h) {
+    const lines = [...(h.lines ?? [])].sort((a, z) => RUN_ORDER.indexOf(a.state) - RUN_ORDER.indexOf(z.state));
+    return el("section", { class: "run", "aria-label": one(h.name) },
+      el("div", { class: "run-head" }, systemIcon(one(h.vendor) || one(h.name)),
+        el("div", {}, el("h3", { text: one(h.name) }), h.house_stack ? el("span", { class: "tag", text: "Runs agents in AgentMesh's House Stack" }) : null)),
+      el("p", { class: "takes", text: `${one(h.takes).replace(/[.]$/, "")}.` }),
+      lines.length ? el("ul", {}, lines.map((l) => el("li", {}, mark(RUN[l.state] ?? RUN.unknown),
+        el("button", { class: "ref", type: "button", "data-k": `run:${h.harness}:${l.capability}`, onclick: (e) => openViewer(runCell(p, h, l), e.currentTarget) }, l.title)))) : null);
   }
   // A row's one line: how hard it is to swap, or why there is nothing to swap.
   function rowSwap(r) {
     if (r.outside || ["settings", "one-file", "files"].includes(r.swap)) return swapLine(r);
     return ({ standard: "Moves as it is", library: "Comes with its open-source code", "in-process": "Kept in its own memory, no service", runtime: "Moves with its runtime", tool: "Rewritten for each tool" })[r.swap] ?? "";
   }
-  const filesOf = (rt) => (rt && rt.own_files !== null && Number.isFinite(Number(rt.own_files)) ? `${num(rt.own_files)} ${Number(rt.own_files) === 1 ? "file" : "files"}` : null);
-  // What moving would take, overall: the services swapped and the code re-hosted.
-  function moveWords(p, plugin) {
-    const outside = (p.uses ?? []).filter((r) => r.outside).map((r) => r.title.toLowerCase());
-    if (plugin) {
-      const own = (p.uses ?? []).filter((r) => r.plugin_part).map((r) => r.title.toLowerCase());
-      const open = (p.uses ?? []).filter((r) => !r.plugin_part && r.level === "open-standard").map((r) => r.title.toLowerCase());
-      if (!own.length) return open.length ? `Moving it takes nothing more: its ${titles(open)} are open standards.` : null;
-      return open.length ? `Moving it means rewriting the rest for each new tool; its ${titles(open)} move as they are.` : "Moving it means rewriting all of it for each new tool.";
-    }
-    const rt = (p.destinations ?? []).find((x) => x.runtime)?.runtime;
-    const size = filesOf(rt);
-    const host = `re-hosting its own code${size ? ` (${size})` : ""}`;
-    return outside.length ? `Moving it means swapping ${titles(outside)}, and ${host}.` : `Moving it means ${host}.`;
-  }
-  // The dialog's content for one row, and for one destination's cell: the
-  // database's whole words, how open the feature is and why; for a row, what
-  // the code needs of it and what it already offers instead.
+  // The dialog's content for one row, and for one harness's capability: the
+  // database's whole words.
   function tieCell(p, r) {
     return { key: `tie:${r.category}`, title: r.title, words: r.sources.map((s) => one(s.what).length).join(","), parts: () => [
       r.needs ? el("p", {}, el("strong", { text: "Needs: " }), cap(r.needs)) : null,
@@ -1669,11 +1722,8 @@ button { font: inherit; color: inherit; cursor: pointer; }
       ...r.sources.flatMap((s) => [el("h3", { class: "md-h", text: sourceName(s) }), factBadge(OPEN[s.level] ?? OPEN.unknown), one(s.what) ? el("p", {}, prose(one(s.what))) : sk("90%"), one(s.note) ? el("p", { class: "muted" }, prose(one(s.note))) : null]),
       dbLine(p)] };
   }
-  function hostCell(p, x) {
-    return { key: `host:${x.platform}`, title: `How ${one(x.name)} hosts agents`, words: String(one(x.runtime?.deployment?.what).length), parts: () => [one(x.runtime?.deployment?.what) ? el("p", {}, prose(one(x.runtime.deployment.what))) : sk("90%"), dbLine(p)] };
-  }
-  function destCell(p, x, c) {
-    return { key: `cell:${x.platform}:${c.category}`, title: `${c.title}: ${one(x.name)}`, words: String(one(c.what).length), parts: () => [factBadge(OFFER[c.rating] ?? OFFER.unknown), one(c.what) ? el("p", {}, prose(one(c.what))) : sk("90%"), dbLine(p)] };
+  function runCell(p, h, l) {
+    return { key: `run:${h.harness}:${l.capability}`, title: `${l.title}: ${one(h.name)}`, words: String(one(l.says).length), parts: () => [mark(RUN[l.state] ?? RUN.unknown), one(l.says) ? el("p", {}, prose(one(l.says))) : sk("90%"), dbLine(p)] };
   }
 
 

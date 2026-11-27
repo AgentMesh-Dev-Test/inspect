@@ -2,53 +2,125 @@
   "about": "A copy of AgentMesh's agent platforms database (data/agent-platforms), taken byte for byte at one AgentMesh commit. Inspect reads it to say how tied an agent is to its platform and what moving it would take. To take a newer copy: copy the folder again from the new commit, set commit, checked and every sha256 here, run the tests, release; that is a normal pull request.",
   "repository": "https://github.com/jeffrschneider/AgentMesh",
   "path": "data/agent-platforms",
-  "commit": "fec37275bc1abd82df9eb12847c9b1e99ec4dcff",
+  "commit": "419be6ae2bd8006de9f68a6593b255a884d21fb3",
   "committed": "2026-11-27",
   "checked": "2026-11-27",
   "files": [
     {
       "file": "README.md",
-      "sha256": "63b1d0b04eb8fbdf6b608ee7e37d511c23853f08d1e015ee261358795b1e50a9"
+      "sha256": "46b391e5b118d3cce7a59a7c7f741a8ea0ee5426ff8bdd201b3973f39d794f6a"
+    },
+    {
+      "file": "harness.schema.json",
+      "sha256": "a562f22e0724d297d6790e98f7c4fe680ae2f78f39420288ef01e9faf39551f9"
+    },
+    {
+      "file": "harnesses/bedrock-agentcore.json",
+      "sha256": "d7292f2ee64234178a80cd20cb615094430f4c4ead0481822c14bfa3857c3976"
+    },
+    {
+      "file": "harnesses/chatgpt.json",
+      "sha256": "e68271806f615650f5e294bc879309694a1813850ac809381142ff79176537fe"
+    },
+    {
+      "file": "harnesses/claude-agent-sdk.json",
+      "sha256": "cefd08424010f81a30ed807dbbaaafa6f280110a6ad2800efd651bbe7697d5c8"
+    },
+    {
+      "file": "harnesses/claude-apps.json",
+      "sha256": "d259c23679db1a5aebd891c11d39f73a588151322a05f834b711cc0eed84da2e"
+    },
+    {
+      "file": "harnesses/claude-code.json",
+      "sha256": "a9b0c307b728b1f96bfcf4f2346ecad3a0b9a3a3de1eba085b50496c9a13ae83"
+    },
+    {
+      "file": "harnesses/claude-managed-agents.json",
+      "sha256": "627559c6a869b19e3bf61760639c4adabf241c7c0bbecf6afbdf768d7252c7b9"
+    },
+    {
+      "file": "harnesses/codex.json",
+      "sha256": "b116b700ba286263459b4d28cd68b0679782927f1bdd0faa6e0f21aad5b65a91"
+    },
+    {
+      "file": "harnesses/crewai-amp.json",
+      "sha256": "2b39002643dbc54c750afa344963ef15f52db8b0b89a70917101e4606e72b266"
+    },
+    {
+      "file": "harnesses/cursor.json",
+      "sha256": "fa89edaadd96098f6cc1a4de62ad28a481ecc40eea4f4389b3c78dde9f527417"
+    },
+    {
+      "file": "harnesses/foundry-agent-service.json",
+      "sha256": "957600d0dcfe0d25e60517ab1d72c87c6579180809c0190c156be4ca381190c4"
+    },
+    {
+      "file": "harnesses/gemini-agent-runtime.json",
+      "sha256": "e6692f8a0afacaf9862fcc62d327b25837429f3017d5c6bbc870f1291e405253"
+    },
+    {
+      "file": "harnesses/gemini.json",
+      "sha256": "0f5a7c6f1d25610883570502767a719b5ad2d3a30d52a322afcef10b75f02c31"
+    },
+    {
+      "file": "harnesses/langsmith-agent-server.json",
+      "sha256": "fa94899395597bf19bddb358d88258c140d2e630132022f6c4022713ff52cb5e"
+    },
+    {
+      "file": "harnesses/mastra-platform.json",
+      "sha256": "a0b3bac3d0a1a148895ef1444341fcd205c927b74ad8c7aeadf683533d5e9237"
+    },
+    {
+      "file": "harnesses/microsoft-copilot.json",
+      "sha256": "aff3636b40f262b65504d4ca52e012544d0216fca30143b0df5217eaee4e94fd"
+    },
+    {
+      "file": "harnesses/openai-agents-api.json",
+      "sha256": "fb227e001d508e651b39bc5187fe5e4ce012e8fd8cfc97abf8fd703a226fb987"
+    },
+    {
+      "file": "harnesses/opencode.json",
+      "sha256": "1f149b39547c82d976a83a8c4852479c643340438813eaa1f16532e15192642b"
     },
     {
       "file": "platform.schema.json",
-      "sha256": "55780171c1351a02c8a4026db6186ab9f2104e5b1fd4bfc89f56f7b8c544a7c0"
+      "sha256": "dc38a95574aa98c21b81a3b283fff981fb6decfb0e2ea9dd7ee84dc0a75826c9"
     },
     {
       "file": "platforms/agentmesh.json",
-      "sha256": "4b3f9e33de49e94e3b5ec08d9b32bd3c08bd47960e4ea9f9f20a3c6e384c907b"
+      "sha256": "6711131dd5c9905394af26f7f2e7716c1e3228d461ad794c52319ef913da4a1d"
     },
     {
       "file": "platforms/anthropic.json",
-      "sha256": "9a8686ab2e404d7f48a003e9707cf898faa02db6627553001926de88decc0d26"
+      "sha256": "42626a5fc28a1822a66c7477030bd74f40a022d7bcea28e2114385ab3ccddb39"
     },
     {
       "file": "platforms/aws.json",
-      "sha256": "270c987b33e5edaca846e1fdb836a0728a68fc7e1463d39e5da82dec8c0b48ac"
+      "sha256": "bead61ef0bbc530c02a45a797f37e4b7e1b7351e7ed6faa5226c00279090cc2e"
     },
     {
       "file": "platforms/crewai.json",
-      "sha256": "3315ab09be8ccc2a53c37a428926fe95c6c33f6f6b4f8dedd73108fd4f6cdf9d"
+      "sha256": "d31ee7d4f11a7d7be3b63b58a647a7acb2e326f6e8ae0b81a7bdc3c4dc874ff0"
     },
     {
       "file": "platforms/google.json",
-      "sha256": "fcb56836ae09c8163d36b09b69a33b35a83c2f1af304fd580052c3a6edd642aa"
+      "sha256": "74e7d81ca4c420ec1f314bbb3d3a78c3ef0866bd874e63c7ae10ef694f311856"
     },
     {
       "file": "platforms/langchain.json",
-      "sha256": "3b2d591e1c94320deff50ce63dfee552d148801e97c7800889b93ef12a7ad62d"
+      "sha256": "31fc51bb272ea8e806c514a8935e4bfef51cc33fca8e9ca67f20354f1af92a63"
     },
     {
       "file": "platforms/mastra.json",
-      "sha256": "d7bf53c58e82ed4a1c75f552cbbc0224b66fc3bdc66befa9e4ca27e874238ad6"
+      "sha256": "4ad18306b65e38a0e4937a2ce0d3848ef4a4ee190031a2f1e48488ec59696bfa"
     },
     {
       "file": "platforms/microsoft.json",
-      "sha256": "3c8c93b661420b38882f6c7c35bca2d956a7592bbd5b78169575a72f4d57c2c1"
+      "sha256": "07c16d223ecc077e482ce5d25c52bfe55da7ec6a643d71901ef11602a73004ff"
     },
     {
       "file": "platforms/openai.json",
-      "sha256": "be2cdea01741141349b988e7e8e021f69ce6e09322f544ba349176b1ae642548"
+      "sha256": "79d87ca3303e9ddae54ce6001d1822d7a6e40693d503e69285351f0481d2efe5"
     }
   ]
 }

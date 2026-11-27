@@ -1,0 +1,79 @@
+{
+  "$schema": "../harness.schema.json",
+  "id": "mastra-platform",
+  "name": "Mastra platform",
+  "vendor": "Mastra",
+  "kind": "cloud-runtime",
+  "summary": "The Mastra platform is Mastra's hosted service that deploys a Mastra application with `mastra deploy` and runs it as an API server (Server), with hosted Studio, Observability, environments and managed Workspaces.",
+  "platform": "mastra",
+  "plugin_formats": [],
+  "documentation": [
+    "https://mastra.ai/docs/",
+    "https://mastra.ai/reference/",
+    "https://mastra.ai/models/",
+    "https://mastra.ai/integrations/",
+    "https://github.com/mastra-ai/"
+  ],
+  "checked": "2026-11-27",
+  "supports": {
+    "skills": {
+      "support": "yes",
+      "what": "Agents in a deployed Mastra app load skills that follow the Agent Skills specification (a directory with a SKILL.md) through the agent's `skills` option or a Workspace; this is a framework feature the app serves on the platform.",
+      "sources": [
+        { "url": "https://mastra.ai/docs/skills", "title": "Agent skills" },
+        { "url": "https://mastra.ai/docs/mastra-platform/deploy/overview", "title": "Deploy to Mastra platform" }
+      ],
+      "checked": "2026-11-27"
+    },
+    "mcp": {
+      "support": "yes",
+      "what": "A deployed Mastra app's agents connect to MCP servers through MCPClient (`@mastra/mcp`), configured with a local command (stdio) or a remote URL (Streamable HTTP), and MCPServer serves the app's tools and agents at `/api/mcp/:serverId/mcp`; these are framework features the app serves on the platform.",
+      "sources": [
+        { "url": "https://mastra.ai/docs/connections/mcp", "title": "MCP" },
+        { "url": "https://mastra.ai/docs/mastra-platform/deploy/overview", "title": "Deploy to Mastra platform" }
+      ],
+      "checked": "2026-11-27"
+    },
+    "plugins": {
+      "support": "unknown",
+      "what": "Not found in Mastra's documentation.",
+      "sources": [],
+      "checked": "2026-11-27"
+    },
+    "hooks": {
+      "support": "partial",
+      "what": "Tool hooks (`hooks.beforeToolCall` and `hooks.afterToolCall` on the Agent) run TypeScript functions in the app's code before and after every tool call; no other events such as session start are documented.",
+      "sources": [
+        { "url": "https://mastra.ai/reference/agents/agent", "title": "Agent class" }
+      ],
+      "checked": "2026-11-27"
+    },
+    "a2a": {
+      "support": "yes",
+      "what": "A Mastra server serves each registered agent over A2A (v0.3 and v1.0) with an agent card at `/api/.well-known/<agentId>/agent-card.json` and calls remote A2A agents through `A2AAgent` or `getA2A()`; this is a framework feature the deployed app serves, and A2A task records are kept in memory and lost on restart.",
+      "sources": [
+        { "url": "https://mastra.ai/docs/connections/a2a", "title": "A2A (Agent-to-Agent)" }
+      ],
+      "checked": "2026-11-27"
+    },
+    "scheduled-work": {
+      "support": "partial",
+      "what": "The framework's Schedules and Scheduled workflows run agents and workflows on a cron in the app's server process, but Server on the Mastra platform can sleep an idle service, and the docs recommend the Persistent Server add-on, a separate service or an external scheduler for scheduled work.",
+      "sources": [
+        { "url": "https://mastra.ai/docs/long-running-agents/schedules", "title": "Schedules" },
+        { "url": "https://mastra.ai/docs/workflows/scheduled-workflows", "title": "Scheduled workflows" },
+        { "url": "https://mastra.ai/docs/mastra-platform/deploy/server", "title": "Server" }
+      ],
+      "checked": "2026-11-27"
+    },
+    "sandboxes": {
+      "support": "yes",
+      "what": "The Mastra platform provisions a managed Workspace per environment with a pool of on-demand remote sandboxes for command execution (`PlatformSandbox` from `@mastra/platform-workspace`); a statically configured sandbox is shared across requests and agents.",
+      "sources": [
+        { "url": "https://mastra.ai/docs/mastra-platform/workspaces", "title": "Workspaces" },
+        { "url": "https://mastra.ai/docs/mastra-platform/overview", "title": "Mastra platform" }
+      ],
+      "checked": "2026-11-27"
+    }
+  }
+}

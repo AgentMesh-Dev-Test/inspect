@@ -1,0 +1,76 @@
+{
+  "$schema": "../harness.schema.json",
+  "id": "crewai-amp",
+  "name": "CrewAI AMP",
+  "vendor": "CrewAI",
+  "kind": "cloud-runtime",
+  "summary": "CrewAI AMP (Agent Management Platform) is CrewAI's hosted platform that deploys and runs Crews and Flows built with the open-source CrewAI framework as automations with their own API.",
+  "platform": "crewai",
+  "plugin_formats": [],
+  "documentation": [
+    "https://docs.crewai.com/",
+    "https://docs-platform.crewai.com/",
+    "https://github.com/crewAIInc/"
+  ],
+  "checked": "2026-11-27",
+  "supports": {
+    "skills": {
+      "support": "yes",
+      "what": "CrewAI Skills are folders with a SKILL.md file attached with skills=[...] on an Agent or Crew, and crewai skill publish puts them in an organization-scoped registry on AMP that deployed crews can reference.",
+      "sources": [
+        { "url": "https://docs.crewai.com/en/concepts/skills", "title": "Skills" }
+      ],
+      "checked": "2026-11-27"
+    },
+    "mcp": {
+      "support": "yes",
+      "what": "CrewAI AMP connects to custom MCP servers over Streamable HTTP with no authentication, an authentication token or OAuth 2.0, and the framework's agents connect to MCP servers over stdio, SSE or Streamable HTTP.",
+      "sources": [
+        { "url": "https://docs-platform.crewai.com/platform/en/guides/custom-mcp-server", "title": "Custom MCP Servers" },
+        { "url": "https://docs.crewai.com/en/mcp/overview", "title": "MCP Servers as Tools in CrewAI" }
+      ],
+      "checked": "2026-11-27"
+    },
+    "plugins": {
+      "support": "unknown",
+      "what": "Not found in CrewAI's documentation.",
+      "sources": [],
+      "checked": "2026-11-27"
+    },
+    "hooks": {
+      "support": "yes",
+      "what": "The framework's Execution Hooks are Python functions registered with the @on decorator that run on events such as EXECUTION_START, PRE_TOOL_CALL and PRE_MODEL_CALL, as part of the crew or flow code AMP runs.",
+      "sources": [
+        { "url": "https://docs.crewai.com/en/learn/execution-hooks", "title": "Execution Hooks" }
+      ],
+      "checked": "2026-11-27"
+    },
+    "a2a": {
+      "support": "partial",
+      "what": "CrewAI AMP hosts crews and agents deployed with A2AServerConfig as A2A servers, which CrewAI labels early release, and the framework's A2AClientConfig lets an agent delegate to remote A2A agents.",
+      "sources": [
+        { "url": "https://docs-platform.crewai.com/platform/en/features/a2a", "title": "A2A on AMP" },
+        { "url": "https://docs.crewai.com/en/learn/a2a-agent-delegation", "title": "Agent-to-Agent (A2A) Protocol" }
+      ],
+      "checked": "2026-11-27"
+    },
+    "scheduled-work": {
+      "support": "partial",
+      "what": "CrewAI AMP's Automation Triggers start a deployed crew or flow on events from Gmail, Google Calendar, Slack, Salesforce and other integrations, and the docs show timetables only through an external tool such as ActivePieces calling the kickoff endpoint.",
+      "sources": [
+        { "url": "https://docs-platform.crewai.com/platform/en/guides/automation-triggers", "title": "Automation Triggers" },
+        { "url": "https://docs-platform.crewai.com/platform/en/guides/webhook-automation", "title": "Webhook Automation" }
+      ],
+      "checked": "2026-11-27"
+    },
+    "sandboxes": {
+      "support": "partial",
+      "what": "CrewAI's own CodeInterpreterTool has been removed from crewai-tools and the docs recommend a dedicated sandbox service; the E2B Sandbox Tools run agent code in E2B's isolated VMs.",
+      "sources": [
+        { "url": "https://docs.crewai.com/en/tools/ai-ml/codeinterpretertool", "title": "Code Interpreter" },
+        { "url": "https://docs.crewai.com/en/tools/ai-ml/e2bsandboxtools", "title": "E2B Sandbox Tools" }
+      ],
+      "checked": "2026-11-27"
+    }
+  }
+}

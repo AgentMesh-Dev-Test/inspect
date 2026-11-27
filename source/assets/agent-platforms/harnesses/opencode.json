@@ -1,0 +1,73 @@
+{
+  "$schema": "../harness.schema.json",
+  "id": "opencode",
+  "name": "opencode",
+  "vendor": "opencode (SST)",
+  "kind": "harness",
+  "summary": "An open source coding agent that runs in the terminal, as a server and through an SDK, and works with models from many providers.",
+  "house_stack": true,
+  "plugin_formats": [
+    "opencode"
+  ],
+  "documentation": [
+    "https://opencode.ai/docs/"
+  ],
+  "checked": "2026-11-27",
+  "supports": {
+    "skills": {
+      "support": "yes",
+      "what": "Skills: a SKILL.md file in .opencode/skills/<skill-id>, also found in .claude/skills, .agents/skills and their global equivalents.",
+      "sources": [
+        { "url": "https://opencode.ai/docs/skills/", "title": "Skills" }
+      ],
+      "checked": "2026-11-27"
+    },
+    "mcp": {
+      "support": "yes",
+      "what": "MCP servers: local servers that opencode starts over stdio, and remote servers over Streamable HTTP.",
+      "sources": [
+        { "url": "https://opencode.ai/docs/mcp-servers/", "title": "MCP servers" }
+      ],
+      "checked": "2026-11-27"
+    },
+    "plugins": {
+      "support": "yes",
+      "what": "Plugins in opencode's own format: npm packages, Git repositories, local directories or .ts and .js files that add tools, hooks, commands, agents and other behavior. The pages checked do not mention Agent Plugins or plugin.json.",
+      "sources": [
+        { "url": "https://opencode.ai/docs/plugins/", "title": "Plugins" },
+        { "url": "https://opencode.ai/docs/build/plugins/", "title": "Building plugins" }
+      ],
+      "checked": "2026-11-27"
+    },
+    "hooks": {
+      "support": "yes",
+      "what": "Plugin hooks registered in the plugin's code, such as the tool execute.before and execute.after hooks and session hooks, plus a read-only event stream.",
+      "sources": [
+        { "url": "https://opencode.ai/docs/build/plugins/server/", "title": "Server" }
+      ],
+      "checked": "2026-11-27"
+    },
+    "a2a": {
+      "support": "unknown",
+      "what": "Not found in opencode's documentation.",
+      "sources": [],
+      "checked": "2026-11-27"
+    },
+    "scheduled-work": {
+      "support": "partial",
+      "what": "Automations (experimental) send a prompt, run a Code Mode program or run a shell command at a time, every interval or on a cron schedule.",
+      "sources": [
+        { "url": "https://opencode.ai/docs/api", "title": "API: Create automation" }
+      ],
+      "checked": "2026-11-27"
+    },
+    "sandboxes": {
+      "support": "partial",
+      "what": "Code Mode's execute tool runs agent-written JavaScript in a runtime with no direct filesystem access, imports or timers. The pages checked describe no isolated environment for shell commands.",
+      "sources": [
+        { "url": "https://opencode.ai/docs/tools/", "title": "Tools" }
+      ],
+      "checked": "2026-11-27"
+    }
+  }
+}

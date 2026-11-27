@@ -81,12 +81,12 @@
         "note": "The trace processor interface is part of the open-source SDK, while the default destination, the Traces dashboard, is OpenAI's own service. The docs list third-party trace processors, maintained by their vendors, for backends such as Arize Phoenix, Langfuse, MLflow and Datadog; the tracing pages do not describe a built-in OpenTelemetry exporter."
       },
       "evidence": [
-        { "kind": "env", "value": "OPENAI_AGENTS_DISABLE_TRACING", "language": "python" },
-        { "kind": "call", "value": "add_trace_processor", "language": "python" },
-        { "kind": "call", "value": "set_trace_processors", "language": "python" },
-        { "kind": "call", "value": "set_tracing_export_api_key", "language": "python" },
-        { "kind": "call", "value": "withTrace", "language": "typescript" },
-        { "kind": "call", "value": "addTraceProcessor", "language": "typescript" }
+        { "kind": "env", "value": "OPENAI_AGENTS_DISABLE_TRACING", "language": "python", "openness": "open-source" },
+        { "kind": "call", "value": "add_trace_processor", "language": "python", "openness": "open-source" },
+        { "kind": "call", "value": "set_trace_processors", "language": "python", "openness": "open-source" },
+        { "kind": "call", "value": "set_tracing_export_api_key", "language": "python", "openness": "proprietary" },
+        { "kind": "call", "value": "withTrace", "language": "typescript", "openness": "open-source" },
+        { "kind": "call", "value": "addTraceProcessor", "language": "typescript", "openness": "open-source" }
       ],
       "sources": [
         { "url": "https://openai.github.io/openai-agents-python/tracing/", "title": "Tracing - OpenAI Agents SDK" },
@@ -166,11 +166,11 @@
         "note": "The SDK's session backends are open source and store history in databases the customer runs, in the library's own format. The Conversations API, stored responses and Agents API sessions are OpenAI's own services and hold the state on OpenAI's side."
       },
       "evidence": [
-        { "kind": "call", "value": "SQLiteSession", "language": "python" },
-        { "kind": "call", "value": "OpenAIConversationsSession", "language": "python" },
-        { "kind": "import", "value": "from agents.extensions.memory import RedisSession", "language": "python" },
-        { "kind": "config", "value": "previous_response_id", "language": "any" },
-        { "kind": "call", "value": "conversations.create", "language": "any" }
+        { "kind": "call", "value": "SQLiteSession", "language": "python", "openness": "open-source" },
+        { "kind": "call", "value": "OpenAIConversationsSession", "language": "python", "openness": "proprietary" },
+        { "kind": "import", "value": "from agents.extensions.memory import RedisSession", "language": "python", "openness": "open-source" },
+        { "kind": "config", "value": "previous_response_id", "language": "any", "openness": "proprietary" },
+        { "kind": "call", "value": "conversations.create", "language": "any", "openness": "proprietary" }
       ],
       "sources": [
         { "url": "https://openai.github.io/openai-agents-python/sessions/", "title": "Sessions - OpenAI Agents SDK" },
@@ -188,12 +188,12 @@
         "note": "The approval flow and the RunState format belong to the open-source SDK and run anywhere, with state stored wherever the application chooses. The MCP approval items are part of OpenAI's own Responses API."
       },
       "evidence": [
-        { "kind": "config", "value": "needs_approval", "language": "python" },
-        { "kind": "config", "value": "needsApproval", "language": "typescript" },
-        { "kind": "call", "value": "RunState", "language": "any" },
-        { "kind": "call", "value": "interruptions", "language": "any" },
-        { "kind": "config", "value": "require_approval", "language": "any" },
-        { "kind": "config", "value": "mcp_approval_request", "language": "any" }
+        { "kind": "config", "value": "needs_approval", "language": "python", "openness": "open-source" },
+        { "kind": "config", "value": "needsApproval", "language": "typescript", "openness": "open-source" },
+        { "kind": "call", "value": "RunState", "language": "any", "openness": "open-source" },
+        { "kind": "call", "value": "interruptions", "language": "any", "openness": "open-source" },
+        { "kind": "config", "value": "require_approval", "language": "any", "openness": "proprietary" },
+        { "kind": "config", "value": "mcp_approval_request", "language": "any", "openness": "proprietary" }
       ],
       "sources": [
         { "url": "https://openai.github.io/openai-agents-python/human_in_the_loop/", "title": "Human-in-the-loop - OpenAI Agents SDK" },
@@ -232,11 +232,11 @@
         "note": "OpenAI-hosted containers and sandboxes are OpenAI's own services. The SDK's sandbox clients are open source and run locally, in Docker, or with third-party sandbox providers."
       },
       "evidence": [
-        { "kind": "call", "value": "CodeInterpreterTool", "language": "python" },
-        { "kind": "config", "value": "code_interpreter", "language": "any" },
-        { "kind": "config", "value": "openai_hosted", "language": "any" },
-        { "kind": "import", "value": "from agents.sandbox import SandboxAgent", "language": "python" },
-        { "kind": "call", "value": "DockerSandboxClient", "language": "python" }
+        { "kind": "call", "value": "CodeInterpreterTool", "language": "python", "openness": "proprietary" },
+        { "kind": "config", "value": "code_interpreter", "language": "any", "openness": "proprietary" },
+        { "kind": "config", "value": "openai_hosted", "language": "any", "openness": "proprietary" },
+        { "kind": "import", "value": "from agents.sandbox import SandboxAgent", "language": "python", "openness": "open-source" },
+        { "kind": "call", "value": "DockerSandboxClient", "language": "python", "openness": "open-source" }
       ],
       "sources": [
         { "url": "https://developers.openai.com/api/docs/guides/tools-code-interpreter", "title": "Code Interpreter" },
@@ -309,10 +309,10 @@
         "note": "Skills follow the Agent Skills format, so the same SKILL.md folders work with other hosts that read it. The Agents API plugin layout is OpenAI's Codex format; the portable Agent Plugins 1.0.0 layout is documented for ChatGPT and Codex plugins."
       },
       "evidence": [
-        { "kind": "file", "value": "SKILL.md", "language": "any" },
-        { "kind": "config", "value": "skill_reference", "language": "any" },
-        { "kind": "config", "value": "capability_directories", "language": "any" },
-        { "kind": "file", "value": ".codex-plugin/plugin.json", "language": "any" },
+        { "kind": "file", "value": "SKILL.md", "language": "any", "openness": "open-standard", "standard": "Agent Skills" },
+        { "kind": "config", "value": "skill_reference", "language": "any", "openness": "proprietary" },
+        { "kind": "config", "value": "capability_directories", "language": "any", "openness": "proprietary" },
+        { "kind": "file", "value": ".codex-plugin/plugin.json", "language": "any", "openness": "proprietary" },
         { "kind": "import", "value": "from agents.sandbox.capabilities import Capabilities, Skills", "language": "python" }
       ],
       "sources": [
