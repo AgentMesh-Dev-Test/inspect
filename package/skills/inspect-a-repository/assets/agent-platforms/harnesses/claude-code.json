@@ -1,0 +1,76 @@
+{
+  "$schema": "../harness.schema.json",
+  "id": "claude-code",
+  "name": "Claude Code",
+  "vendor": "Anthropic",
+  "kind": "harness",
+  "summary": "Anthropic's agentic coding tool, available in the terminal, IDEs, a desktop app and the browser.",
+  "platform": "anthropic",
+  "plugin_formats": [
+    "Claude Code"
+  ],
+  "documentation": [
+    "https://code.claude.com/docs/"
+  ],
+  "checked": "2026-11-27",
+  "supports": {
+    "skills": {
+      "support": "yes",
+      "what": "Skills: SKILL.md files that follow the Agent Skills open standard, with Claude Code extensions to the frontmatter.",
+      "sources": [
+        { "url": "https://code.claude.com/docs/en/skills", "title": "Extend Claude with skills" }
+      ],
+      "checked": "2026-11-27"
+    },
+    "mcp": {
+      "support": "yes",
+      "what": "MCP servers as local stdio processes or remote servers over HTTP, SSE or WebSocket.",
+      "sources": [
+        { "url": "https://code.claude.com/docs/en/mcp", "title": "Connect Claude Code to tools via MCP" }
+      ],
+      "checked": "2026-11-27"
+    },
+    "plugins": {
+      "support": "yes",
+      "what": "Claude Code plugins: a directory with a .claude-plugin/plugin.json manifest bundling skills, agents, hooks, MCP servers and other components, installed from marketplaces.",
+      "sources": [
+        { "url": "https://code.claude.com/docs/en/plugins/overview", "title": "Plugins overview" },
+        { "url": "https://code.claude.com/docs/en/plugins/manifest-reference", "title": "Plugin manifest reference" }
+      ],
+      "checked": "2026-11-27"
+    },
+    "hooks": {
+      "support": "yes",
+      "what": "Hooks: shell commands, prompts or agents that run at points in Claude Code's lifecycle such as before a tool call; settings and plugins can declare them.",
+      "sources": [
+        { "url": "https://code.claude.com/docs/en/hooks-guide", "title": "Automate actions with hooks" },
+        { "url": "https://code.claude.com/docs/en/plugins/manifest-reference", "title": "Plugin manifest reference" }
+      ],
+      "checked": "2026-11-27"
+    },
+    "a2a": {
+      "support": "unknown",
+      "what": "Not found in Anthropic's documentation.",
+      "sources": [],
+      "checked": "2026-11-27"
+    },
+    "scheduled-work": {
+      "support": "partial",
+      "what": "Scheduled tasks: cloud scheduled tasks (formerly routines, research preview) run on a schedule, an API call or GitHub events; Desktop scheduled tasks run while the app is open; /loop and the cron tools repeat prompts within a session.",
+      "sources": [
+        { "url": "https://code.claude.com/docs/en/routines", "title": "Automate work with scheduled tasks" },
+        { "url": "https://code.claude.com/docs/en/desktop-scheduled-tasks", "title": "Schedule recurring tasks in Claude Code Desktop" },
+        { "url": "https://code.claude.com/docs/en/scheduled-tasks", "title": "Run prompts on a schedule" }
+      ],
+      "checked": "2026-11-27"
+    },
+    "sandboxes": {
+      "support": "yes",
+      "what": "The sandboxed Bash tool limits the files and network hosts shell commands can reach on macOS, Linux and WSL2; on native Windows, commands run unsandboxed.",
+      "sources": [
+        { "url": "https://code.claude.com/docs/en/sandboxing", "title": "Configure the sandboxed Bash tool" }
+      ],
+      "checked": "2026-11-27"
+    }
+  }
+}

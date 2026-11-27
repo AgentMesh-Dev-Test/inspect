@@ -1,0 +1,77 @@
+{
+  "$schema": "../harness.schema.json",
+  "id": "codex",
+  "name": "Codex",
+  "vendor": "OpenAI",
+  "kind": "harness",
+  "summary": "OpenAI's coding agent, available as the Codex CLI, an IDE extension, and Codex in the ChatGPT desktop app and on the web.",
+  "platform": "openai",
+  "plugin_formats": [
+    "Agent Plugins 1.0.0",
+    "Codex"
+  ],
+  "documentation": [
+    "https://learn.chatgpt.com/docs/",
+    "https://developers.openai.com/codex/",
+    "https://developers.openai.com/plugins/",
+    "https://github.com/openai/codex/"
+  ],
+  "checked": "2026-11-27",
+  "supports": {
+    "skills": {
+      "support": "yes",
+      "what": "Agent skills built on the open agent skills standard, available standalone in the ChatGPT desktop app, Codex CLI and IDE extension.",
+      "sources": [
+        { "url": "https://learn.chatgpt.com/docs/build-skills", "title": "Build skills" }
+      ],
+      "checked": "2026-11-27"
+    },
+    "mcp": {
+      "support": "yes",
+      "what": "MCP servers over STDIO (a local process) or Streamable HTTP.",
+      "sources": [
+        { "url": "https://learn.chatgpt.com/docs/extend/mcp", "title": "Model Context Protocol" }
+      ],
+      "checked": "2026-11-27"
+    },
+    "plugins": {
+      "support": "yes",
+      "what": "Plugins that bundle skills and MCP servers, packaged with a root plugin.json declaring the Agent Plugins schema, or the older .codex-plugin/plugin.json kept as a fallback; the IDE extension doesn't support plugins.",
+      "sources": [
+        { "url": "https://learn.chatgpt.com/docs/plugins", "title": "Plugins" },
+        { "url": "https://developers.openai.com/plugins/build/plugins", "title": "Package your plugin" }
+      ],
+      "checked": "2026-11-27"
+    },
+    "hooks": {
+      "support": "yes",
+      "what": "Hooks run scripts or MCP tools during the Codex agent loop, at events such as PreToolUse and PostToolUse; enabled plugins can bundle hooks.",
+      "sources": [
+        { "url": "https://learn.chatgpt.com/docs/hooks", "title": "Hooks" }
+      ],
+      "checked": "2026-11-27"
+    },
+    "a2a": {
+      "support": "unknown",
+      "what": "Not found in OpenAI's documentation.",
+      "sources": [],
+      "checked": "2026-11-27"
+    },
+    "scheduled-work": {
+      "support": "yes",
+      "what": "Scheduled tasks run recurring work in the background, created and managed from the ChatGPT desktop app or the web; Codex CLI and the IDE extension don't provide the Scheduled interface.",
+      "sources": [
+        { "url": "https://learn.chatgpt.com/docs/automations", "title": "Scheduled tasks" }
+      ],
+      "checked": "2026-11-27"
+    },
+    "sandboxes": {
+      "support": "yes",
+      "what": "The sandbox runs the agent's commands in the ChatGPT desktop app, Codex CLI and IDE extension inside a constrained environment enforced natively on each OS.",
+      "sources": [
+        { "url": "https://learn.chatgpt.com/docs/sandboxing", "title": "Sandbox" }
+      ],
+      "checked": "2026-11-27"
+    }
+  }
+}

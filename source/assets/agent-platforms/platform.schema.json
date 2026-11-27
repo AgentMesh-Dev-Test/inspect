@@ -202,6 +202,15 @@
         "language": {
           "enum": ["python", "typescript", "javascript", "csharp", "java", "go", "any"]
         },
+        "openness": {
+          "description": "How open the part of the feature this item shows is, when that differs from the cell's portability level (a mixed cell's open part and its vendor's own part). open-standard: the part follows an open standard, named in `standard`. open-source: the vendor's own interface, open source, runs anywhere. proprietary: the vendor's own interface, only from the vendor. Left out, the item takes the cell's level.",
+          "enum": ["open-standard", "open-source", "proprietary"]
+        },
+        "standard": {
+          "description": "The open standard this item's part follows, one of the cell's portability.standards. Only with openness open-standard.",
+          "type": "string",
+          "minLength": 1
+        },
         "note": { "type": "string", "minLength": 1 }
       }
     },

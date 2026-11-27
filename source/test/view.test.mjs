@@ -22,7 +22,9 @@ import { join } from "node:path";
 import { ROOT, descriptor } from "./helpers.mjs";
 
 const REQUESTS = ["resize", "propose-inputs", "save-file", "copy-text"];
-const BRIDGE = ["view/initialize", "view/data", "view/host-changed", "view/teardown", "view/ready", "view/resize", "view/propose-inputs", "view/save-file", "view/copy-text", "view/report-failure"];
+// 0.7.0: view/open-page is a Next addition (app-next view-frame.ts), sent only
+// to a host that hands host_settings in view/data.
+const BRIDGE = ["view/initialize", "view/data", "view/host-changed", "view/teardown", "view/ready", "view/resize", "view/propose-inputs", "view/save-file", "view/copy-text", "view/report-failure", "view/open-page"];
 const TOKENS = ["--ca-color-background", "--ca-color-surface", "--ca-color-text", "--ca-color-text-muted", "--ca-color-accent", "--ca-color-border", "--ca-color-danger", "--ca-font-body", "--ca-font-mono", "--ca-font-size", "--ca-radius", "--ca-space"];
 const d = descriptor();
 const view = d.views?.[0];

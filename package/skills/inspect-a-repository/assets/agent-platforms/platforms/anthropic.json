@@ -115,9 +115,9 @@
         { "kind": "env", "value": "ANTHROPIC_API_KEY", "language": "any" },
         { "kind": "env", "value": "CLAUDE_CODE_USE_BEDROCK", "language": "any" },
         { "kind": "env", "value": "CLAUDE_CODE_USE_VERTEX", "language": "any" },
-        { "kind": "call", "value": "client.beta.vaults.create", "language": "any" },
-        { "kind": "call", "value": "client.beta.vaults.credentials.create", "language": "any" },
-        { "kind": "config", "value": "vault_ids", "language": "any" }
+        { "kind": "call", "value": "client.beta.vaults.create", "language": "any", "openness": "proprietary" },
+        { "kind": "call", "value": "client.beta.vaults.credentials.create", "language": "any", "openness": "proprietary" },
+        { "kind": "config", "value": "vault_ids", "language": "any", "openness": "proprietary" }
       ],
       "sources": [
         { "url": "https://platform.claude.com/docs/en/managed-agents/vaults", "title": "Authenticate with vaults" },
@@ -135,12 +135,12 @@
         "note": "Agent SDK transcripts are files on your own disk in Claude Code's own format, and SessionStore can write them to an object store, key-value store or database you run; memory tool files are stored by your application. Managed Agents sessions and memory stores are Anthropic-hosted resources, readable and editable through the API."
       },
       "evidence": [
-        { "kind": "config", "value": "fork_session", "language": "python" },
-        { "kind": "config", "value": "forkSession", "language": "typescript" },
-        { "kind": "call", "value": "SessionStore", "language": "any" },
-        { "kind": "file", "value": "CLAUDE.md", "language": "any" },
-        { "kind": "call", "value": "client.beta.memory_stores.create", "language": "any" },
-        { "kind": "config", "value": "memory_20250818", "language": "any", "note": "Tool type of the Messages API memory tool." }
+        { "kind": "config", "value": "fork_session", "language": "python", "openness": "open-source" },
+        { "kind": "config", "value": "forkSession", "language": "typescript", "openness": "open-source" },
+        { "kind": "call", "value": "SessionStore", "language": "any", "openness": "open-source" },
+        { "kind": "file", "value": "CLAUDE.md", "language": "any", "openness": "open-source" },
+        { "kind": "call", "value": "client.beta.memory_stores.create", "language": "any", "openness": "proprietary" },
+        { "kind": "config", "value": "memory_20250818", "language": "any", "openness": "proprietary", "note": "Tool type of the Messages API memory tool." }
       ],
       "sources": [
         { "url": "https://code.claude.com/docs/en/agent-sdk/sessions", "title": "Work with sessions" },
@@ -181,12 +181,12 @@
         "note": "Agent SDK agents run wherever you run a container, and the hosting guide points to Anthropic's cookbook for Docker, Modal and Kubernetes. Managed Agents is Anthropic's own API, hosted by Anthropic or self-hosted under the Software License Agreement: Claude Managed Agents Server."
       },
       "evidence": [
-        { "kind": "package", "value": "claude-agent-sdk", "language": "python" },
-        { "kind": "package", "value": "@anthropic-ai/claude-agent-sdk", "language": "typescript" },
-        { "kind": "call", "value": "client.beta.sessions.create", "language": "any" },
-        { "kind": "call", "value": "client.beta.deployments.create", "language": "any" },
-        { "kind": "cli", "value": "ant apply", "language": "any" },
-        { "kind": "file", "value": "claude-lock.json", "language": "any", "note": "Written by ant apply to record the IDs of the Managed Agents resources it created." }
+        { "kind": "package", "value": "claude-agent-sdk", "language": "python", "openness": "open-source" },
+        { "kind": "package", "value": "@anthropic-ai/claude-agent-sdk", "language": "typescript", "openness": "open-source" },
+        { "kind": "call", "value": "client.beta.sessions.create", "language": "any", "openness": "proprietary" },
+        { "kind": "call", "value": "client.beta.deployments.create", "language": "any", "openness": "proprietary" },
+        { "kind": "cli", "value": "ant apply", "language": "any", "openness": "proprietary" },
+        { "kind": "file", "value": "claude-lock.json", "language": "any", "openness": "proprietary", "note": "Written by ant apply to record the IDs of the Managed Agents resources it created." }
       ],
       "sources": [
         { "url": "https://code.claude.com/docs/en/agent-sdk/hosting", "title": "Hosting the Agent SDK" },
@@ -204,11 +204,11 @@
         "note": "Cloud sandboxes and the code execution tool are Anthropic-hosted and use Anthropic's own API. The sandbox-runtime package behind the sandboxed Bash tool is open source, and the hosting guide also covers isolating the SDK in your own containers (Docker, gVisor, Firecracker)."
       },
       "evidence": [
-        { "kind": "call", "value": "client.beta.environments.create", "language": "any" },
-        { "kind": "config", "value": "allowed_hosts", "language": "any", "note": "Networking allowlist of a Managed Agents environment." },
-        { "kind": "config", "value": "code_execution_20250825", "language": "any", "note": "Tool type of the code execution tool; later versions use newer dates." },
-        { "kind": "call", "value": "SandboxSettings", "language": "typescript" },
-        { "kind": "config", "value": "sandbox", "language": "typescript", "note": "Agent SDK option that configures the sandboxed Bash tool." }
+        { "kind": "call", "value": "client.beta.environments.create", "language": "any", "openness": "proprietary" },
+        { "kind": "config", "value": "allowed_hosts", "language": "any", "openness": "proprietary", "note": "Networking allowlist of a Managed Agents environment." },
+        { "kind": "config", "value": "code_execution_20250825", "language": "any", "openness": "proprietary", "note": "Tool type of the code execution tool; later versions use newer dates." },
+        { "kind": "call", "value": "SandboxSettings", "language": "typescript", "openness": "open-source" },
+        { "kind": "config", "value": "sandbox", "language": "typescript", "openness": "open-source", "note": "Agent SDK option that configures the sandboxed Bash tool." }
       ],
       "sources": [
         { "url": "https://platform.claude.com/docs/en/managed-agents/environments", "title": "Cloud environment setup" },
@@ -285,11 +285,11 @@
         "note": "Skills follow the Agent Skills standard, with extra frontmatter fields that only Claude Code reads; its docs list the spec's fields to use for skills meant for other tools. The plugin manifest is Claude Code's own format."
       },
       "evidence": [
-        { "kind": "file", "value": "SKILL.md", "language": "any" },
-        { "kind": "file", "value": ".claude/skills/", "language": "any" },
-        { "kind": "file", "value": ".claude-plugin/plugin.json", "language": "any" },
-        { "kind": "config", "value": "plugins", "language": "any", "note": "Agent SDK option that loads plugins by local path, for example {\"type\": \"local\", \"path\": \"./my-plugin\"}." },
-        { "kind": "config", "value": "skill_id", "language": "any", "note": "Skill reference in Managed Agents agent skills and in container.skills on the Messages API." }
+        { "kind": "file", "value": "SKILL.md", "language": "any", "openness": "open-standard", "standard": "Agent Skills" },
+        { "kind": "file", "value": ".claude/skills/", "language": "any", "openness": "open-standard", "standard": "Agent Skills" },
+        { "kind": "file", "value": ".claude-plugin/plugin.json", "language": "any", "openness": "proprietary" },
+        { "kind": "config", "value": "plugins", "language": "any", "openness": "proprietary", "note": "Agent SDK option that loads plugins by local path, for example {\"type\": \"local\", \"path\": \"./my-plugin\"}." },
+        { "kind": "config", "value": "skill_id", "language": "any", "openness": "proprietary", "note": "Skill reference in Managed Agents agent skills and in container.skills on the Messages API." }
       ],
       "sources": [
         { "url": "https://code.claude.com/docs/en/skills", "title": "Extend Claude with skills" },

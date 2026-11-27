@@ -58,7 +58,12 @@ export function loadDatabase(dir = DATABASE) {
   const props = schema.properties.categories.properties;
   const categories = CATEGORY_KEYS.map((key) => ({ key, title: trim(String(props[key]?.title ?? key).replace(/\s*\([^)]*\)\s*/g, " ")), about: props[key]?.description ?? "" }));
   const checked = platforms.map((p) => p.checked).filter(Boolean).sort()[0] ?? pinned.checked ?? null;
-  return { pinned, checked, platforms, categories };
+  // 0.7.0: the harnesses people run agents in, each named by its own name.
+  let harnesses = [];
+  try {
+    harnesses = readdirSync(at("harnesses/")).filter((f) => f.endsWith(".json")).sort().map((f) => JSON.parse(readFileSync(at(`harnesses/${f}`), "utf8")));
+  } catch { harnesses = []; }
+  return { pinned, checked, platforms, categories, harnesses };
 }
 
 // ── Reading the code ──
@@ -452,7 +457,7 @@ export function platformUses({ files, read, db, frameworks = [] }) {
       if (!cell || cell.rating === "none" || cell.rating === "unknown") continue;
       for (const e of cell.evidence ?? []) {
         const places = matchEvidence(e, { p, cell, deps, agent, code, config, commandFiles, imports, linesIn, langOf, local, importsPlatform });
-        for (const at of places.slice(0, PLACES)) uses.push({ platform: p.id, category, kind: e.kind, value: e.value, language: e.language ?? "any", file: at.file, line: at.line, files: new Set(places.map((x) => x.file)).size, ...(at.names?.length ? { names: at.names } : {}) });
+        for (const at of places.slice(0, PLACES)) uses.push({ platform: p.id, category, kind: e.kind, value: e.value, language: e.language ?? "any", file: at.file, line: at.line, files: new Set(places.map((x) => x.file)).size, ...(at.names?.length ? { names: at.names } : {}), ...(e.openness ? { openness: e.openness, ...(e.standard ? { standard: e.standard } : {}) } : {}) });
       }
     }
   }
@@ -595,13 +600,13 @@ export function leadSentence(what, values = [], vendor = []) {
 const filesWord = (n) => (n === 1 ? "one file" : `${n.toLocaleString("en-US")} files`);
 
 /**
- * The reading: {database, built_on, uses, not_used, not_applicable, destinations}.
+ * The reading: {database, built_on, uses, not_used, not_applicable, harnesses}.
  * `found` is platformUses's answer, each place carrying the fact id it was
  * kept as (`fact`); `ownCode` the own-code fact's data, `languages` the
  * language facts' data; `subject` a plugin's or skills' subject (absent for
  * an agent) and `pluginParts` its hooks, commands and sub-agents, as facts.
  */
-export function readingOf({ found, db, frameworks = [], ownCode = null, languages = [], subject = null, pluginParts = {} }) {
+export function readingOf({ found, db, frameworks = [], ownCode = null, languages = [], subject = null, pluginParts = {}, schedules = false }) {
   const byId = new Map(db.platforms.map((p) => [p.id, p]));
   const title = (key) => db.categories.find((c) => c.key === key)?.title ?? key;
   // The agent's language: that of the files that import the platform it is
@@ -629,8 +634,15 @@ export function readingOf({ found, db, frameworks = [], ownCode = null, language
       if (!places.length) continue;
       const cell = byId.get(b.id).categories[key];
       const codeFiles = new Set(places.filter((u) => u.kind === "import" || u.kind === "call" || (u.kind === "config" && ALL_CODE.has(ext(u.file)))).map((u) => u.file));
+      // 0.7.0 (debt 939): each place is as open as the part of the cell its
+      // evidence shows; the use is as open as its least open place, so
+      // design-agent's create_deep_agent skills read open, langgraph.json not.
+      const placeLevels = places.map((u) => u.openness ?? cell.portability.level);
+      const own = places.every((u) => u.openness);
+      const level = own ? placeLevels.sort((a, z) => LEVEL_ORDER.indexOf(a) - LEVEL_ORDER.indexOf(z))[0] : cell.portability.level;
+      const standards = own && level === "open-standard" ? [...new Set(places.map((u) => u.standard).filter(Boolean))] : cell.portability.standards ?? [];
       sources.push({
-        platform: b.id, vendor: byId.get(b.id).vendor, name: byId.get(b.id).name, rating: cell.rating, level: cell.portability.level, standards: cell.portability.standards ?? [],
+        platform: b.id, vendor: byId.get(b.id).vendor, name: byId.get(b.id).name, rating: cell.rating, level, standards, ...(own ? { by_evidence: true } : {}),
         what: trim(cell.what), lead: leadSentence(cell.what, places.map((u) => u.value), [b.id, byId.get(b.id).vendor]), note: cell.portability.note,
         reach: { code_files: codeFiles.size, settings_only: codeFiles.size === 0 && places.every((u) => ["env", "config", "file", "cli", "package"].includes(u.kind)) },
         // Every place an import of a class kept in the agent's own memory
@@ -678,53 +690,99 @@ export function readingOf({ found, db, frameworks = [], ownCode = null, language
   const notApplicable = subject ? CATEGORY_KEYS.filter((k) => !PLUGIN_CATEGORIES.includes(k)) : [];
   const notUsed = CATEGORY_KEYS.filter((k) => !used.has(k) && !notApplicable.includes(k));
 
-  // Moving it: every platform the agent is not built on.
-  const on = new Set(builtOn.map((b) => b.id));
-  const destinations = [];
-  for (const p of db.platforms) {
-    if (p.id === primary) continue;
-    const langs = new Set(p.products.flatMap((x) => x.languages ?? []).map(family));
-    const fits = !mainLanguage || subject ? true : langs.has(family(mainLanguage));
-    const cells = rows.filter((r) => !r.plugin_part).map((r) => {
-      const cell = p.categories[r.category];
-      return { category: r.category, title: r.title, rating: cell.rating, what: trim(cell.what), level: cell.portability.level, outside: r.outside, swap: r.swap };
-    });
-    const count = (rating) => cells.filter((c) => c.rating === rating).length;
-    const deployment = p.categories.deployment;
-    destinations.push({
-      platform: p.id, name: p.name, vendor: p.vendor, also_used: on.has(p.id), language_fits: fits,
-      runtime: subject ? null : {
-        frameworks: names, own_files: ownCode?.files ?? null, own_lines: ownCode?.lines ?? null, language: mainLanguage,
-        deployment: { rating: deployment.rating, what: trim(deployment.what) },
-      },
-      swaps: cells.filter((c) => c.outside).map((c) => c.category),
-      loses: cells.filter((c) => c.rating === "none").map((c) => c.category),
-      partly: cells.filter((c) => c.rating === "partial").map((c) => c.category),
-      unknown: cells.filter((c) => c.rating === "unknown").map((c) => c.category),
-      cells,
-      order: [Number(!fits), count("none"), count("partial"), count("unknown"), -cells.filter((c) => c.rating === "standard").length],
-    });
-  }
-  // Three are shown first: AgentMesh, then the two that keep the most of what
-  // it uses, in its language; "Every platform" opens the rest. The order is a
-  // rule over the database's ratings, never a recommendation.
-  destinations.sort((a, b) => {
-    for (let i = 0; i < a.order.length; i += 1) if (a.order[i] !== b.order[i]) return a.order[i] - b.order[i];
-    return a.name.localeCompare(b.name);
-  });
-  const mesh = destinations.findIndex((d) => d.platform === "agentmesh");
-  if (mesh > 0) destinations.unshift(destinations.splice(mesh, 1)[0]);
-  destinations.forEach((d, i) => { d.shown = i < 3; delete d.order; });
-
+  // 0.7.0: Run it in, one reading per harness of the catalogue; the
+  // organization's preferred harnesses pick which are shown (the host says
+  // which, the view filters). AgentMesh is not a harness.
+  const harnesses = harnessReadings({ db, rows, builtOn, primary, subject, pluginParts, ownCode, mainLanguage, found, schedules, byId });
   return {
-    database: { repository: db.pinned.repository, path: db.pinned.path, commit: db.pinned.commit, checked: db.checked, platforms: db.platforms.length },
+    database: { repository: db.pinned.repository, path: db.pinned.path, commit: db.pinned.commit, checked: db.checked, platforms: db.platforms.length, harnesses: (db.harnesses ?? []).length },
     built_on: {
       platforms: builtOn.map((b) => ({ platform: b.id, name: byId.get(b.id).name, vendor: byId.get(b.id).vendor, categories: b.cats, evidence: found.present.get(b.id).map((x) => ({ file: x.file, line: x.line, kind: x.how, value: x.value, ...(x.fact ? { fact: x.fact } : {}) })) })),
       frameworks: names, language: mainLanguage,
       ...(subject ? { tools: subject.tools ?? [], also_for: subject.also_for ?? [], kind: subject.kind } : {}),
     },
-    uses: rows, not_used: notUsed, not_applicable: notApplicable, destinations,
+    uses: rows, not_used: notUsed, not_applicable: notApplicable, harnesses,
   };
+}
+
+/** The seven things a harness may run, in the catalogue's order and words. */
+export const CAPABILITIES = [
+  ["skills", "Skills"], ["mcp", "Tool servers (MCP)"], ["plugins", "Plugins"], ["hooks", "Hooks"],
+  ["a2a", "Agent-to-agent (A2A)"], ["scheduled-work", "Scheduled work"], ["sandboxes", "Sandboxes"],
+];
+const STATE_OF = { yes: "kept", partial: "partly", no: "lost", unknown: "unknown" };
+
+/**
+ * One reading per harness: {harness, name, vendor, kind, house_stack, takes,
+ * lines: [{capability, title, state, says}]}. A line is said for each of the
+ * seven capabilities the subject uses: kept (the harness supports it), partly,
+ * lost (its documentation says it does not), unknown (not found), or gained
+ * (the subject gets it today from its vendor's own service, and the harness
+ * provides it itself). `takes` says what running it there takes, by rule.
+ */
+export function harnessReadings({ db, rows, builtOn = [], primary = null, subject = null, pluginParts = {}, ownCode = null, mainLanguage = null, found = { standards: [] }, schedules = false, byId = new Map() }) {
+  const row = (cat) => rows.find((r) => r.category === cat && !r.plugin_part);
+  const skillsUsed = found.standards.some((x) => x.standard === "Agent Skills") || (subject?.skills ?? 0) > 0;
+  const pluginsUsed = subject?.kind === "plugin" || found.standards.some((x) => x.standard === "Agent Plugins 1.0.0");
+  const used = {
+    skills: skillsUsed,
+    mcp: !!row("tool-connections") || (pluginParts.mcp ?? []).length > 0,
+    plugins: pluginsUsed,
+    hooks: (pluginParts.hooks ?? []).length > 0,
+    a2a: !!row("agent-to-agent"),
+    "scheduled-work": !!schedules,
+    sandboxes: !!row("sandboxes"),
+  };
+  const vendorOf = (r) => r?.sources?.find((x) => x.platform)?.vendor ?? null;
+  const ownFiles = ownCode?.files ?? 0;
+  const fileWords = (n) => `${n.toLocaleString("en-US")} ${n === 1 ? "file" : "files"}`;
+  const tools = subject?.tools ?? [];
+  const family = (l) => { const t = String(l ?? "").toLowerCase(); return t === "typescript" || t === "javascript" ? "javascript" : t === "c#" ? "csharp" : t; };
+  const out = [];
+  for (const h of db.harnesses ?? []) {
+    const sup = (cap) => h.supports?.[cap]?.support ?? "unknown";
+    const lines = [];
+    for (const [cap, title] of CAPABILITIES) {
+      if (!used[cap]) continue;
+      let state = STATE_OF[sup(cap)] ?? "unknown";
+      const what = firstSentence(h.supports?.[cap]?.what ?? "");
+      let says = what;
+      // Gained: today from its vendor's own service, there from the harness itself.
+      const r = cap === "sandboxes" ? row("sandboxes") : null;
+      if (r && r.outside && sup(cap) === "yes" && !(h.platform && r.sources.some((x) => x.platform === h.platform))) {
+        state = "gained";
+        says = `${h.name} provides it, in place of ${vendorOf(r) ?? "its vendor"}'s service. ${what}`.trim();
+      }
+      lines.push({ capability: cap, title, state, says });
+    }
+    // What running it there takes, by rule.
+    let takes;
+    if (subject?.kind === "plugin") {
+      const fits = (h.plugin_formats ?? []).filter((f) => tools.includes(f));
+      const open = (h.plugin_formats ?? []).includes("Agent Plugins 1.0.0") && found.standards.some((x) => x.standard === "Agent Plugins 1.0.0");
+      if (fits.length || open) takes = `Installs as it is, as ${open ? "an Agent Plugins 1.0.0 plugin" : `a ${fits[0]} plugin`}`;
+      else if (sup("skills") === "yes") takes = `Its skills load as they are; its ${tools.length ? and(tools) : "own"} manifest does not install there`;
+      else takes = sup("skills") === "unknown" ? "Not known whether its skills load there" : "Its skills do not load there";
+    } else if (subject) {
+      takes = sup("skills") === "yes" ? "Its skills load as they are" : sup("skills") === "partial" ? "Its skills load there in part" : sup("skills") === "no" ? "Its skills do not load there" : "Not known whether its skills load there";
+    } else if (h.kind === "cloud-runtime") {
+      const plat = h.platform ? byId.get(h.platform) : null;
+      const langs = new Set((plat?.products ?? []).flatMap((x) => x.languages ?? []).map(family));
+      if (h.platform && h.platform === primary) takes = `Built for it: its code runs there as written${ownFiles ? ` (${fileWords(ownFiles)})` : ""}`;
+      else if (!ownFiles) takes = "Re-hosting it as a service there";
+      else if (mainLanguage && langs.size && !langs.has(family(mainLanguage))) takes = `Re-hosting its own code, ${fileWords(ownFiles)} of ${mainLanguage}, in a language ${h.name} does not list`;
+      else takes = `Re-hosting its own code there: ${fileWords(ownFiles)}${mainLanguage ? ` of ${mainLanguage}` : ""}`;
+    } else {
+      // A harness or an assistant runs skills and tool servers, not an agent's own program.
+      const mcp = sup("mcp");
+      const code = ownFiles ? `its own code (${fileWords(ownFiles)}) ` : "its own code ";
+      if (!ownFiles && skillsUsed) takes = "Its skills load as they are";
+      else if (mcp === "yes" || mcp === "partial") takes = `Running ${code}as a tool server ${h.name} connects to${skillsUsed && sup("skills") === "yes" ? ", with its skills loaded as they are" : ""}`;
+      else takes = mcp === "no" ? `${code.charAt(0).toUpperCase()}${code.slice(1)}has no way in: ${h.name} runs no tool servers` : `Not known how ${code}would run there`;
+    }
+    out.push({ harness: h.id, name: h.name, vendor: h.vendor, kind: h.kind, ...(h.house_stack ? { house_stack: true } : {}), ...(h.platform ? { platform: h.platform } : {}), checked: h.checked ?? null, takes, lines });
+  }
+  return out;
 }
 
 /** What each open standard is, for a row that uses it through its own library. */

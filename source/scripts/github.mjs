@@ -114,6 +114,14 @@ export function githubReader({ owner, name, env = process.env, fetchImpl = fetch
       const link = r.entry && r.data.length === 100;
       return { count: r.data.length, more: Boolean(link) };
     },
+    /** Whether the repository has any tag (0.7.0, for the portability
+     *  guidance's tagged release): {count: 0 or 1}, or null when GitHub did
+     *  not answer plainly. Never refuses the inspection. */
+    async tags() {
+      const r = await json(`/repos/${owner}/${name}/tags?per_page=1`, "the release tags");
+      if (r.status >= 400 || !Array.isArray(r.data)) return null;
+      return { count: r.data.length };
+    },
     /** The archive of the repository at the commit, as bytes, at most maxBytes. */
     async archive(sha) {
       const { res, entry } = await get(`/repos/${owner}/${name}/tarball/${sha}`, "the archive", { timeout: ARCHIVE_MS });

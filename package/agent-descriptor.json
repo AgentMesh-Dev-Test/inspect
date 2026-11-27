@@ -1,9 +1,9 @@
 {
   "format": "agent-descriptor-v1",
-  "agent_version": "0.6.5",
+  "agent_version": "0.7.0",
   "name": "Inspect",
   "summary": "Reads an outside agent, plugin or skill on GitHub, without running any of it, and reports what it does and how safe it is.",
-  "does": "Inspect reads an outside agent's code, or a plugin or skill for a person's coding tool (Claude Code, Cursor, Codex and others), in a public GitHub repository, at its newest commit or one you name, without running any of it, and hands back an inspection report on what it does and how safe it is: a list of findings in eight sections, each citing a file and line at the commit. For a plugin it says what it adds to the person's tools, what each hook runs on their machine, what each MCP server reaches, and its risks. It also says how tied the agent is to its platform: what it uses of it, how open each part is, and, for each other platform, what moving it would take, what it would lose and what replaces each part, from AgentMesh's agent platforms database, with no recommendation. Scripts read the code by rule; a model writes only the judgments, and each judgment cites the lines it rests on. It gives no verdict on bringing it in and judges no fit with anyone's plan.",
+  "does": "Inspect reads an outside agent's code, or a plugin or skill for a person's coding tool (Claude Code, Cursor, Codex and others), in a public GitHub repository, at its newest commit or one you name, without running any of it, and hands back an inspection report on what it does and how safe it is: a list of findings in eight sections, each citing a file and line at the commit. For a plugin it says what it adds to the person's tools, what each hook runs on their machine, what each MCP server reaches, and its risks. It also says how tied the agent is to its platform: what it uses of it, how open each part is, how well it follows AgentMesh's portability guidance for builders, and, for each harness the organization prefers, what running it there takes and what it would lose or gain, from AgentMesh's agent platforms database, with no recommendation. Scripts read the code by rule; a model writes only the judgments, and each judgment cites the lines it rests on. It gives no verdict on bringing it in and judges no fit with anyone's plan.",
   "offerings": [
     {
       "id": "inspect-a-repository",
@@ -294,12 +294,12 @@
               },
               "portability": {
                 "type": "object",
-                "description": "0.6.0: how tied it is to its platform and what moving it would take, read by rule from AgentMesh's agent platforms database, a copy pinned to one AgentMesh commit. database: the copy read, its AgentMesh commit and the date its entries were checked. built_on: the platforms the code shows, the one with the most categories first, each with the places that show it (for a plugin or skills, also the tools it runs in). uses: one row for each category the code uses, never one a platform merely offers, each with its sources (the platform's feature or the open standard, in the database's own words, how open it is, and every place in the code that shows it), whether it is an outside service, how it moves by rule (an open standard, open source that comes with its code, settings only, its code in one file or in several, its runtime, or its tool's own format) and, for an outside service, what it really needs and what the code already offers in its place, in the model's checked words. not_used and not_applicable: the categories it does not use, or that do not apply to a plugin or skills. destinations: every other platform, the first three shown (AgentMesh, then the two that keep the most of what it uses, in its language), each with the work to move it (the outside services to swap, and its own code to re-host on the destination's deployment, in the database's words) and the destination's own rating and words for each category it uses. It gives no recommendation. The working copy carries it without the evidence, and without the destinations' words when it is short of room (words_left_out).",
+                "description": "0.6.0: how tied it is to its platform and what moving it would take, read by rule from AgentMesh's agent platforms database, a copy pinned to one AgentMesh commit. database: the copy read, its AgentMesh commit and the date its entries were checked. built_on: the platforms the code shows, the one with the most categories first, each with the places that show it (for a plugin or skills, also the tools it runs in). uses: one row for each category the code uses, never one a platform merely offers, each with its sources (the platform's feature or the open standard, in the database's own words, how open it is, and every place in the code that shows it), whether it is an outside service, how it moves by rule (an open standard, open source that comes with its code, settings only, its code in one file or in several, its runtime, or its tool's own format) and, for an outside service, what it really needs and what the code already offers in its place, in the model's checked words. not_used and not_applicable: the categories it does not use, or that do not apply to a plugin or skills. harnesses (0.7.0): one reading for every harness in the database's catalogue (harnesses, assistants that take open pieces, and cloud runtimes; never AgentMesh), each with what running it there takes, by rule, and one line for each of the seven capabilities it uses (skills, tool servers, plugins, hooks, A2A, scheduled work, sandboxes): kept, partly, lost, not known, or gained, in the harness's own words; the host shows the organization's preferred harnesses. guidance (0.7.0): how well it follows AgentMesh's portability guidance for builders, by rule from its files: the basics every agent should follow and the extras that apply to it, each followed, missing, not known or not applicable, and how many of the basics that apply it follows. It gives no recommendation. The working copy carries it without the evidence, and without the harnesses' words when it is short of room (words_left_out).",
                 "required": [
                   "database",
                   "built_on",
                   "uses",
-                  "destinations"
+                  "harnesses"
                 ],
                 "properties": {
                   "database": {
@@ -602,18 +602,22 @@
                       "type": "string"
                     }
                   },
-                  "destinations": {
+                  "words_left_out": {
+                    "type": "boolean"
+                  },
+                  "harnesses": {
                     "type": "array",
                     "items": {
                       "type": "object",
                       "required": [
-                        "platform",
+                        "harness",
                         "name",
-                        "shown",
-                        "cells"
+                        "kind",
+                        "takes",
+                        "lines"
                       ],
                       "properties": {
-                        "platform": {
+                        "harness": {
                           "type": "string"
                         },
                         "name": {
@@ -622,133 +626,63 @@
                         "vendor": {
                           "type": "string"
                         },
-                        "shown": {
+                        "kind": {
+                          "enum": [
+                            "harness",
+                            "assistant",
+                            "cloud-runtime"
+                          ]
+                        },
+                        "house_stack": {
                           "type": "boolean"
                         },
-                        "also_used": {
-                          "type": "boolean"
+                        "platform": {
+                          "type": "string"
                         },
-                        "language_fits": {
-                          "type": "boolean"
-                        },
-                        "runtime": {
+                        "checked": {
                           "type": [
-                            "object",
+                            "string",
                             "null"
-                          ],
-                          "properties": {
-                            "frameworks": {
-                              "type": "array",
-                              "items": {
-                                "type": "string"
-                              }
-                            },
-                            "own_files": {
-                              "type": [
-                                "integer",
-                                "null"
-                              ]
-                            },
-                            "own_lines": {
-                              "type": [
-                                "integer",
-                                "null"
-                              ]
-                            },
-                            "language": {
-                              "type": [
-                                "string",
-                                "null"
-                              ]
-                            },
-                            "deployment": {
-                              "type": "object",
-                              "required": [
-                                "rating"
-                              ],
-                              "properties": {
-                                "rating": {
-                                  "enum": [
-                                    "native",
-                                    "standard",
-                                    "partial",
-                                    "none",
-                                    "unknown"
-                                  ]
-                                },
-                                "what": {
-                                  "type": "string"
-                                }
-                              }
-                            }
-                          }
+                          ]
                         },
-                        "swaps": {
-                          "type": "array",
-                          "items": {
-                            "type": "string"
-                          }
+                        "takes": {
+                          "type": "string"
                         },
-                        "loses": {
-                          "type": "array",
-                          "items": {
-                            "type": "string"
-                          }
-                        },
-                        "partly": {
-                          "type": "array",
-                          "items": {
-                            "type": "string"
-                          }
-                        },
-                        "unknown": {
-                          "type": "array",
-                          "items": {
-                            "type": "string"
-                          }
-                        },
-                        "cells": {
+                        "lines": {
                           "type": "array",
                           "items": {
                             "type": "object",
                             "required": [
-                              "category",
+                              "capability",
                               "title",
-                              "rating"
+                              "state",
+                              "says"
                             ],
                             "properties": {
-                              "category": {
-                                "type": "string"
+                              "capability": {
+                                "enum": [
+                                  "skills",
+                                  "mcp",
+                                  "plugins",
+                                  "hooks",
+                                  "a2a",
+                                  "scheduled-work",
+                                  "sandboxes"
+                                ]
                               },
                               "title": {
                                 "type": "string"
                               },
-                              "rating": {
+                              "state": {
                                 "enum": [
-                                  "native",
-                                  "standard",
-                                  "partial",
-                                  "none",
-                                  "unknown"
-                                ]
-                              },
-                              "what": {
-                                "type": "string"
-                              },
-                              "level": {
-                                "enum": [
-                                  "proprietary",
-                                  "mixed",
-                                  "open-source",
-                                  "open-standard",
+                                  "kept",
+                                  "partly",
+                                  "lost",
                                   "unknown",
-                                  "not-applicable"
+                                  "gained"
                                 ]
                               },
-                              "outside": {
-                                "type": "boolean"
-                              },
-                              "swap": {
+                              "says": {
                                 "type": "string"
                               }
                             }
@@ -757,8 +691,88 @@
                       }
                     }
                   },
-                  "words_left_out": {
-                    "type": "boolean"
+                  "guidance": {
+                    "type": "object",
+                    "required": [
+                      "url",
+                      "basics",
+                      "extras",
+                      "followed",
+                      "of"
+                    ],
+                    "properties": {
+                      "url": {
+                        "type": "string"
+                      },
+                      "basics": {
+                        "type": "array",
+                        "items": {
+                          "type": "object",
+                          "required": [
+                            "id",
+                            "title",
+                            "state",
+                            "says"
+                          ],
+                          "properties": {
+                            "id": {
+                              "type": "string"
+                            },
+                            "title": {
+                              "type": "string"
+                            },
+                            "state": {
+                              "enum": [
+                                "followed",
+                                "missing",
+                                "unknown",
+                                "not-applicable"
+                              ]
+                            },
+                            "says": {
+                              "type": "string"
+                            }
+                          }
+                        }
+                      },
+                      "extras": {
+                        "type": "array",
+                        "items": {
+                          "type": "object",
+                          "required": [
+                            "id",
+                            "title",
+                            "state",
+                            "says"
+                          ],
+                          "properties": {
+                            "id": {
+                              "type": "string"
+                            },
+                            "title": {
+                              "type": "string"
+                            },
+                            "state": {
+                              "enum": [
+                                "followed",
+                                "missing",
+                                "unknown",
+                                "not-applicable"
+                              ]
+                            },
+                            "says": {
+                              "type": "string"
+                            }
+                          }
+                        }
+                      },
+                      "followed": {
+                        "type": "integer"
+                      },
+                      "of": {
+                        "type": "integer"
+                      }
+                    }
                   }
                 }
               },
@@ -1343,7 +1357,7 @@
           "kind": "text/markdown",
           "when": "per_task",
           "presentation": "document",
-          "about": "The same report as Markdown, for a person to read: `# Inspection of <repository>`, then `## At a glance`, then `## <section title>` for sections 2 to 8, with `## Could it move?` after Systems it uses, one line per finding with its level in words, its category in words and its file and line at the commit, and no finding code."
+          "about": "The same report as Markdown, for a person to read: `# Inspection of <repository>`, then `## At a glance`, then `## <section title>` for sections 2 to 8, with `## Portability` after Systems it uses, one line per finding with its level in words, its category in words and its file and line at the commit, and no finding code."
         }
       ],
       "how": {
@@ -1427,7 +1441,7 @@
         "output": "inspection"
       },
       "file": "views/report.html",
-      "digest": "sha256:68b7da757dc1d4b52cb62946ec740b2fcec701ff6ef01d7aeaa9311e5631dafb",
+      "digest": "sha256:be217c682198161ff70ee3c9f7c9f6f49578a23df5fe4daeefae01bf26a873b3",
       "requests": [
         "resize",
         "copy-text",

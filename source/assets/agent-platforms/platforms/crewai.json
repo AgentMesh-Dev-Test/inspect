@@ -42,11 +42,11 @@
         "note": "The framework's built-in tracing sends OpenTelemetry spans to CrewAI AMP, whose Traces view is proprietary. AMP can export traces and logs over OTLP to any compatible backend using the OpenTelemetry GenAI semantic conventions plus CrewAI attributes, and the docs list third-party integrations such as OpenLIT, Arize Phoenix, Langfuse and MLflow."
       },
       "evidence": [
-        { "kind": "call", "value": "tracing=True", "language": "python", "note": "Keyword argument on Crew(...) or a Flow constructor." },
-        { "kind": "env", "value": "CREWAI_TRACING_ENABLED", "language": "any" },
-        { "kind": "cli", "value": "crewai login", "language": "any" },
-        { "kind": "cli", "value": "crewai traces enable", "language": "any" },
-        { "kind": "not-in-code", "value": "OpenTelemetry Collectors", "note": "OTLP export is set in CrewAI AMP under Settings, OpenTelemetry Collectors; the agent's code shows nothing." }
+        { "kind": "call", "value": "tracing=True", "language": "python", "openness": "proprietary", "note": "Keyword argument on Crew(...) or a Flow constructor." },
+        { "kind": "env", "value": "CREWAI_TRACING_ENABLED", "language": "any", "openness": "proprietary" },
+        { "kind": "cli", "value": "crewai login", "language": "any", "openness": "proprietary" },
+        { "kind": "cli", "value": "crewai traces enable", "language": "any", "openness": "proprietary" },
+        { "kind": "not-in-code", "value": "OpenTelemetry Collectors", "openness": "open-standard", "standard": "OpenTelemetry", "note": "OTLP export is set in CrewAI AMP under Settings, OpenTelemetry Collectors; the agent's code shows nothing." }
       ],
       "sources": [
         { "url": "https://docs.crewai.com/en/observability/tracing", "title": "CrewAI Tracing" },
@@ -82,10 +82,10 @@
         "note": "Prompt files and templates in the framework are CrewAI's own open-source formats kept in the repository. Agent Repositories are a proprietary AMP service; no open prompt standard is involved."
       },
       "evidence": [
-        { "kind": "call", "value": "from_repository", "language": "python", "note": "Agent(from_repository=\"...\") loads an agent definition from an AMP Agent Repository." },
-        { "kind": "call", "value": "prompt_file", "language": "python" },
-        { "kind": "call", "value": "system_template", "language": "python" },
-        { "kind": "file", "value": "config/agents.yaml", "language": "any" }
+        { "kind": "call", "value": "from_repository", "language": "python", "openness": "proprietary", "note": "Agent(from_repository=\"...\") loads an agent definition from an AMP Agent Repository." },
+        { "kind": "call", "value": "prompt_file", "language": "python", "openness": "open-source" },
+        { "kind": "call", "value": "system_template", "language": "python", "openness": "open-source" },
+        { "kind": "file", "value": "config/agents.yaml", "language": "any", "openness": "open-source" }
       ],
       "sources": [
         { "url": "https://docs-platform.crewai.com/platform/en/features/agent-repositories", "title": "Agent Repositories" },
@@ -146,11 +146,11 @@
         "note": "The framework mechanisms are open source. The resume endpoint, webhooks and email routing are proprietary AMP features; no open standard is involved."
       },
       "evidence": [
-        { "kind": "call", "value": "human_input=True", "language": "python" },
-        { "kind": "import", "value": "from crewai.flow.human_feedback import human_feedback", "language": "python" },
-        { "kind": "call", "value": "@human_feedback", "language": "python" },
-        { "kind": "call", "value": "HumanFeedbackPending", "language": "python" },
-        { "kind": "config", "value": "is_approve", "language": "any", "note": "Field in the body sent to the AMP /resume endpoint." }
+        { "kind": "call", "value": "human_input=True", "language": "python", "openness": "open-source" },
+        { "kind": "import", "value": "from crewai.flow.human_feedback import human_feedback", "language": "python", "openness": "open-source" },
+        { "kind": "call", "value": "@human_feedback", "language": "python", "openness": "open-source" },
+        { "kind": "call", "value": "HumanFeedbackPending", "language": "python", "openness": "open-source" },
+        { "kind": "config", "value": "is_approve", "language": "any", "openness": "proprietary", "note": "Field in the body sent to the AMP /resume endpoint." }
       ],
       "sources": [
         { "url": "https://docs.crewai.com/en/learn/human-feedback-in-flows", "title": "Human Feedback in Flows" },
@@ -168,10 +168,10 @@
         "note": "The framework is open source, so a crew's code is not tied to AMP. AMP's deployment flow, project requirements ([tool.crewai] in pyproject.toml, uv.lock) and automation API are CrewAI's own."
       },
       "evidence": [
-        { "kind": "cli", "value": "crewai deploy create", "language": "any" },
-        { "kind": "cli", "value": "crewai deploy push", "language": "any" },
-        { "kind": "config", "value": "[tool.crewai]", "language": "any", "note": "Section in pyproject.toml with type = \"crew\" or type = \"flow\"." },
-        { "kind": "file", "value": "uv.lock", "language": "any" }
+        { "kind": "cli", "value": "crewai deploy create", "language": "any", "openness": "proprietary" },
+        { "kind": "cli", "value": "crewai deploy push", "language": "any", "openness": "proprietary" },
+        { "kind": "config", "value": "[tool.crewai]", "language": "any", "openness": "proprietary", "note": "Section in pyproject.toml with type = \"crew\" or type = \"flow\"." },
+        { "kind": "file", "value": "uv.lock", "language": "any", "openness": "open-source" }
       ],
       "sources": [
         { "url": "https://docs-platform.crewai.com/platform/en/guides/deploy-to-amp", "title": "Deploy to AMP" },
@@ -273,12 +273,12 @@
         "note": "Skill folders follow the Agent Skills format (SKILL.md frontmatter, scripts/, references/, assets/), though the docs page does not name the specification. The project layout and pyproject.toml settings are CrewAI's own open-source formats, the skill registry is an AMP service, and the docs show no Agent Plugins (plugin.json) support."
       },
       "evidence": [
-        { "kind": "file", "value": "SKILL.md", "language": "any" },
-        { "kind": "call", "value": "skills=[\"./skills\"]", "language": "python" },
-        { "kind": "import", "value": "from crewai.skills import discover_skills, activate_skill", "language": "python" },
-        { "kind": "cli", "value": "crewai skill publish", "language": "any" },
-        { "kind": "file", "value": "crew.jsonc", "language": "any" },
-        { "kind": "file", "value": "config/agents.yaml", "language": "any" }
+        { "kind": "file", "value": "SKILL.md", "language": "any", "openness": "open-standard", "standard": "Agent Skills" },
+        { "kind": "call", "value": "skills=[\"./skills\"]", "language": "python", "openness": "open-standard", "standard": "Agent Skills" },
+        { "kind": "import", "value": "from crewai.skills import discover_skills, activate_skill", "language": "python", "openness": "open-standard", "standard": "Agent Skills" },
+        { "kind": "cli", "value": "crewai skill publish", "language": "any", "openness": "proprietary" },
+        { "kind": "file", "value": "crew.jsonc", "language": "any", "openness": "open-source" },
+        { "kind": "file", "value": "config/agents.yaml", "language": "any", "openness": "open-source" }
       ],
       "sources": [
         { "url": "https://docs.crewai.com/en/concepts/skills", "title": "Skills" },

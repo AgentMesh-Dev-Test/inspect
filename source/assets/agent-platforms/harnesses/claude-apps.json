@@ -1,0 +1,78 @@
+{
+  "$schema": "../harness.schema.json",
+  "id": "claude-apps",
+  "name": "Claude apps",
+  "vendor": "Anthropic",
+  "kind": "assistant",
+  "summary": "Anthropic's Claude assistant on the web (claude.ai), desktop and mobile, including Cowork tasks in the desktop app, which takes Agent Skills, MCP connectors and plugins.",
+  "platform": "anthropic",
+  "plugin_formats": [
+    "Claude Code"
+  ],
+  "documentation": [
+    "https://support.claude.com/",
+    "https://claude.com/docs/"
+  ],
+  "checked": "2026-11-27",
+  "supports": {
+    "skills": {
+      "support": "yes",
+      "what": "Skills (a folder with a SKILL.md) can be uploaded and used on Free, Pro, Max, Ultra, Team and Enterprise plans, with code execution turned on.",
+      "sources": [
+        { "url": "https://support.claude.com/en/articles/12512180-using-skills-in-claude", "title": "Use skills in Claude" },
+        { "url": "https://claude.com/docs/plugins/platform-support", "title": "Plugin feature support across platforms" }
+      ],
+      "checked": "2026-11-27"
+    },
+    "mcp": {
+      "support": "yes",
+      "what": "Custom connectors using remote MCP work on all plans (Free is limited to one) and connect from Anthropic's cloud; local MCP servers run only in Claude Desktop and in Cowork sessions on your computer, not in claude.ai chat.",
+      "sources": [
+        { "url": "https://support.claude.com/en/articles/11175166-getting-started-with-custom-connectors-using-remote-mcp", "title": "Get started with custom connectors using remote MCP" },
+        { "url": "https://claude.com/docs/plugins/platform-support", "title": "Plugin feature support across platforms" }
+      ],
+      "checked": "2026-11-27"
+    },
+    "plugins": {
+      "support": "yes",
+      "what": "Plugins bundling skills, commands, connectors and agents are added from Customize > Plugins (directory, a Git marketplace, or an uploaded folder with .claude-plugin/plugin.json) on paid plans; chat loads only skills, commands and connectors, Cowork also loads agents and hooks.",
+      "sources": [
+        { "url": "https://claude.com/docs/plugins/overview", "title": "Plugins" },
+        { "url": "https://claude.com/docs/plugins/platform-support", "title": "Plugin feature support across platforms" },
+        { "url": "https://support.claude.com/en/articles/13837440-use-plugins-in-claude-cowork", "title": "Use plugins in Claude" }
+      ],
+      "checked": "2026-11-27"
+    },
+    "hooks": {
+      "support": "partial",
+      "what": "A plugin's hooks (hooks/hooks.json) load in Cowork in the desktop app and are ignored in chat on the web, desktop and mobile.",
+      "sources": [
+        { "url": "https://claude.com/docs/plugins/platform-support", "title": "Plugin feature support across platforms" },
+        { "url": "https://support.claude.com/en/articles/13837440-use-plugins-in-claude-cowork", "title": "Use plugins in Claude" }
+      ],
+      "checked": "2026-11-27"
+    },
+    "a2a": {
+      "support": "unknown",
+      "what": "Not found in Anthropic's documentation.",
+      "sources": [],
+      "checked": "2026-11-27"
+    },
+    "scheduled-work": {
+      "support": "yes",
+      "what": "Scheduled tasks in Cowork run a saved prompt on a chosen cadence as their own sessions, remotely even while the computer is asleep, on all paid plans.",
+      "sources": [
+        { "url": "https://support.claude.com/en/articles/13854387-schedule-recurring-tasks-in-claude-cowork", "title": "Schedule recurring tasks in Claude Cowork" }
+      ],
+      "checked": "2026-11-27"
+    },
+    "sandboxes": {
+      "support": "yes",
+      "what": "Code execution and file creation runs code in an isolated, sandboxed container on all plans, with network access set by plan and admin settings.",
+      "sources": [
+        { "url": "https://support.claude.com/en/articles/12111783-create-and-edit-files-with-claude", "title": "Create and edit files with Claude" }
+      ],
+      "checked": "2026-11-27"
+    }
+  }
+}

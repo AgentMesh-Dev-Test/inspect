@@ -81,11 +81,11 @@
         "note": "AgentCore Evaluations is an AWS service with its own API and evaluator resources, but it reads agent spans instrumented with OpenTelemetry or OpenInference. Strands Evals is open source (Apache-2.0) and runs anywhere."
       },
       "evidence": [
-        { "kind": "cli", "value": "agentcore eval ondemand evaluate", "language": "any" },
-        { "kind": "import", "value": "from bedrock_agentcore_starter_toolkit import Evaluation", "language": "python" },
-        { "kind": "package", "value": "strands-agents-evals", "language": "python" },
-        { "kind": "import", "value": "from strands_evals import eval_task, Case, Experiment", "language": "python" },
-        { "kind": "call", "value": "OutputEvaluator", "language": "python" }
+        { "kind": "cli", "value": "agentcore eval ondemand evaluate", "language": "any", "openness": "proprietary" },
+        { "kind": "import", "value": "from bedrock_agentcore_starter_toolkit import Evaluation", "language": "python", "openness": "proprietary" },
+        { "kind": "package", "value": "strands-agents-evals", "language": "python", "openness": "open-source" },
+        { "kind": "import", "value": "from strands_evals import eval_task, Case, Experiment", "language": "python", "openness": "open-source" },
+        { "kind": "call", "value": "OutputEvaluator", "language": "python", "openness": "open-source" }
       ],
       "sources": [
         { "url": "https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/evaluations.html", "title": "Evaluate agent performance with Amazon Bedrock AgentCore Evaluations" },
@@ -148,12 +148,12 @@
         "note": "AgentCore Memory is an AWS service with its own API. The Strands session managers are open source (Apache-2.0) and store JSON in local files, Amazon S3 or a custom repository."
       },
       "evidence": [
-        { "kind": "import", "value": "from bedrock_agentcore.memory.integrations.strands.session_manager import AgentCoreMemorySessionManager", "language": "python" },
-        { "kind": "import", "value": "from bedrock_agentcore.memory import MemoryClient", "language": "python" },
-        { "kind": "call", "value": "create_memory_and_wait", "language": "python" },
-        { "kind": "cli", "value": "agentcore add memory", "language": "any" },
-        { "kind": "import", "value": "from strands.session import FileSessionManager, S3SessionManager", "language": "python" },
-        { "kind": "call", "value": "SnapshotSessionManager", "language": "python" }
+        { "kind": "import", "value": "from bedrock_agentcore.memory.integrations.strands.session_manager import AgentCoreMemorySessionManager", "language": "python", "openness": "proprietary" },
+        { "kind": "import", "value": "from bedrock_agentcore.memory import MemoryClient", "language": "python", "openness": "proprietary" },
+        { "kind": "call", "value": "create_memory_and_wait", "language": "python", "openness": "proprietary" },
+        { "kind": "cli", "value": "agentcore add memory", "language": "any", "openness": "proprietary" },
+        { "kind": "import", "value": "from strands.session import FileSessionManager, S3SessionManager", "language": "python", "openness": "open-source" },
+        { "kind": "call", "value": "SnapshotSessionManager", "language": "python", "openness": "open-source" }
       ],
       "sources": [
         { "url": "https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/memory.html", "title": "Add memory to your Amazon Bedrock AgentCore agent" },
@@ -194,11 +194,11 @@
         "note": "AgentCore Runtime is an AWS-only hosting service, but the agent is ordinary code or a container image and the bedrock-agentcore SDK is open source (Apache-2.0). Agents on Runtime can serve the standard MCP, A2A or AG-UI protocols."
       },
       "evidence": [
-        { "kind": "package", "value": "bedrock-agentcore", "language": "python" },
-        { "kind": "call", "value": "BedrockAgentCoreApp", "language": "python" },
-        { "kind": "call", "value": "@app.entrypoint", "language": "python" },
-        { "kind": "cli", "value": "agentcore deploy", "language": "any" },
-        { "kind": "call", "value": "invoke_agent_runtime", "language": "python" }
+        { "kind": "package", "value": "bedrock-agentcore", "language": "python", "openness": "open-source" },
+        { "kind": "call", "value": "BedrockAgentCoreApp", "language": "python", "openness": "open-source" },
+        { "kind": "call", "value": "@app.entrypoint", "language": "python", "openness": "open-source" },
+        { "kind": "cli", "value": "agentcore deploy", "language": "any", "openness": "proprietary" },
+        { "kind": "call", "value": "invoke_agent_runtime", "language": "python", "openness": "proprietary" }
       ],
       "sources": [
         { "url": "https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/agents-tools-runtime.html", "title": "Host agent or tools with Amazon Bedrock AgentCore Runtime" },
@@ -304,11 +304,11 @@
         "note": "Skills use the open Agent Skills format and move between platforms as is. The AgentCore CLI project files (agentcore.json, aws-targets.json) are AWS's own format."
       },
       "evidence": [
-        { "kind": "file", "value": "SKILL.md", "language": "any" },
-        { "kind": "import", "value": "from strands import Agent, AgentSkills, Skill", "language": "python" },
-        { "kind": "import", "value": "import { AgentSkills, Skill } from '@strands-agents/sdk/vended-plugins/skills'", "language": "typescript" },
-        { "kind": "file", "value": "agentcore.json", "language": "any", "note": "AgentCore CLI project specification, kept at agentcore/agentcore.json." },
-        { "kind": "file", "value": ".bedrock_agentcore.yaml", "language": "any", "note": "Configuration file of the older Bedrock AgentCore Starter Toolkit; agentcore import migrates it." }
+        { "kind": "file", "value": "SKILL.md", "language": "any", "openness": "open-standard", "standard": "Agent Skills" },
+        { "kind": "import", "value": "from strands import Agent, AgentSkills, Skill", "language": "python", "openness": "open-standard", "standard": "Agent Skills" },
+        { "kind": "import", "value": "import { AgentSkills, Skill } from '@strands-agents/sdk/vended-plugins/skills'", "language": "typescript", "openness": "open-standard", "standard": "Agent Skills" },
+        { "kind": "file", "value": "agentcore.json", "language": "any", "openness": "proprietary", "note": "AgentCore CLI project specification, kept at agentcore/agentcore.json." },
+        { "kind": "file", "value": ".bedrock_agentcore.yaml", "language": "any", "openness": "proprietary", "note": "Configuration file of the older Bedrock AgentCore Starter Toolkit; agentcore import migrates it." }
       ],
       "sources": [
         { "url": "https://strandsagents.com/docs/user-guide/sdk/plugins/skills/", "title": "Skills | Strands Agents" },

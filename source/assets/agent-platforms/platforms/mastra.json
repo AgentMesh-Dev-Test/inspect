@@ -38,11 +38,11 @@
         "note": "Spans and exporters use Mastra's own open-source interface. The OtelExporter (`@mastra/otel-exporter`) sends traces and logs to any OTLP endpoint (http/json, http/protobuf or grpc) using the OpenTelemetry GenAI semantic conventions, and an OtelBridge links Mastra spans to existing OpenTelemetry context."
       },
       "evidence": [
-        { "kind": "package", "value": "@mastra/observability", "language": "typescript" },
-        { "kind": "call", "value": "Observability", "language": "typescript" },
-        { "kind": "call", "value": "MastraPlatformExporter", "language": "typescript" },
-        { "kind": "env", "value": "MASTRA_PLATFORM_ACCESS_TOKEN", "language": "any" },
-        { "kind": "package", "value": "@mastra/otel-exporter", "language": "typescript" },
+        { "kind": "package", "value": "@mastra/observability", "language": "typescript", "openness": "open-source" },
+        { "kind": "call", "value": "Observability", "language": "typescript", "openness": "open-source" },
+        { "kind": "call", "value": "MastraPlatformExporter", "language": "typescript", "openness": "proprietary" },
+        { "kind": "env", "value": "MASTRA_PLATFORM_ACCESS_TOKEN", "language": "any", "openness": "proprietary" },
+        { "kind": "package", "value": "@mastra/otel-exporter", "language": "typescript", "openness": "open-standard", "standard": "OpenTelemetry" },
         { "kind": "package", "value": "@mastra/langfuse", "language": "typescript" }
       ],
       "sources": [
@@ -171,12 +171,12 @@
         "note": "The built server comes from the open-source framework and runs on any host that supports Node.js, Bun or Deno. The Mastra platform and `mastra deploy` are Mastra's hosted service, and the provider deployers target each provider's own format."
       },
       "evidence": [
-        { "kind": "cli", "value": "mastra build", "language": "any" },
-        { "kind": "cli", "value": "mastra deploy", "language": "any" },
-        { "kind": "file", "value": ".mastra-project.json", "language": "any" },
-        { "kind": "file", "value": ".mastra/output", "language": "any" },
-        { "kind": "package", "value": "@mastra/deployer-vercel", "language": "typescript" },
-        { "kind": "call", "value": "VercelDeployer", "language": "typescript" }
+        { "kind": "cli", "value": "mastra build", "language": "any", "openness": "open-source" },
+        { "kind": "cli", "value": "mastra deploy", "language": "any", "openness": "proprietary" },
+        { "kind": "file", "value": ".mastra-project.json", "language": "any", "openness": "proprietary" },
+        { "kind": "file", "value": ".mastra/output", "language": "any", "openness": "open-source" },
+        { "kind": "package", "value": "@mastra/deployer-vercel", "language": "typescript", "openness": "open-source" },
+        { "kind": "call", "value": "VercelDeployer", "language": "typescript", "openness": "open-source" }
       ],
       "sources": [
         { "url": "https://mastra.ai/docs/deployment/overview", "title": "Deploy" },
@@ -194,12 +194,12 @@
         "note": "The Workspace interface is Mastra's own and open source. Isolation comes from the chosen provider, several of which are third-party services, and the managed Workspaces are a Mastra platform service."
       },
       "evidence": [
-        { "kind": "import", "value": "@mastra/core/workspace", "language": "typescript" },
-        { "kind": "call", "value": "Workspace", "language": "typescript" },
-        { "kind": "call", "value": "LocalSandbox", "language": "typescript" },
+        { "kind": "import", "value": "@mastra/core/workspace", "language": "typescript", "openness": "open-source" },
+        { "kind": "call", "value": "Workspace", "language": "typescript", "openness": "open-source" },
+        { "kind": "call", "value": "LocalSandbox", "language": "typescript", "openness": "open-source" },
         { "kind": "package", "value": "@mastra/daytona", "language": "typescript" },
-        { "kind": "package", "value": "@mastra/platform-workspace", "language": "typescript" },
-        { "kind": "call", "value": "PlatformSandbox", "language": "typescript" }
+        { "kind": "package", "value": "@mastra/platform-workspace", "language": "typescript", "openness": "proprietary" },
+        { "kind": "call", "value": "PlatformSandbox", "language": "typescript", "openness": "proprietary" }
       ],
       "sources": [
         { "url": "https://mastra.ai/docs/sandbox/overview", "title": "Sandboxes and filesystems" },
@@ -279,11 +279,11 @@
         "note": "Skills use the open Agent Skills format and can be read by other tools that support it. The project layout, the Mastra instance file and file-based agent folders are Mastra's own conventions, and no Agent Plugins `plugin.json` support is documented."
       },
       "evidence": [
-        { "kind": "file", "value": "SKILL.md", "language": "any" },
-        { "kind": "file", "value": "src/mastra/index.ts", "language": "typescript" },
-        { "kind": "import", "value": "@mastra/core/skills", "language": "typescript" },
-        { "kind": "call", "value": "createSkill", "language": "typescript" },
-        { "kind": "call", "value": "agentConfig", "language": "typescript" }
+        { "kind": "file", "value": "SKILL.md", "language": "any", "openness": "open-standard", "standard": "Agent Skills" },
+        { "kind": "file", "value": "src/mastra/index.ts", "language": "typescript", "openness": "open-source" },
+        { "kind": "import", "value": "@mastra/core/skills", "language": "typescript", "openness": "open-standard", "standard": "Agent Skills" },
+        { "kind": "call", "value": "createSkill", "language": "typescript", "openness": "open-standard", "standard": "Agent Skills" },
+        { "kind": "call", "value": "agentConfig", "language": "typescript", "openness": "open-source" }
       ],
       "sources": [
         { "url": "https://mastra.ai/docs/skills", "title": "Agent skills" },

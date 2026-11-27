@@ -2,7 +2,7 @@
   "format": "spec-v1",
   "product": {
     "name": "inspect",
-    "version": "0.6.5",
+    "version": "0.7.0",
     "kind": "agent"
   },
   "purpose": "Inspect takes a public GitHub repository address and, optionally, a commit, reads the code at that commit without running any of it, and hands back an inspection report on what it does and how safe it is. The repository may hold an agent, or a plugin or skills for a person's own coding tool (Claude Code, Cursor, Codex and others), which runs on that person's machine with their files and their credentials. The report is a list of findings in eight sections, each finding standing on its own and citing a file and line at the commit. Its readers are the person in charge of a department's agents, deciding whether to bring in an outside agent, and an IT, security or team lead deciding whether employees may install a plugin, before anything is installed or given a credential. It judges no fit with anyone's plan, matches the agent to no catalog role and gives no bring-it-in-or-not verdict.",
@@ -1764,9 +1764,39 @@
           "kind": "behavior",
           "priority": "must",
           "verify": "test",
-          "shall": "The agent's view shall draw the reading as a tab, Could it move?, after Systems it uses: the answer first, the rows with how open each is in a word and a shape in the text's color, each destination's cells with their rating in a word and a shape, the database's whole words in a dialog, placeholders while the job runs, and no file, line or path of the repository.",
+          "shall": "The agent's view shall draw the reading as a tab after Systems it uses (Portability since 0.7.0, F6.R12): the answer first, the rows with how open each is in a word and a shape in the text's color, the database's whole words in a dialog, placeholders while the job runs, and no file, line or path of the repository.",
           "source": {
             "said": "Add a portability reading to the Inspect agent (the owner, 2026-11-27, through the coordinator): how tied an agent is to its platform, and what moving it elsewhere would take and cost; \"we'd need to also state what you might be missing if you do the switch, like LangGraph is associated with Evals, Key Stores, Telemetry\", and \"what each destination provides, this is important\". The aim is to show buyers how open an agent really is, fairly."
+          }
+        },
+        {
+          "id": "F6.R10",
+          "kind": "behavior",
+          "priority": "must",
+          "verify": "test",
+          "shall": "Inspect shall read, by rule from the repository's files and the facts it gathered, how well the subject follows AgentMesh's portability guidance for builders (https://agentmesh.ai/draft/articles/portability-guidance-for-builders.html): the basics every agent should follow (plugin.json at the root; skills in skills/<name>/SKILL.md; tool servers in .mcp.json, remote or pinned; LICENSE, README.md and AGENTS.md; no keys in the code; lock files committed; a tagged release, from one more GitHub call; samples and tests that run offline; vendor extras that can be turned off) and, where they apply, an agent card, knowledge in OKF, a sandbox for generated code and declared schedules; each followed, missing, not known or not applicable, and never guessed.",
+          "source": {
+            "said": "The owner, 2026-11-27, through the coordinator, on Inspect's report on dev: \"Rename the tab 'Could it move?' to 'Portability'\"; at its top, how well the agent follows AgentMesh's portability guidance for builders (\"you don't get a feel for if it's adhering to so many of the items we mentioned in our portability document. It doesn't need to be exhaustive, but we should give some indication\"); \"I don't want AgentMesh to be a target - that's not our business\"; 'Moving it' becomes 'Run it in', the organization's preferred harnesses (\"we should probably have a section for your preferred harnesses and if they haven't picked one yet, they'd have a button to identify and set it up\"); \"Improve the formatting for the Tests and Gaps tab content\"; and the coordinator's yes to debt 939 (each evidence item carries its own openness)."
+          }
+        },
+        {
+          "id": "F6.R11",
+          "kind": "behavior",
+          "priority": "must",
+          "verify": "test",
+          "shall": "Inspect shall read, for every harness in the database's catalogue (harnesses, assistants that take open pieces and cloud runtimes; never AgentMesh), what running the subject there takes, by rule, and one line for each of the seven capabilities it uses (skills, tool servers, plugins, hooks, A2A, scheduled work, sandboxes): kept, partly, lost, not known, or gained, in the harness's own words; and an evidence item's own openness, where the database gives one, decides how open a use is.",
+          "source": {
+            "said": "The owner, 2026-11-27, through the coordinator, on Inspect's report on dev: \"Rename the tab 'Could it move?' to 'Portability'\"; at its top, how well the agent follows AgentMesh's portability guidance for builders (\"you don't get a feel for if it's adhering to so many of the items we mentioned in our portability document. It doesn't need to be exhaustive, but we should give some indication\"); \"I don't want AgentMesh to be a target - that's not our business\"; 'Moving it' becomes 'Run it in', the organization's preferred harnesses (\"we should probably have a section for your preferred harnesses and if they haven't picked one yet, they'd have a button to identify and set it up\"); \"Improve the formatting for the Tests and Gaps tab content\"; and the coordinator's yes to debt 939 (each evidence item carries its own openness)."
+          }
+        },
+        {
+          "id": "F6.R12",
+          "kind": "behavior",
+          "priority": "must",
+          "verify": "test",
+          "shall": "The agent's view shall name the tab Portability and open it on how many of the guidance's basics the subject follows, one line each; keep How tied it is below it; and draw Run it in as one card for each of the organization's preferred harnesses the host hands it (host_settings, a Next addition), in the order picked, or, with none picked, one line and Pick your harnesses, which asks the host to open the setting (view/open-page, a Next addition, sent only to a host that hands host_settings). Tests and gaps shall answer first in one line, then list each item in one line with its words behind it.",
+          "source": {
+            "said": "The owner, 2026-11-27, through the coordinator, on Inspect's report on dev: \"Rename the tab 'Could it move?' to 'Portability'\"; at its top, how well the agent follows AgentMesh's portability guidance for builders (\"you don't get a feel for if it's adhering to so many of the items we mentioned in our portability document. It doesn't need to be exhaustive, but we should give some indication\"); \"I don't want AgentMesh to be a target - that's not our business\"; 'Moving it' becomes 'Run it in', the organization's preferred harnesses (\"we should probably have a section for your preferred harnesses and if they haven't picked one yet, they'd have a button to identify and set it up\"); \"Improve the formatting for the Tests and Gaps tab content\"; and the coordinator's yes to debt 939 (each evidence item carries its own openness)."
           }
         }
       ],
@@ -1831,9 +1861,23 @@
         },
         {
           "id": "F6.A9",
-          "gherkin": "Scenario: The tab\n  Given a delivered report with a reading\n  Then Could it move? follows Systems it uses, opens on what it is built on and the services it reaches, draws each row and each destination's cells in a word and a shape, opens the database's words in a dialog, keeps the reading through a copy that leaves it out, and names no file of the repository",
+          "gherkin": "Scenario: The tab\n  Given a delivered report with a reading\n  Then Portability follows Systems it uses, opens on what it is built on and the services it reaches, draws each row in a word and a shape, opens the database's words in a dialog, keeps the reading through a copy that leaves it out, and names no file of the repository",
           "checks": [
             "F6.R9"
+          ]
+        },
+        {
+          "id": "F6.A10",
+          "gherkin": "Scenario: Openness by evidence\n  Given a LangGraph agent that loads skills through create_deep_agent's skills argument\n  Then its packaging reads as open as Agent Skills, and langgraph.json reads as LangChain's own",
+          "checks": [
+            "F6.R11"
+          ]
+        },
+        {
+          "id": "F6.A11",
+          "gherkin": "Scenario: The guidance's basics\n  Given a repository with plugin.json, skills in skills/<name>/SKILL.md, an unpinned npx tool server, no AGENTS.md and a lock file\n  Then the basics say followed, missing or not known by rule, and a release GitHub did not answer for is not known",
+          "checks": [
+            "F6.R10"
           ]
         }
       ]

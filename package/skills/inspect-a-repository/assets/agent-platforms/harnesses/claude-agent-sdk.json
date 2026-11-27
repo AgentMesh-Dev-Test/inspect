@@ -1,0 +1,77 @@
+{
+  "$schema": "../harness.schema.json",
+  "id": "claude-agent-sdk",
+  "name": "Claude Agent SDK",
+  "vendor": "Anthropic",
+  "kind": "harness",
+  "summary": "A Python and TypeScript library that runs the Claude Code CLI as a subprocess, so an application can run Claude agents with Claude Code's tools on infrastructure its owner operates.",
+  "platform": "anthropic",
+  "plugin_formats": [
+    "Claude Code"
+  ],
+  "documentation": [
+    "https://code.claude.com/docs/",
+    "https://platform.claude.com/docs/",
+    "https://github.com/anthropics/"
+  ],
+  "checked": "2026-11-27",
+  "supports": {
+    "skills": {
+      "support": "yes",
+      "what": "Agent Skills: SKILL.md folders loaded from the filesystem locations set by settingSources (TypeScript) or setting_sources (Python).",
+      "sources": [
+        { "url": "https://code.claude.com/docs/en/agent-sdk/skills", "title": "Extend agents with skills" }
+      ],
+      "checked": "2026-11-27"
+    },
+    "mcp": {
+      "support": "yes",
+      "what": "MCP servers that run as local processes, connect over HTTP, or run inside the SDK application.",
+      "sources": [
+        { "url": "https://code.claude.com/docs/en/agent-sdk/mcp", "title": "Connect to external tools with MCP" }
+      ],
+      "checked": "2026-11-27"
+    },
+    "plugins": {
+      "support": "yes",
+      "what": "Claude Code plugins loaded from local directories, adding skills, agents, hooks and MCP servers to a session.",
+      "sources": [
+        { "url": "https://code.claude.com/docs/en/agent-sdk/plugins", "title": "Plugins in the SDK" }
+      ],
+      "checked": "2026-11-27"
+    },
+    "hooks": {
+      "support": "yes",
+      "what": "Hooks: callback functions that run on agent events such as a tool call, a session starting or execution stopping; plugins can also bring hooks.",
+      "sources": [
+        { "url": "https://code.claude.com/docs/en/agent-sdk/hooks", "title": "Intercept and control agent behavior with hooks" },
+        { "url": "https://code.claude.com/docs/en/agent-sdk/plugins", "title": "Plugins in the SDK" }
+      ],
+      "checked": "2026-11-27"
+    },
+    "a2a": {
+      "support": "unknown",
+      "what": "Not found in Anthropic's documentation.",
+      "sources": [],
+      "checked": "2026-11-27"
+    },
+    "scheduled-work": {
+      "support": "partial",
+      "what": "The pages checked show no scheduler in the SDK itself: an application that runs prompts on its own schedule can declare each one as a scheduled run (TypeScript Agent SDK v0.3.280 or later), and cloud scheduled task deliveries arrive as task notifications.",
+      "sources": [
+        { "url": "https://code.claude.com/docs/en/agent-sdk/typescript", "title": "Agent SDK reference - TypeScript: Declare a scheduled run" }
+      ],
+      "checked": "2026-11-27"
+    },
+    "sandboxes": {
+      "support": "yes",
+      "what": "The sandbox option (SandboxSettings) turns on command sandboxing with filesystem and network limits for the shell commands the agent runs; the hosting guide also covers running the SDK in containers or with sandbox providers.",
+      "sources": [
+        { "url": "https://code.claude.com/docs/en/agent-sdk/typescript", "title": "Agent SDK reference - TypeScript: SandboxSettings" },
+        { "url": "https://code.claude.com/docs/en/agent-sdk/secure-deployment", "title": "Securely deploying AI agents" },
+        { "url": "https://code.claude.com/docs/en/agent-sdk/hosting", "title": "Hosting the Agent SDK" }
+      ],
+      "checked": "2026-11-27"
+    }
+  }
+}

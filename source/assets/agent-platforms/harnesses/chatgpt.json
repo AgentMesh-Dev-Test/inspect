@@ -1,0 +1,79 @@
+{
+  "$schema": "../harness.schema.json",
+  "id": "chatgpt",
+  "name": "ChatGPT",
+  "vendor": "OpenAI",
+  "kind": "assistant",
+  "summary": "OpenAI's ChatGPT assistant on the web, desktop and mobile, which takes skills, MCP apps and plugins shared with Codex.",
+  "platform": "openai",
+  "plugin_formats": [
+    "Agent Plugins 1.0.0",
+    "Codex",
+    "Claude Code"
+  ],
+  "documentation": [
+    "https://help.openai.com/",
+    "https://developers.openai.com/plugins"
+  ],
+  "checked": "2026-11-27",
+  "supports": {
+    "skills": {
+      "support": "yes",
+      "what": "Skills, folders with a SKILL.md that ChatGPT and Codex load, are available to eligible ChatGPT Business, Enterprise, Healthcare and Edu users.",
+      "sources": [
+        { "url": "https://help.openai.com/en/articles/20001066-skills-in-chatgpt", "title": "Skills in ChatGPT" },
+        { "url": "https://developers.openai.com/plugins/concepts/skills", "title": "Skills" }
+      ],
+      "checked": "2026-11-27"
+    },
+    "mcp": {
+      "support": "partial",
+      "what": "ChatGPT connects to remote MCP servers at a public HTTPS endpoint; full MCP with write actions is on Business and Enterprise/Edu workspaces on the web (the FAQ calls it beta), Pro gets read/fetch only, and mobile is not supported.",
+      "sources": [
+        { "url": "https://help.openai.com/en/articles/12584461-developer-mode-and-mcp-apps-in-chatgpt", "title": "Connecting custom MCP servers in ChatGPT" }
+      ],
+      "checked": "2026-11-27"
+    },
+    "plugins": {
+      "support": "yes",
+      "what": "Plugins combine skills, MCP servers and optional UI, published once to a directory shared by ChatGPT and Codex; a portable package uses a root plugin.json with the Agent Plugins 1.0.0 schema, and .codex-plugin/plugin.json and Claude-compatible manifests are also accepted.",
+      "sources": [
+        { "url": "https://developers.openai.com/plugins", "title": "Plugins" },
+        { "url": "https://developers.openai.com/plugins/build/plugins.md", "title": "Build plugins" },
+        { "url": "https://developers.openai.com/plugins/guides/submit-claude-plugin.md", "title": "Submit a Claude plugin" }
+      ],
+      "checked": "2026-11-27"
+    },
+    "hooks": {
+      "support": "partial",
+      "what": "Lifecycle hooks (hooks/hooks.json) load only for plugins installed manually in Codex desktop, which the page also places under ChatGPT Work; plugins with hooks are not eligible for the public directory.",
+      "sources": [
+        { "url": "https://developers.openai.com/plugins/build/plugins.md", "title": "Build plugins" },
+        { "url": "https://developers.openai.com/plugins/guides/submit-claude-plugin.md", "title": "Submit a Claude plugin" }
+      ],
+      "checked": "2026-11-27"
+    },
+    "a2a": {
+      "support": "unknown",
+      "what": "Not found in OpenAI's documentation.",
+      "sources": [],
+      "checked": "2026-11-27"
+    },
+    "scheduled-work": {
+      "support": "yes",
+      "what": "Scheduled tasks run one-time or recurring prompts, monitor for changes, and on paid plans respond to Gmail, Slack or GitHub events, with per-plan limits on active tasks.",
+      "sources": [
+        { "url": "https://help.openai.com/en/articles/10291617-scheduled-tasks-in-chatgpt", "title": "Scheduled tasks in ChatGPT" }
+      ],
+      "checked": "2026-11-27"
+    },
+    "sandboxes": {
+      "support": "yes",
+      "what": "Data analysis writes and runs Python in a stateful Jupyter notebook environment that ChatGPT provides, which cannot make external web requests or API calls.",
+      "sources": [
+        { "url": "https://help.openai.com/en/articles/8437071-data-analysis-with-chatgpt", "title": "Data analysis with ChatGPT" }
+      ],
+      "checked": "2026-11-27"
+    }
+  }
+}

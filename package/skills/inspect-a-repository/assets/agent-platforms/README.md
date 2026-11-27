@@ -1,6 +1,8 @@
 # Agent platforms
 
-What each agent platform provides, category by category, with the evidence that shows an agent uses each feature and a link to the vendor's own documentation for every claim. Inspect reads it to tell a buyer which platform features an agent actually uses, how tied the agent is to its platform, what moving it would take, what would be lost, and what provides the same thing elsewhere.
+What each agent platform provides, category by category, with the evidence that shows an agent uses each feature and a link to the vendor's own documentation for every claim; and what each harness people run agents in supports. Inspect reads it to tell a buyer which platform features an agent actually uses, how tied the agent is to its platform, and, for each harness the buyer's organization prefers, what running the agent there takes and what it would lose or gain.
+
+The platforms are what an agent is built on. The harnesses are where it can run. AgentMesh's own entry in `platforms/` is there so an agent built on AgentMesh's SDKs is read like any other; AgentMesh is not a harness and not a place Inspect offers to move an agent to.
 
 Every entry is dated and sourced, and the wording is neutral. A claim that is not in the vendor's documentation is not in this database: a cell that could not be confirmed is rated `unknown`.
 
@@ -8,6 +10,8 @@ Every entry is dated and sourced, and the wording is neutral. A claim that is no
 
 - `platform.schema.json`: the JSON Schema every entry follows. Its descriptions define each category.
 - `platforms/<id>.json`: one entry per platform. A vendor's framework and its hosted service are one entry when they work as one (for example LangGraph with LangSmith).
+- `harness.schema.json`: the JSON Schema every harness entry follows.
+- `harnesses/<id>.json`: one entry per harness, named by its own name: `kind` harness (opencode, the Claude Agent SDK, Claude Code, Cursor, Codex), assistant (a personal assistant that takes Agent Skills or MCP connectors), or cloud-runtime (a hosted service that runs an agent's own code; `platform` names its entry in `platforms/`). opencode carries `house_stack`: it is the harness AgentMesh's House Stack runs agents in. The harnesses AgentMesh runs plugin trials under (docs/harness-contract.md, built from the adlc repository's `agents/image/bases/tenant-harnesses.json`) have entries here of the same name, so there is one list of named harnesses.
 
 `node tools/ci/check-agent-platforms.mjs` checks every entry against the schema and the rules below, in CI and in the pre-push hook. `--self-test` proves that a bad entry fails.
 
@@ -38,6 +42,8 @@ Each entry rates all twelve.
 - `evidence`: what to search for in an agent's repository to tell whether the agent uses the feature. Each item is a literal string from the vendor's documentation: a package name, an import, a function or class, an environment variable, a file name, a key in a config file, or a command. `not-in-code` means the feature is set up outside the code (in a console) and the note says where.
 - `sources`: links to the vendor's own documentation pages. Every link starts with one of the entry's `documentation` prefixes.
 - `checked`: the date the sources were read.
+
+An evidence item may carry its own `openness` (`open-standard` with its `standard`, `open-source` or `proprietary`) when the part of the feature it shows differs from the cell's level, as in a mixed cell whose open part is a standard and whose other part is the vendor's own: LangChain's packaging cell is mixed, while `create_deep_agent`'s `skills` argument loads Agent Skills, an open standard, and `langgraph.json` is LangChain's own. An item without `openness` takes the cell's level.
 
 ## Ratings
 
@@ -72,6 +78,12 @@ An entry that groups several products rates the strongest provision across them,
 - Every source URL is under the entry's `documentation` prefixes.
 - Dates are real calendar dates and not in the future.
 - A `standard` rating names its standard; a `none` rating has portability `not-applicable`.
+- An evidence item with openness `open-standard` names its `standard`, one of the cell's; no other item names one.
+- Every harness file is valid against `harness.schema.json`, named after its id, cites a source for every cell but `unknown`, and names a platform that exists; only one harness is the House Stack's; and every harness in adlc's `tenant-harnesses.json` has an entry.
+
+## What a harness cell holds
+
+Each harness entry rates seven capabilities: `skills` (Agent Skills), `mcp` (tool servers), `plugins` (and `plugin_formats`, the formats it installs), `hooks`, `a2a`, `scheduled-work` and `sandboxes`. A cell holds `support` (yes, partial, no or unknown), `what` (one short sentence), `sources` (the maker's own documentation, each page opened on the date checked) and `checked`. `unknown` means not found in the documentation, never a guess; every other value cites a source under the entry's `documentation` prefixes.
 
 ## Adding or re-checking a platform
 

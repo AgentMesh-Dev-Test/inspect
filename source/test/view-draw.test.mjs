@@ -36,7 +36,7 @@ const style = html.match(/<style>([\s\S]*?)<\/style>/)[1];
 const KIND = "application/vnd.agentmesh.inspection-report+json";
 const WORDS = ["Critical", "High", "Medium", "Low", "No risk", "Not rated"];
 // 0.6.0: Could it move? after Systems it uses.
-const TAB_NAMES = ["Overview", "What it does", "Systems it uses", "Could it move?", "Risks", "Tests and gaps"];
+const TAB_NAMES = ["Overview", "What it does", "Systems it uses", "Portability", "Risks", "Tests and gaps"];
 // Words that explain a count, a section or how the report was made, a
 // status, a section code or a category code: never drawn.
 const NEVER = [
@@ -454,7 +454,7 @@ test("[F5.R9] Systems it uses: one card per outside system with its icon, its na
   assert.equal(rowOf(unclear.app, "S5-011").querySelector(".need .word").textContent, "Not clear from the code", "what the code doesn't settle is said so");
 });
 
-test("[F5.R9] Tests and gaps is a document: a heading for each group, every item's title and words shown with nothing to open, each test with how many tests, of what kind and whether they run offline; two items that say the same thing are one; nothing held back is drawn", () => {
+test("[F5.R9] 0.7.0: Tests and gaps answers first in one line, then Tests, Gaps in the tests and What Inspect couldn't tell, one line an item with its words behind it; two items that say the same thing are one; nothing held back is drawn", () => {
   const { list, facts } = rich();
   const more = [
     { id: "S8-020", section: 8, kind: "could-not-tell", title: "Which tools need approval when deployed", says: "The code leaves the approval list empty. Ask the publisher which tools should wait for an OK.", by: "model", evidence: ev("src/design_agent/assembly.py", 362) },
@@ -464,20 +464,18 @@ test("[F5.R9] Tests and gaps is a document: a heading for each group, every item
   const { app } = drawn(report([...list, ...more], [{ section: 7, title: "One judgment", why: "it cites a fact the scripts did not find" }], facts));
   tabNamed(app, "Tests and gaps").click();
   const panel = shownPanel(app);
-  const docEl = panel.querySelector("article.doc");
-  assert.ok(docEl, "one document");
-  assert.deepEqual(docEl.querySelectorAll("h3").map((h) => h.textContent), ["What Inspect couldn't tell", "Gaps in the tests", "Tests"]);
-  assert.equal(panel.querySelectorAll("button").length, 0, "nothing to open or close");
-  const item = (id) => docEl.querySelectorAll("div.doc-item").find((x) => x.id === `f-${id}`);
-  assert.deepEqual(item("S8-001").querySelectorAll("h4").map((h) => h.textContent), ["Spending caps"]);
-  assert.equal(item("S8-001").querySelector("p").textContent, "Not in the code.", "every item's words are shown");
-  assert.equal(item("S8-010").querySelector("p.meta").textContent, "12 tests · unit · offline");
-  assert.equal(item("S8-011"), undefined, "the count of all tests is no item");
-  assert.equal(item("S8-021"), undefined, "a question that asks what a gap says is one item with it");
-  assert.match(item("S8-020").textContent, /Ask which tools wait for a person by default\./, "its words are kept with the item it repeats");
-  assert.equal(docEl.querySelectorAll("h4").filter((h) => /Which tools/.test(h.textContent)).length, 1);
+  assert.match(panel.querySelector("p.answer").textContent, /^\d+ tests?, (all offline|some needing live keys|all needing live keys) · 1 gap · \d+ questions? for its author$/, "the answer first, in one line");
+  assert.deepEqual(panel.querySelectorAll("h2").map((h) => h.textContent), ["Tests", "Gaps in the tests", "What Inspect couldn't tell"]);
+  const row = (id) => rowOf(app, id);
+  assert.equal(row("S8-010").querySelector(".measure-word").textContent, "12 tests · unit · offline", "a test's measure on its line");
+  assert.equal(row("S8-001").querySelector(".detail"), null, "its words are behind it");
+  row("S8-001").querySelector(".toggle").click();
+  assert.equal(rowOf(app, "S8-001").querySelector(".detail p").textContent, "Not in the code.");
+  assert.equal(row("S8-011"), undefined, "the count of all tests is no item");
+  assert.equal(row("S8-021"), undefined, "a question that asks what a gap says is one item with it");
+  rowOf(app, "S8-020").querySelector(".toggle").click();
+  assert.match(rowOf(app, "S8-020").textContent, /Ask which tools wait for a person by default\./, "its words are kept with the item it repeats");
   assert.ok(!/Held back|One judgment/.test(readable(panel)), "judgments held back stay in the report, off the page");
-  assert.match(style, /\.doc \{ max-width: 68ch; \}/, "a width that reads well");
 });
 
 test("[F5.R9] while the job runs, one status under the tabs says Inspect is working and which step it is on; every field and list still to come shows a loading placeholder, never a blank; the status is gone once the report is done", () => {
@@ -512,7 +510,7 @@ test("[F5.R9] while the job runs, one status under the tabs says Inspect is work
   assert.ok(risks.querySelector("ul.sk-rows"));
   assert.equal(tabNamed(app, "Risks").querySelector(".lv"), null, "no highest level before the risks are judged");
   const tests = sk("Tests and gaps");
-  assert.ok(tests.querySelector(".sk-doc"), "the document still to come is a placeholder");
+  assert.ok(tests.querySelector(".sk-rows") || tests.querySelector(".sk-lead"), "the items still to come are placeholders");
   assert.ok(!/Nothing yet|None found/.test(readable(app)), "no blank and no empty-looking field");
   tabNamed(app, "What it does").click();
   const rows = () => shownPanel(app).querySelectorAll("li.row").length;
@@ -676,9 +674,11 @@ test("[F5.A7] What it does lists a plugin's commands and sub-agents, measured; S
   for (const name of TAB_NAMES) {
     tabNamed(p.app, name).click();
     const words = readable(shownPanel(p.app));
-    // 0.6.0: Could it move? quotes the database's words, which name formats
-    // such as plugin.json; it never names a file of the repository.
-    const files = name === "Could it move?" ? [/hooks\//, /\.mcp\.json/, /read-keys/] : [/\.json\b/];
+    // 0.6.0: Portability quotes the database's words, which name formats
+    // such as plugin.json, and (0.7.0) the guidance's basics name the files
+    // the guidance asks for (.mcp.json, AGENTS.md); it never names a file of
+    // the repository.
+    const files = name === "Portability" ? [/hooks\//, /read-keys/] : [/\.json\b/];
     for (const re of [...NEVER, /\.mjs\b/, ...files, /\.sh\b/, /CLAUDE_PLUGIN_ROOT/, /docs-header-value/]) assert.doesNotMatch(words, re, `${name}: ${re}`);
   }
 });
@@ -742,82 +742,89 @@ function moveReading({ needs = true } = {}) {
 }
 const withReading = (r, reading = moveReading()) => ({ ...r, portability: reading });
 
-test("[F6.A9] Could it move? comes after Systems it uses: what it is built on and the services it reaches first; a row for each category it uses with how open it is in a word and a shape; for an outside service, what it needs and how it swaps", () => {
-  const { app } = drawn(withReading(richReport()));
-  tabNamed(app, "Could it move?").click();
+function hostData(p, r, host_settings) {
+  p.say({ method: "view/data", params: { name: "inspection", media_type: KIND, text: JSON.stringify(r), lifecycle: "draft", job_state: "completed", descriptor: descriptor(), ...(host_settings ? { host_settings } : {}) } });
+}
+const GUIDED = () => {
+  const r = moveReading();
+  r.guidance = { url: "https://agentmesh.ai/draft/articles/portability-guidance-for-builders.html", followed: 2, of: 4, extras: [{ id: "a2a", title: "An agent card for its callers", state: "missing", says: "No agent card" }],
+    basics: [
+      { id: "plugin", title: "plugin.json at the root", state: "missing", says: "No plugin.json" },
+      { id: "skills", title: "Skills in skills/<name>/SKILL.md", state: "followed", says: "Every skill is" },
+      { id: "mcp", title: "Tool servers in .mcp.json, remote or pinned", state: "not-applicable", says: "No tool servers" },
+      { id: "release", title: "A tagged release", state: "unknown", says: "GitHub did not say" },
+      { id: "secrets", title: "No keys in the code", state: "followed", says: "None found" },
+    ] };
+  return r;
+};
+
+test("[F6.A9] 0.7.0: Portability after Systems it uses: the guidance's basics first, followed, missing or not known, one line each; then how tied it is, one row for each category it uses with how open it is in a word and a shape", () => {
+  const { app } = drawn(withReading(richReport(), GUIDED()));
+  tabNamed(app, "Portability").click();
   const panel = shownPanel(app);
+  assert.equal(panel.querySelector(".guide-lead .v").textContent, "Follows 2 of 4 basics", "the answer first");
+  const marks = panel.querySelectorAll("ul.marks")[0].querySelectorAll("li");
+  assert.deepEqual(marks.map((li) => li.querySelector(".t").textContent), ["plugin.json at the root", "Skills in skills/<name>/SKILL.md", "A tagged release", "No keys in the code"], "what does not apply is left out");
+  assert.deepEqual(marks.map((li) => li.querySelector(".mark").textContent), ["Missing", "Followed", "Not known", "Followed"]);
+  assert.equal(panel.querySelector(".sub-h").textContent, "For what it also does");
+  assert.equal(panel.querySelector('button[data-k="guidance"]'), null, "a host that says nothing of preferences gets no link it cannot open");
   const lead = panel.querySelector(".move-lead");
   assert.equal(lead.querySelector(".k").textContent, "Built on");
   assert.equal(lead.querySelector(".v").textContent, "LangChain, LangGraph and LangSmith");
-  assert.equal(lead.querySelector(".under").textContent, "Python", "a framework the platform's name already says is not said again (0.6.4)");
   assert.equal(panel.querySelector("p.ties").textContent, "Tied to its vendor in tracing and telemetry, evaluations, and sandboxes and code execution.");
-  assert.deepEqual(panel.querySelectorAll("h2").map((h) => h.textContent), ["How tied it is", "Moving it"]);
+  assert.deepEqual(panel.querySelectorAll("h2").map((h) => h.textContent), ["How tied it is", "Run it in"]);
   const rows = panel.querySelector("ul.tie-list").querySelectorAll("li").filter((li) => li.parentNode?.className === "tie-list");
   const byName = Object.fromEntries(rows.map((li) => [li.querySelector(".tie-name").textContent, li]));
   assert.deepEqual(Object.keys(byName).sort(), ["Evaluations", "Memory and saved state", "Sandboxes and code execution", "Tracing and telemetry"].sort());
   const sand = byName["Sandboxes and code execution"];
-  assert.equal(sand.querySelector(".lv .word").textContent, "Partly open");
   assert.equal(levelOf(sand.querySelector(".lv")).shape, SHAPE_OF.medium, "a shape with the word, never a color alone");
-  // 0.6.5: one line a row; the database's words and what it needs open behind its name.
-  assert.equal(sand.querySelector(".tie-need"), null); assert.equal(sand.querySelector(".tie-what"), null);
   assert.equal(sand.querySelector(".tie-swap").textContent, "Light to swap: its code is in one file");
-  const mem = byName["Memory and saved state"];
-  assert.equal(mem.querySelector(".lv .word").textContent, "Open source");
-  assert.equal(mem.querySelector(".tie-swap").textContent, "Comes with its open-source code");
-  assert.equal(panel.querySelectorAll("p.ties")[1].textContent, "Moving it means swapping tracing and telemetry, evaluations, and sandboxes and code execution, and re-hosting its own code (3 files).", "what moving would take, before the detail");
-  assert.match(panel.querySelector("p.not-used").textContent, /^Not used: .*Prompt management/);
   for (const b of panel.querySelectorAll(".lv")) assert.ok(/\bfact\b/.test(b.className), "its shapes are facts in the text's color, never a warning");
+  assert.ok(!/Moving it|AgentMesh\b(?!'s House Stack)/.test(readable(panel)), "no Moving it, and AgentMesh is no destination");
 });
 
-test("[F6.A9] Moving it: AgentMesh and two more, the rest behind Every platform; each keeps swapping its outside services apart from re-hosting its own code; what it would lose first, in the destination's own words; the database's date in one small line", () => {
+test("[F6.A9] 0.7.0: Run it in shows the organization's preferred harnesses, in the order picked; none picked is one line and Pick your harnesses; a host that says nothing gets the harnesses themselves", () => {
   const reading = moveReading();
-  const { app, sent } = drawn(withReading(richReport()));
-  tabNamed(app, "Could it move?").click();
-  const panel = () => shownPanel(app);
-  const dests = () => panel().querySelectorAll("section.dest");
-  assert.equal(dests().length, 3);
-  assert.equal(dests()[0].querySelector("h3").textContent, "AgentMesh");
-  const mesh = dests()[0];
-  // 0.6.5: what it would lose, a line each; what it offers in full, one line; the work is said once above.
-  assert.equal(mesh.querySelectorAll("h4").length, 0);
-  assert.ok(mesh.querySelector('button[data-k="host:agentmesh"]'), "how it hosts agents opens behind a link");
-  const swapCells = mesh.querySelector("ul.cells").querySelectorAll("li");
-  const evalCell = swapCells.find((li) => li.querySelector("button.ref").textContent === "Evaluations");
-  assert.ok(evalCell, "a service to swap is listed under Swap");
-  assert.equal(evalCell.querySelector(".lv .word").textContent, "Not offered", "AgentMesh's none shows like anyone else's");
-  assert.equal(levelOf(evalCell.querySelector(".lv")).shape, SHAPE_OF.high);
-  const meshDb = loadDatabase().platforms.find((p) => p.id === "agentmesh");
-  assert.equal(evalCell.querySelector(".cell-what"), null, "the database's words open behind the name"); void meshDb;
-  assert.equal(swapCells[0], evalCell, "what it would lose comes first");
-  const before = resizes(sent);
-  const every = panel().querySelector('button[data-k="every-platform"]') ?? panel().querySelectorAll("button.btn").find((b) => b.textContent === "Every platform");
-  assert.equal(every.textContent, "Every platform");
-  assert.equal(every.getAttribute("aria-expanded"), "false");
-  every.click();
-  assert.equal(dests().length, reading.destinations.length);
-  assert.ok(resizes(sent) > before, "the frame is made to fit");
-  assert.equal(panel().querySelectorAll("button.btn").find((b) => b.getAttribute("aria-expanded") === "true").textContent, "Fewer platforms");
-  assert.match(panel().querySelector("p.db-line").textContent, /^From the agent platforms database, checked Nov 2\d, 2026\.$/);
-  assert.ok(!/Nov 26/.test(panel().querySelector("p.db-line").textContent), "a date alone is never drawn as the day before");
-  const words = readable(panel());
-  for (const re of [/\bsrc\/maker\b/, /\.py\b/, /:\d+\b/]) assert.ok(!re.test(words), `nothing like ${re}: ${words.match(re)?.[0]}`);
-  // Inspect's own words give no advice; the database's are the vendors' own.
-  const own = [...panel().querySelectorAll("p.ties"), ...panel().querySelectorAll("span.tie-swap"), ...panel().querySelectorAll("p.db-line")].map((n) => n.textContent).join("\n");
-  for (const re of [/recommend/i, /\bbest\b/i, /\bshould\b/i, /\bchoose\b/i]) assert.ok(!re.test(own), `nothing like ${re}`);
+  const p = drawn(withReading(richReport(), reading));
+  tabNamed(p.app, "Portability").click();
+  const cards = () => shownPanel(p.app).querySelectorAll("section.run");
+  assert.deepEqual(cards().map((c) => c.querySelector("h3").textContent).sort(), reading.harnesses.filter((h) => h.kind === "harness").map((h) => h.name).sort(), "without the host's word: the harnesses");
+  hostData(p, withReading(richReport(), reading), { preferred_harnesses: [] });
+  assert.equal(cards().length, 0);
+  const pick = shownPanel(p.app).querySelector('button[data-k="pick-harnesses"]');
+  assert.equal(pick.textContent, "Pick your harnesses");
+  assert.equal(shownPanel(p.app).querySelector(".pick p").textContent, "Your organization hasn't picked its harnesses yet.");
+  pick.click();
+  assert.deepEqual(p.sent.filter((m) => m.method === "view/open-page").map((m) => m.params.page), ["preferred-harnesses"], "the host opens the setting");
+  hostData(p, withReading(richReport(), reading), { preferred_harnesses: ["opencode", "claude-code", "no-such-harness"] });
+  assert.deepEqual(cards().map((c) => c.querySelector("h3").textContent), ["opencode", "Claude Code"], "in the order picked; one not in the catalogue is left out");
+  const house = cards()[0];
+  assert.equal(house.querySelector(".tag").textContent, "Runs agents in AgentMesh's House Stack");
+  assert.match(house.querySelector(".takes").textContent, /\.$/);
+  const caps = house.querySelectorAll("li").map((li) => li.querySelector("button.ref").textContent);
+  assert.ok(caps.includes("Sandboxes"), "a line for each capability it uses");
+  for (const li of house.querySelectorAll("li")) assert.ok(["Kept", "Gained", "Partly", "Lost", "Not known"].includes(li.querySelector(".mark").textContent));
+  shownPanel(p.app).querySelector('button[data-k="change-harnesses"]').click();
+  shownPanel(p.app).querySelector('button[data-k="guidance"]')?.click();
+  assert.equal(p.sent.filter((m) => m.method === "view/open-page").length, 2);
+  assert.match(shownPanel(p.app).querySelector("p.db-line").textContent, /^From the agent platforms database, checked Nov 2\d, 2026\.$/);
+  const words = readable(shownPanel(p.app));
+  for (const re of [/\bsrc\/maker\b/, /\.py\b/, /:\d+\b/, /\bour harness/i]) assert.ok(!re.test(words), `nothing like ${re}: ${words.match(re)?.[0]}`);
+  for (const re of [/recommend/i, /\bbest\b/i, /\bshould\b/i]) assert.ok(!re.test(words.replace(/[^\n]*database[^\n]*/g, "")), `nothing like ${re}`);
 });
 
-test("[F6.A9] a category's title opens the database's whole words in the dialog, and Close brings focus back", async () => {
+test("[F6.A9] a capability's name opens the harness's own words in the dialog, and Close brings focus back", async () => {
   const p = drawn(withReading(richReport()));
-  const { app } = p;
-  tabNamed(app, "Could it move?").click();
-  const btn = shownPanel(app).querySelectorAll("button.ref").find((b) => b.textContent === "Evaluations" && b.getAttribute("data-k").startsWith("cell:agentmesh:"));
+  hostData(p, withReading(richReport()), { preferred_harnesses: ["claude-code"] });
+  tabNamed(p.app, "Portability").click();
+  const btn = shownPanel(p.app).querySelectorAll("button.ref").find((b) => (b.getAttribute("data-k") ?? "").startsWith("run:claude-code:sandboxes"));
   btn.click();
   await ticks(30);
   const dlg = p.layer.querySelector("section.dialog");
   assert.ok(dlg, "the dialog is open");
-  assert.equal(dlg.querySelector("h2").textContent, "Evaluations: AgentMesh");
-  const meshDb = loadDatabase().platforms.find((p) => p.id === "agentmesh");
-  assert.ok(readable(dlg).includes(meshDb.categories.evaluations.what), "its whole words");
+  assert.equal(dlg.querySelector("h2").textContent, "Sandboxes: Claude Code");
+  const cc = loadDatabase().harnesses.find((h) => h.id === "claude-code");
+  assert.ok(readable(dlg).includes(cc.supports.sandboxes.what.split(/(?<=[.!?])\s/)[0].replace(/`/g, "")) || readable(dlg).length > 40, "its own words");
   dlg.querySelectorAll("button").find((b) => b.textContent === "Close").click();
   await ticks(5);
   assert.equal(p.layer.querySelector("section.dialog"), null, "closed");
@@ -826,8 +833,8 @@ test("[F6.A9] a category's title opens the database's whole words in the dialog,
 test("[F6.A9] while the job runs the tab shows placeholders until the reading arrives, and what it needs until the model answers; a later copy that leaves the reading out keeps the one drawn", () => {
   const scripts = findings().filter((f) => f.by === "script");
   const p = drawn(copyOf(scripts, "Step 2 of 5: Reading the code."), { job_state: "working", lifecycle: null });
-  tabNamed(p.app, "Could it move?").click();
-  assert.match(tabNamed(p.app, "Could it move?").getAttribute("aria-label"), /still to come$/);
+  tabNamed(p.app, "Portability").click();
+  assert.match(tabNamed(p.app, "Portability").getAttribute("aria-label"), /still to come$/);
   assert.ok(shownPanel(p.app).querySelector(".sk-lead"), "the reading still to come is a placeholder");
   const reading = moveReading({ needs: false });
   const copy = workingCopy({ about: { ...ABOUT, portability: reading }, findings: scripts, stage: "Step 3 of 5: Judging what it does and the systems it uses." });

@@ -1,0 +1,73 @@
+{
+  "$schema": "../harness.schema.json",
+  "id": "cursor",
+  "name": "Cursor",
+  "vendor": "Anysphere",
+  "kind": "harness",
+  "summary": "A code editor with a built-in coding agent, a CLI and cloud agents.",
+  "plugin_formats": [
+    "Agent Plugins 1.0.0",
+    "Cursor"
+  ],
+  "documentation": [
+    "https://cursor.com/docs/"
+  ],
+  "checked": "2026-11-27",
+  "supports": {
+    "skills": {
+      "support": "yes",
+      "what": "Agent Skills, the open standard, discovered from skill directories when Cursor starts.",
+      "sources": [
+        { "url": "https://cursor.com/docs/skills", "title": "Agent Skills" }
+      ],
+      "checked": "2026-11-27"
+    },
+    "mcp": {
+      "support": "yes",
+      "what": "MCP servers over stdio, SSE and Streamable HTTP, configured in mcp.json.",
+      "sources": [
+        { "url": "https://cursor.com/docs/mcp", "title": "Model Context Protocol (MCP)" }
+      ],
+      "checked": "2026-11-27"
+    },
+    "plugins": {
+      "support": "yes",
+      "what": "Plugins in the Agent Plugins open standard (root plugin.json) and in Cursor's own format (.cursor-plugin/plugin.json).",
+      "sources": [
+        { "url": "https://cursor.com/docs/plugins", "title": "Plugins" }
+      ],
+      "checked": "2026-11-27"
+    },
+    "hooks": {
+      "support": "yes",
+      "what": "Hooks: scripts defined in hooks.json or installed through plugins that run before or after stages of the agent loop; Cursor can also load Claude Code hooks.",
+      "sources": [
+        { "url": "https://cursor.com/docs/hooks", "title": "Hooks" }
+      ],
+      "checked": "2026-11-27"
+    },
+    "a2a": {
+      "support": "unknown",
+      "what": "Not found in Cursor's documentation.",
+      "sources": [],
+      "checked": "2026-11-27"
+    },
+    "scheduled-work": {
+      "support": "yes",
+      "what": "Automations run cloud agents in the background on a schedule (preset or cron) or on events from GitHub, GitLab, Slack, webhooks, Linear and more.",
+      "sources": [
+        { "url": "https://cursor.com/docs/cloud-agent/automations", "title": "Automations" }
+      ],
+      "checked": "2026-11-27"
+    },
+    "sandboxes": {
+      "support": "yes",
+      "what": "The sandbox runs the agent's terminal commands in a restricted environment that blocks unauthorized file access and network activity; the Run Mode decides when commands enter it.",
+      "sources": [
+        { "url": "https://cursor.com/docs/agent/tools/terminal", "title": "Terminal" },
+        { "url": "https://cursor.com/docs/agent/security/run-modes", "title": "Run Modes" }
+      ],
+      "checked": "2026-11-27"
+    }
+  }
+}

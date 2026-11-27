@@ -115,7 +115,7 @@ test("[F1.A7] a message naming no repository is refused, naming the repository a
   });
 });
 
-test("[F1.A11] no commit named: Inspect reads the newest commit on the default branch from GitHub's records, with GET requests only and four calls, and the report records its full digest", async () => {
+test("[F1.A11] no commit named: Inspect reads the newest commit on the default branch from GitHub's records, with GET requests only and five calls (the fifth, 0.7.0, its tags), and the report records its full digest", async () => {
   for (const text of ["repository: https://github.com/acme/helper", "Inspect https://github.com/acme/helper please", "repository: acme/helper\ncommit:\nnotes: none", "Inspect a repository.\n\nrepository: acme/helper"]) {
     await inTemp(async (at) => {
       assert.equal(readRequest(text).commit, null, `${JSON.stringify(text)} names no commit`);
@@ -124,7 +124,7 @@ test("[F1.A11] no commit named: Inspect reads the newest commit on the default b
       assert.equal(out.code, 0, out.reply);
       const gh = w.calls.filter((c) => c.url.startsWith(API));
       assert.ok(gh.every((c) => c.method === "GET"));
-      assert.deepEqual(gh.map((c) => new URL(c.url).pathname), ["/repos/acme/helper", "/repos/acme/helper/commits/trunk", "/repos/acme/helper/commits", `/repos/acme/helper/tarball/${SHA}`], "the repository's record names the branch; its newest commit's record gives the digest the archive is read at");
+      assert.deepEqual(gh.map((c) => new URL(c.url).pathname), ["/repos/acme/helper", "/repos/acme/helper/commits/trunk", "/repos/acme/helper/commits", `/repos/acme/helper/tarball/${SHA}`, "/repos/acme/helper/tags"], "the repository's record names the branch; its newest commit's record gives the digest the archive is read at");
       assert.equal(out.report.commit.sha, SHA, "the full digest");
       assert.equal(out.report.commit.checked, true);
       const c = out.report.findings.find((f) => f.kind === "commit");

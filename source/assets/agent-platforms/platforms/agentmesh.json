@@ -228,9 +228,9 @@
         "note": "The plugin and its skills load in any client that reads Agent Plugins and Agent Skills. The two added files follow the Common Agent Specification, a draft AgentMesh publishes."
       },
       "evidence": [
-        { "kind": "file", "value": "plugin.json", "language": "any" },
-        { "kind": "config", "value": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json", "language": "any" },
-        { "kind": "file", "value": "SKILL.md", "language": "any" },
+        { "kind": "file", "value": "plugin.json", "language": "any", "openness": "open-standard", "standard": "Agent Plugins" },
+        { "kind": "config", "value": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json", "language": "any", "openness": "open-standard", "standard": "Agent Plugins" },
+        { "kind": "file", "value": "SKILL.md", "language": "any", "openness": "open-standard", "standard": "Agent Skills" },
         { "kind": "file", "value": "agent-descriptor.json", "language": "any" },
         { "kind": "file", "value": "agent-runtime-requirements.json", "language": "any" }
       ],

@@ -1,0 +1,78 @@
+{
+  "$schema": "../harness.schema.json",
+  "id": "bedrock-agentcore",
+  "name": "Amazon Bedrock AgentCore Runtime",
+  "vendor": "Amazon Web Services",
+  "kind": "cloud-runtime",
+  "summary": "Amazon Bedrock AgentCore Runtime is a serverless AWS hosting service that runs an agent's own code, written in any framework, in isolated sessions and serves it over HTTP, MCP, A2A or AG-UI.",
+  "platform": "aws",
+  "plugin_formats": [],
+  "documentation": [
+    "https://docs.aws.amazon.com/bedrock-agentcore/",
+    "https://docs.aws.amazon.com/bedrock/",
+    "https://strandsagents.com/",
+    "https://github.com/aws/",
+    "https://github.com/awslabs/",
+    "https://github.com/strands-agents/"
+  ],
+  "checked": "2026-11-27",
+  "supports": {
+    "skills": {
+      "support": "no",
+      "what": "AWS's comparison of AgentCore harness and AgentCore Runtime marks Agent Skills as Custom on Runtime, meaning the agent's own code must load them; the separate AgentCore harness loads them by configuration.",
+      "sources": [
+        { "url": "https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/harness-vs-runtime.html", "title": "AgentCore harness vs. Runtime" }
+      ],
+      "checked": "2026-11-27"
+    },
+    "mcp": {
+      "support": "partial",
+      "what": "AgentCore Runtime hosts MCP servers (Streamable HTTP at 0.0.0.0:8000/mcp) and AgentCore Gateway exposes tools as MCP endpoints, but connecting a Runtime agent to remote MCP servers is the agent's own code (marked Custom).",
+      "sources": [
+        { "url": "https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/runtime-mcp.html", "title": "Deploy MCP servers in AgentCore Runtime" },
+        { "url": "https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/harness-vs-runtime.html", "title": "AgentCore harness vs. Runtime" },
+        { "url": "https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/what-is-bedrock-agentcore.html", "title": "What is Amazon Bedrock AgentCore?" }
+      ],
+      "checked": "2026-11-27"
+    },
+    "plugins": {
+      "support": "unknown",
+      "what": "Not found in Amazon Web Services' documentation.",
+      "sources": [],
+      "checked": "2026-11-27"
+    },
+    "hooks": {
+      "support": "partial",
+      "what": "AgentCore Runtime lifecycle hooks call an endpoint in the agent's container at set points, currently only the build warmup hook during create and update on platform version V2 microVMs; hooks in the agent loop are the agent's own code (marked Custom).",
+      "sources": [
+        { "url": "https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/runtime-lifecycle-hooks.html", "title": "Configure lifecycle hooks for AgentCore Runtime" },
+        { "url": "https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/harness-vs-runtime.html", "title": "AgentCore harness vs. Runtime" }
+      ],
+      "checked": "2026-11-27"
+    },
+    "a2a": {
+      "support": "yes",
+      "what": "AgentCore Runtime deploys and serves A2A servers (port 9000, Agent Card at /.well-known/agent-card.json), passing JSON-RPC payloads through unchanged.",
+      "sources": [
+        { "url": "https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/runtime-a2a.html", "title": "Deploy A2A servers in AgentCore Runtime" },
+        { "url": "https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/runtime-a2a-protocol-contract.html", "title": "A2A protocol contract" }
+      ],
+      "checked": "2026-11-27"
+    },
+    "scheduled-work": {
+      "support": "unknown",
+      "what": "Not found in Amazon Web Services' documentation.",
+      "sources": [],
+      "checked": "2026-11-27"
+    },
+    "sandboxes": {
+      "support": "yes",
+      "what": "AgentCore Code Interpreter runs agent-written code in isolated sandbox sessions, and each AgentCore Runtime session runs in its own dedicated microVM with isolated compute, memory and filesystem.",
+      "sources": [
+        { "url": "https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/code-interpreter-tool.html", "title": "Execute code and analyze data using Amazon Bedrock AgentCore Code Interpreter" },
+        { "url": "https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/runtime-sessions.html", "title": "Use isolated sessions for agents" }
+      ],
+      "checked": "2026-11-27"
+    }
+  }
+}

@@ -18,7 +18,7 @@ import { inspect } from "../scripts/inspect-a-repository.mjs";
 import { judge } from "../scripts/judge.mjs";
 import { ENV, ROOT, inTemp, world, model, smallAgent } from "./helpers.mjs";
 
-const OWN = ["inspect-a-repository", "request", "github", "untar", "collect", "agent-facts", "plugin-facts", "platforms", "deps", "judge", "checks", "report", "lists", "emit", "limits", "screen"];
+const OWN = ["inspect-a-repository", "request", "github", "untar", "collect", "agent-facts", "plugin-facts", "platforms", "deps", "judge", "checks", "report", "lists", "emit", "limits", "screen", "guidance"];
 
 test("[C1] Inspect's own scripts start no program, and an inspection only reads GitHub, asks OSV and AgentMesh's screening, and writes only in its folder", async () => {
   for (const n of OWN) {

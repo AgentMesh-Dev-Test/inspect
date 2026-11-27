@@ -57,12 +57,12 @@
         "note": "The LangSmith SDK sends runs in LangSmith's own format to the LangSmith service. LangSmith also accepts OpenTelemetry traces over OTLP at its /otel endpoint and maps gen_ai.* attributes, and the SDK can fan out to other OpenTelemetry backends (`LANGSMITH_OTEL_ENABLED`) or send only to an OpenTelemetry endpoint (`LANGSMITH_OTEL_ONLY`)."
       },
       "evidence": [
-        { "kind": "env", "value": "LANGSMITH_TRACING", "language": "any" },
-        { "kind": "env", "value": "LANGSMITH_API_KEY", "language": "any" },
-        { "kind": "package", "value": "langsmith", "language": "any" },
-        { "kind": "call", "value": "@traceable", "language": "python" },
-        { "kind": "import", "value": "import { traceable } from \"langsmith/traceable\";", "language": "typescript" },
-        { "kind": "env", "value": "LANGSMITH_OTEL_ENABLED", "language": "any", "note": "Present when traces also go to OpenTelemetry backends." }
+        { "kind": "env", "value": "LANGSMITH_TRACING", "language": "any", "openness": "proprietary" },
+        { "kind": "env", "value": "LANGSMITH_API_KEY", "language": "any", "openness": "proprietary" },
+        { "kind": "package", "value": "langsmith", "language": "any", "openness": "proprietary" },
+        { "kind": "call", "value": "@traceable", "language": "python", "openness": "proprietary" },
+        { "kind": "import", "value": "import { traceable } from \"langsmith/traceable\";", "language": "typescript", "openness": "proprietary" },
+        { "kind": "env", "value": "LANGSMITH_OTEL_ENABLED", "language": "any", "openness": "open-standard", "standard": "OpenTelemetry", "note": "Present when traces also go to OpenTelemetry backends." }
       ],
       "sources": [
         { "url": "https://docs.langchain.com/langsmith/observability-quickstart", "title": "Tracing quickstart" },
@@ -253,11 +253,11 @@
         "note": "Serving follows A2A, so any A2A client can call a deployed agent. Calling out goes through `RemoteGraph`, LangGraph's own client for Agent Server deployments, or hand-written JSON-RPC requests like the docs' example."
       },
       "evidence": [
-        { "kind": "not-in-code", "value": "A2A endpoint in Agent Server", "note": "Available for graphs deployed to Agent Server unless turned off in langgraph.json; per-assistant A2A metadata is patched after deploy." },
-        { "kind": "config", "value": "disable_a2a", "language": "any", "note": "Under \"http\" in langgraph.json." },
-        { "kind": "env", "value": "DEFAULT_A2A_ASSISTANT_ID", "language": "any" },
-        { "kind": "import", "value": "from langgraph.pregel.remote import RemoteGraph", "language": "python" },
-        { "kind": "import", "value": "import { RemoteGraph } from \"@langchain/langgraph/remote\";", "language": "typescript" }
+        { "kind": "not-in-code", "value": "A2A endpoint in Agent Server", "openness": "open-standard", "standard": "A2A", "note": "Available for graphs deployed to Agent Server unless turned off in langgraph.json; per-assistant A2A metadata is patched after deploy." },
+        { "kind": "config", "value": "disable_a2a", "language": "any", "openness": "open-standard", "standard": "A2A", "note": "Under \"http\" in langgraph.json." },
+        { "kind": "env", "value": "DEFAULT_A2A_ASSISTANT_ID", "language": "any", "openness": "open-standard", "standard": "A2A" },
+        { "kind": "import", "value": "from langgraph.pregel.remote import RemoteGraph", "language": "python", "openness": "proprietary" },
+        { "kind": "import", "value": "import { RemoteGraph } from \"@langchain/langgraph/remote\";", "language": "typescript", "openness": "proprietary" }
       ],
       "sources": [
         { "url": "https://docs.langchain.com/langsmith/server-a2a", "title": "A2A endpoint in Agent Server" },
@@ -296,12 +296,12 @@
         "note": "Skills follow the Agent Skills specification, so the same skill folders work in other tools that read it. `langgraph.json` is LangChain's own configuration format for the Agent Server."
       },
       "evidence": [
-        { "kind": "file", "value": "SKILL.md", "language": "any" },
-        { "kind": "call", "value": "create_deep_agent", "language": "python", "note": "With the skills argument, for example skills=[\"./my-project/skills/\"]." },
-        { "kind": "package", "value": "deepagents", "language": "python" },
-        { "kind": "file", "value": "langgraph.json", "language": "any" },
-        { "kind": "file", "value": ".claude-plugin/plugin.json", "language": "any" },
-        { "kind": "cli", "value": "dcode plugin install", "language": "any" }
+        { "kind": "file", "value": "SKILL.md", "language": "any", "openness": "open-standard", "standard": "Agent Skills" },
+        { "kind": "call", "value": "create_deep_agent", "language": "python", "openness": "open-standard", "standard": "Agent Skills", "note": "With the skills argument, for example skills=[\"./my-project/skills/\"]." },
+        { "kind": "package", "value": "deepagents", "language": "python", "openness": "open-source" },
+        { "kind": "file", "value": "langgraph.json", "language": "any", "openness": "proprietary" },
+        { "kind": "file", "value": ".claude-plugin/plugin.json", "language": "any", "openness": "proprietary" },
+        { "kind": "cli", "value": "dcode plugin install", "language": "any", "openness": "open-source" }
       ],
       "sources": [
         { "url": "https://docs.langchain.com/oss/python/deepagents/skills", "title": "Skills" },
