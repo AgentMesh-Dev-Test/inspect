@@ -22,6 +22,7 @@ import { scrub } from "./secrets.mjs";
 import { HOW_ORDER, settingNeed } from "./collect.mjs";
 import { hookLevel, toolWords } from "./plugin-facts.mjs";
 import { bodyOf } from "./agent-facts.mjs";
+import { swapWords } from "./platforms.mjs";
 
 /** The most of one skill's instructions the report carries, and of all of them (0.3.0). */
 export const INSTRUCTIONS_CHARS = 8_000;
@@ -473,7 +474,7 @@ export function byLevel(findings) {
 const bySection = (findings) => Object.fromEntries(SECTIONS.map((s) => [String(s.number), findings.filter((f) => f.section === s.number).length]));
 
 /** The report as the inspection-report-v1 schema says. */
-export function buildReport({ owner, name, url, sha, checked, date, version, now, findings, held, facts, bom, osv, usage, subject = null }) {
+export function buildReport({ owner, name, url, sha, checked, date, version, now, findings, held, facts, bom, osv, usage, subject = null, portability = null }) {
   const by = bySection(findings);
   return {
     format: "inspection-report-v1",
@@ -485,6 +486,8 @@ export function buildReport({ owner, name, url, sha, checked, date, version, now
     inspector: { name: "inspect", version },
     sections: SECTIONS,
     findings,
+    // 0.6.0: how tied it is to its platform, and what moving it would take.
+    ...(portability ? { portability } : {}),
     held_back: held,
     facts,
     dependencies: { bom: "sbom.cdx.json", components: bom?.components?.length ?? 0, checked: osv?.asked ?? 0, not_checked: facts.filter((f) => f.kind === "not-checked").length },
@@ -541,8 +544,24 @@ export const WORKING_DETAIL_FIRST = {
   subject: WORKING_DETAIL.subject, plugins: WORKING_DETAIL.plugins,
   "slash-command": ["size"], "sub-agent": ["size"], "mcp-server": ["name", "transport", "local", "host", "supply"],
 };
+/** The reading as the working copy carries it (0.6.0): never the evidence,
+ *  which is in the delivered report; and, when the copy is short of room,
+ *  without the database's words for each destination, which the view shows
+ *  as still to come. */
+export function portabilityCopy(p, full = true) {
+  if (!p) return null;
+  const noEvidence = (x) => { const { evidence, ...rest } = x; return rest; };
+  return {
+    ...p,
+    built_on: { ...p.built_on, platforms: (p.built_on?.platforms ?? []).map(noEvidence) },
+    uses: (p.uses ?? []).map((r) => ({ ...r, sources: r.sources.map((s) => { const x = noEvidence(s); if (!full) delete x.note; return x; }) })),
+    destinations: (p.destinations ?? []).map((d) => ({ ...d, ...(d.runtime ? { runtime: { ...d.runtime, deployment: { rating: d.runtime.deployment.rating, ...(full ? { what: d.runtime.deployment.what } : {}) } } } : {}), cells: d.cells.map((c) => (full ? c : { category: c.category, title: c.title, rating: c.rating, level: c.level, outside: c.outside, swap: c.swap })) })),
+    ...(full ? {} : { words_left_out: true }),
+  };
+}
 export function workingCopy({ about, findings, stage, limit = WORKING_COPY_CHARS }) {
   const a = about ?? {};
+  let pfull = true;
   const shown = (f, fields = WORKING_DETAIL) => {
     const keep = fields[f.kind];
     if (!keep || !f.detail || typeof f.detail !== "object") return null;
@@ -573,6 +592,7 @@ export function workingCopy({ about, findings, stage, limit = WORKING_COPY_CHARS
     inspector: { name: "inspect", version: a.version },
     sections: SECTIONS,
     findings: list,
+    ...(a.portability ? { portability: portabilityCopy(a.portability, pfull) } : {}),
     held_back: [],
     facts: [],
     counts: { findings: all.length, by_section: bySection(all), by_level: byLevel(all), held_back: 0, facts: 0 },
@@ -582,6 +602,10 @@ export function workingCopy({ about, findings, stage, limit = WORKING_COPY_CHARS
   if (fits(d)) return d;
   // The words go before the fields the view draws; then every field but
   // those the Overview and the systems' cards need (0.4.5); then those too.
+  d = doc(all.map((f) => short(f, false)), false, 0);
+  if (fits(d)) return d;
+  // 0.6.0: then the database's words for each destination.
+  pfull = false;
   d = doc(all.map((f) => short(f, false)), false, 0);
   if (fits(d)) return d;
   d = doc(all.map((f) => short(f, false, "first")), false, 0);
@@ -685,12 +709,74 @@ export function markdownOf(report) {
   for (const s of SECTIONS.filter((x) => x.number > 1)) {
     const list = sorted(r.findings.filter((f) => f.section === s.number));
     lines.push(`## ${s.title}`, "", ...(list.length ? list.map((f) => findingLine(f, r)) : ["- None found."]), "");
+    // 0.6.0: Could it move?, after the systems it uses, as the view has it.
+    if (s.number === 5 && r.portability) lines.push(...portabilityMarkdown(r));
   }
   if (r.held_back?.length) {
     lines.push("## Held back", "", ...r.held_back.map((h) => `- ${mdText(h.title)}: ${mdText(h.why)}`), "");
   }
   return lines.join("\n");
 }
+
+// ── Could it move? as Markdown (0.6.0) ──
+export const OPENNESS_WORDS = { proprietary: "The vendor's own", mixed: "Partly open", "open-source": "Open source", "open-standard": "Open standard", unknown: "Not known", "not-applicable": "Not offered" };
+export const OFFER_WORDS = { native: "Offers it", standard: "Offers it through an open standard", partial: "Only partly", none: "Not offered", unknown: "Not in its documentation" };
+const cap1 = (s) => { const x = String(s ?? "").trim(); return x ? `${x[0].toUpperCase()}${x.slice(1)}` : ""; };
+const sentence = (s) => { const x = cap1(s).replace(/\s+/g, " "); return x ? (/[.!?]$/.test(x) ? x : `${x}.`) : ""; };
+function placesOf(r, list, most = 5) {
+  const seen = new Set(); const out = [];
+  for (const e of list ?? []) {
+    const k = `${e.file}:${e.line}`;
+    if (!e.file || seen.has(k)) continue;
+    seen.add(k);
+    const at = `\`${k.replace(/[\`\r\n]/g, "'")}\``;
+    const addr = lineAddress(r.repository, r.commit.sha, e.file, e.line);
+    out.push(addr ? `[${at}](${addr})` : at);
+  }
+  return out.length ? ` At ${out.slice(0, most).join(", ")}${out.length > most ? `, and ${out.length - most} more` : ""}.` : "";
+}
+/** The reading in Markdown: what it is built on, how tied it is in each
+ *  category it uses, with every place in the code that shows it, and for
+ *  every other platform the work to move it, what it would lose and what
+ *  replaces each feature, in the database's own words. */
+export function portabilityMarkdown(r) {
+  const p = r.portability;
+  const out = ["## Could it move?", ""];
+  const b = p.built_on ?? {};
+  const plats = (b.platforms ?? []);
+  if (b.kind) out.push(`Runs in ${and(b.tools ?? []) || "a person's coding tool"}${b.also_for?.length ? `, also packaged for ${and(b.also_for)}` : ""}.${plats.length ? ` Its code uses ${and(plats.map((x) => mdText(x.name)))}.` : ""}${placesOf(r, plats.flatMap((x) => x.evidence ?? []))}`, "");
+  else if (plats.length) out.push(`Built on ${mdText(plats[0].name)}${b.frameworks?.length ? ` (its dependencies name ${and(b.frameworks.map(mdText))})` : ""}${b.language ? `, in ${b.language}` : ""}.${plats.length > 1 ? ` Its code also uses ${and(plats.slice(1).map((x) => mdText(x.name)))}.` : ""}${placesOf(r, plats.flatMap((x) => x.evidence ?? []))}`, "");
+  else out.push(`Built on none of the platforms the database covers${b.frameworks?.length ? ` (its dependencies name ${and(b.frameworks.map(mdText))})` : ""}${b.language ? `, in ${b.language}` : ""}.`, "");
+  out.push("### How tied it is", "");
+  if (!p.uses.length) out.push("- It uses none of the features the database lists.");
+  for (const u of p.uses) {
+    const srcs = u.sources.map((s) => `${mdText(s.vendor ?? s.standard ?? and(s.tools ?? []))}: ${mdText(s.what)} ${OPENNESS_WORDS[s.level] ?? mdText(s.level)}${s.standards?.length ? ` (${s.standards.map(mdText).join(", ")})` : ""}.${s.note ? ` ${mdText(sentence(s.note))}` : ""}`).join(" ");
+    const needs = u.needs ? ` It needs: ${mdText(sentence(u.needs))}${u.choices ? ` The code also offers: ${mdText(sentence(u.choices))}` : ""}` : "";
+    out.push(`- **${mdText(u.title)}.** ${srcs}${needs} ${mdText(sentence(swapWords(u)))}${placesOf(r, u.sources.flatMap((s) => s.evidence ?? []))}`);
+  }
+  const title = (k) => (p.uses.find((u) => u.category === k)?.title ?? k);
+  if (p.not_applicable?.length) out.push(`- Does not apply to a ${b.kind === "skills" ? "repository of skills" : "plugin"}: ${p.not_applicable.map((k) => mdText(CATEGORY_TITLES[k] ?? k)).join(", ")}.`);
+  if (p.not_used?.length) out.push(`- Not used: ${p.not_used.map((k) => mdText(CATEGORY_TITLES[k] ?? k)).join(", ")}.`);
+  out.push("", "### Moving it", "");
+  for (const d of p.destinations) {
+    out.push(`#### ${mdText(d.name)}`, "");
+    const work = [];
+    const swaps = d.swaps.map(title);
+    if (swaps.length) work.push(`swap ${and(swaps.map((x) => mdText(x.toLowerCase())))}`);
+    if (d.runtime) work.push(`re-host its own code${d.runtime.frameworks?.length ? `, written with ${and(d.runtime.frameworks.map(mdText))}` : ""}${Number.isFinite(d.runtime.own_files) ? ` (${d.runtime.own_files.toLocaleString("en-US")} files, ${Number(d.runtime.own_lines ?? 0).toLocaleString("en-US")} lines)` : ""}, on ${mdText(d.name)}'s deployment: ${mdText(d.runtime.deployment.what)}`);
+    if (work.length) out.push(`- The work: ${work.join("; and ")}`.replace(/\.?$/, "."));
+    const by = (rating) => d.cells.filter((c) => c.rating === rating);
+    for (const c of by("none")) out.push(`- Would lose **${mdText(c.title.toLowerCase())}**: ${mdText(c.what)}`);
+    for (const c of by("partial")) out.push(`- Only partly, **${mdText(c.title.toLowerCase())}**: ${mdText(c.what)}`);
+    for (const c of by("unknown")) out.push(`- Not in its documentation, **${mdText(c.title.toLowerCase())}**: ${mdText(c.what)}`);
+    for (const c of [...by("standard"), ...by("native")]) out.push(`- Replaced by, for **${mdText(c.title.toLowerCase())}**: ${mdText(c.what)}`);
+    if (!d.cells.length && !work.length) out.push("- Nothing it uses is rated here.");
+    out.push("");
+  }
+  out.push(`From the agent platforms database at AgentMesh commit ${String(p.database?.commit ?? "").slice(0, 7)}, checked ${p.database?.checked ?? "on an unknown date"}. Every rating and description of a platform is the database's, from the vendor's own documentation.`, "");
+  return out;
+}
+const CATEGORY_TITLES = { tracing: "Tracing and telemetry", evaluations: "Evaluations", "prompt-management": "Prompt management", "keys-and-secrets": "Keys and secrets", "memory-and-state": "Memory and saved state", "human-approval": "Human approval steps", deployment: "Deployment and scaling", sandboxes: "Sandboxes and code execution", "tool-connections": "Tool connections", "agent-to-agent": "Agent-to-agent", "identity-and-access": "Identity and access", packaging: "Packaging" };
 
 /** The reply: a header of named fields, section 1's findings, the counts. */
 export function replyOf(report, { notes = [] } = {}) {

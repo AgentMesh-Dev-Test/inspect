@@ -1,9 +1,9 @@
 {
   "format": "agent-descriptor-v1",
-  "agent_version": "0.5.8",
+  "agent_version": "0.6.0",
   "name": "Inspect",
   "summary": "Reads an outside agent, plugin or skill on GitHub, without running any of it, and reports what it does and how safe it is.",
-  "does": "Inspect reads an outside agent's code, or a plugin or skill for a person's coding tool (Claude Code, Cursor, Codex and others), in a public GitHub repository, at its newest commit or one you name, without running any of it, and hands back an inspection report on what it does and how safe it is: a list of findings in eight sections, each citing a file and line at the commit. For a plugin it says what it adds to the person's tools, what each hook runs on their machine, what each MCP server reaches, and its risks. Scripts read the code by rule; a model writes only the judgments, and each judgment cites the lines it rests on. It gives no verdict on bringing it in and judges no fit with anyone's plan.",
+  "does": "Inspect reads an outside agent's code, or a plugin or skill for a person's coding tool (Claude Code, Cursor, Codex and others), in a public GitHub repository, at its newest commit or one you name, without running any of it, and hands back an inspection report on what it does and how safe it is: a list of findings in eight sections, each citing a file and line at the commit. For a plugin it says what it adds to the person's tools, what each hook runs on their machine, what each MCP server reaches, and its risks. It also says how tied the agent is to its platform: what it uses of it, how open each part is, and, for each other platform, what moving it would take, what it would lose and what replaces each part, from AgentMesh's agent platforms database, with no recommendation. Scripts read the code by rule; a model writes only the judgments, and each judgment cites the lines it rests on. It gives no verdict on bringing it in and judges no fit with anyone's plan.",
   "offerings": [
     {
       "id": "inspect-a-repository",
@@ -43,7 +43,7 @@
           "name": "inspection",
           "kind": "application/vnd.agentmesh.inspection-report+json",
           "when": "per_task",
-          "about": "The inspection report in the inspection-report-v1 format: the repository and commit, what was inspected (an agent's report says nothing more; a plugin's or skills' report says what it is, the tools it installs into, and the plugins the repository holds), the eight sections, the findings in section order, the judgments held back with why, the facts the findings cite, and what the job used. While the job runs, a working copy of it with the findings so far is posted under the same name, marked partial.",
+          "about": "The inspection report in the inspection-report-v1 format: the repository and commit, what was inspected (an agent's report says nothing more; a plugin's or skills' report says what it is, the tools it installs into, and the plugins the repository holds), the eight sections, the findings in section order, how tied it is to its platform and what moving it elsewhere would take (portability, from AgentMesh's agent platforms database), the judgments held back with why, the facts the findings cite, and what the job used. While the job runs, a working copy of it with the findings so far is posted under the same name, marked partial.",
           "schema": {
             "title": "The inspection report (inspection-report-v1)",
             "type": "object",
@@ -291,6 +291,476 @@
               },
               "findings": {
                 "type": "array"
+              },
+              "portability": {
+                "type": "object",
+                "description": "0.6.0: how tied it is to its platform and what moving it would take, read by rule from AgentMesh's agent platforms database, a copy pinned to one AgentMesh commit. database: the copy read, its AgentMesh commit and the date its entries were checked. built_on: the platforms the code shows, the one with the most categories first, each with the places that show it (for a plugin or skills, also the tools it runs in). uses: one row for each category the code uses, never one a platform merely offers, each with its sources (the platform's feature or the open standard, in the database's own words, how open it is, and every place in the code that shows it), whether it is an outside service, how it moves by rule (an open standard, open source that comes with its code, settings only, its code in one file or in several, its runtime, or its tool's own format) and, for an outside service, what it really needs and what the code already offers in its place, in the model's checked words. not_used and not_applicable: the categories it does not use, or that do not apply to a plugin or skills. destinations: every other platform, the first three shown (AgentMesh, then the two that keep the most of what it uses, in its language), each with the work to move it (the outside services to swap, and its own code to re-host on the destination's deployment, in the database's words) and the destination's own rating and words for each category it uses. It gives no recommendation. The working copy carries it without the evidence, and without the destinations' words when it is short of room (words_left_out).",
+                "required": [
+                  "database",
+                  "built_on",
+                  "uses",
+                  "destinations"
+                ],
+                "properties": {
+                  "database": {
+                    "type": "object",
+                    "required": [
+                      "commit",
+                      "checked"
+                    ],
+                    "properties": {
+                      "repository": {
+                        "type": "string"
+                      },
+                      "path": {
+                        "type": "string"
+                      },
+                      "commit": {
+                        "type": "string",
+                        "pattern": "^[0-9a-f]{40}$"
+                      },
+                      "checked": {
+                        "type": [
+                          "string",
+                          "null"
+                        ]
+                      },
+                      "platforms": {
+                        "type": "integer",
+                        "minimum": 0
+                      }
+                    }
+                  },
+                  "built_on": {
+                    "type": "object",
+                    "required": [
+                      "platforms"
+                    ],
+                    "properties": {
+                      "platforms": {
+                        "type": "array",
+                        "items": {
+                          "type": "object",
+                          "required": [
+                            "platform",
+                            "name"
+                          ],
+                          "properties": {
+                            "platform": {
+                              "type": "string"
+                            },
+                            "name": {
+                              "type": "string"
+                            },
+                            "vendor": {
+                              "type": "string"
+                            },
+                            "categories": {
+                              "type": "integer",
+                              "minimum": 0
+                            },
+                            "evidence": {
+                              "type": "array",
+                              "items": {
+                                "type": "object",
+                                "required": [
+                                  "file",
+                                  "line",
+                                  "kind",
+                                  "value"
+                                ],
+                                "properties": {
+                                  "file": {
+                                    "type": "string"
+                                  },
+                                  "line": {
+                                    "type": "integer",
+                                    "minimum": 1
+                                  },
+                                  "kind": {
+                                    "type": "string"
+                                  },
+                                  "value": {
+                                    "type": "string"
+                                  },
+                                  "fact": {
+                                    "type": "string"
+                                  }
+                                }
+                              }
+                            }
+                          }
+                        }
+                      },
+                      "frameworks": {
+                        "type": "array",
+                        "items": {
+                          "type": "string"
+                        }
+                      },
+                      "language": {
+                        "type": [
+                          "string",
+                          "null"
+                        ]
+                      },
+                      "tools": {
+                        "type": "array",
+                        "items": {
+                          "type": "string"
+                        }
+                      },
+                      "also_for": {
+                        "type": "array",
+                        "items": {
+                          "type": "string"
+                        }
+                      },
+                      "kind": {
+                        "type": "string"
+                      }
+                    }
+                  },
+                  "uses": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "required": [
+                        "category",
+                        "title",
+                        "level",
+                        "outside",
+                        "swap",
+                        "sources"
+                      ],
+                      "properties": {
+                        "category": {
+                          "type": "string"
+                        },
+                        "title": {
+                          "type": "string"
+                        },
+                        "level": {
+                          "enum": [
+                            "proprietary",
+                            "mixed",
+                            "open-source",
+                            "open-standard",
+                            "unknown",
+                            "not-applicable"
+                          ]
+                        },
+                        "outside": {
+                          "type": "boolean"
+                        },
+                        "swap": {
+                          "enum": [
+                            "standard",
+                            "library",
+                            "runtime",
+                            "settings",
+                            "one-file",
+                            "files",
+                            "tool"
+                          ]
+                        },
+                        "code_files": {
+                          "type": "integer",
+                          "minimum": 0
+                        },
+                        "plugin_part": {
+                          "type": "boolean"
+                        },
+                        "needs": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "choices": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "needs_based_on": {
+                          "type": "array",
+                          "items": {
+                            "type": "string"
+                          }
+                        },
+                        "sources": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "required": [
+                              "rating",
+                              "level",
+                              "what"
+                            ],
+                            "properties": {
+                              "platform": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "vendor": {
+                                "type": "string"
+                              },
+                              "name": {
+                                "type": "string"
+                              },
+                              "standard": {
+                                "type": "string"
+                              },
+                              "tools": {
+                                "type": "array",
+                                "items": {
+                                  "type": "string"
+                                }
+                              },
+                              "rating": {
+                                "enum": [
+                                  "native",
+                                  "standard",
+                                  "partial",
+                                  "none",
+                                  "unknown"
+                                ]
+                              },
+                              "level": {
+                                "enum": [
+                                  "proprietary",
+                                  "mixed",
+                                  "open-source",
+                                  "open-standard",
+                                  "unknown",
+                                  "not-applicable"
+                                ]
+                              },
+                              "standards": {
+                                "type": "array",
+                                "items": {
+                                  "type": "string"
+                                }
+                              },
+                              "what": {
+                                "type": "string"
+                              },
+                              "note": {
+                                "type": "string"
+                              },
+                              "reach": {
+                                "type": "object"
+                              },
+                              "evidence": {
+                                "type": "array",
+                                "items": {
+                                  "type": "object",
+                                  "required": [
+                                    "file",
+                                    "line",
+                                    "kind",
+                                    "value"
+                                  ],
+                                  "properties": {
+                                    "file": {
+                                      "type": "string"
+                                    },
+                                    "line": {
+                                      "type": "integer",
+                                      "minimum": 1
+                                    },
+                                    "kind": {
+                                      "type": "string"
+                                    },
+                                    "value": {
+                                      "type": "string"
+                                    },
+                                    "fact": {
+                                      "type": "string"
+                                    }
+                                  }
+                                }
+                              }
+                            }
+                          }
+                        }
+                      }
+                    }
+                  },
+                  "not_used": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "not_applicable": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "destinations": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "required": [
+                        "platform",
+                        "name",
+                        "shown",
+                        "cells"
+                      ],
+                      "properties": {
+                        "platform": {
+                          "type": "string"
+                        },
+                        "name": {
+                          "type": "string"
+                        },
+                        "vendor": {
+                          "type": "string"
+                        },
+                        "shown": {
+                          "type": "boolean"
+                        },
+                        "also_used": {
+                          "type": "boolean"
+                        },
+                        "language_fits": {
+                          "type": "boolean"
+                        },
+                        "runtime": {
+                          "type": [
+                            "object",
+                            "null"
+                          ],
+                          "properties": {
+                            "frameworks": {
+                              "type": "array",
+                              "items": {
+                                "type": "string"
+                              }
+                            },
+                            "own_files": {
+                              "type": [
+                                "integer",
+                                "null"
+                              ]
+                            },
+                            "own_lines": {
+                              "type": [
+                                "integer",
+                                "null"
+                              ]
+                            },
+                            "language": {
+                              "type": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "deployment": {
+                              "type": "object",
+                              "required": [
+                                "rating"
+                              ],
+                              "properties": {
+                                "rating": {
+                                  "enum": [
+                                    "native",
+                                    "standard",
+                                    "partial",
+                                    "none",
+                                    "unknown"
+                                  ]
+                                },
+                                "what": {
+                                  "type": "string"
+                                }
+                              }
+                            }
+                          }
+                        },
+                        "swaps": {
+                          "type": "array",
+                          "items": {
+                            "type": "string"
+                          }
+                        },
+                        "loses": {
+                          "type": "array",
+                          "items": {
+                            "type": "string"
+                          }
+                        },
+                        "partly": {
+                          "type": "array",
+                          "items": {
+                            "type": "string"
+                          }
+                        },
+                        "unknown": {
+                          "type": "array",
+                          "items": {
+                            "type": "string"
+                          }
+                        },
+                        "cells": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "required": [
+                              "category",
+                              "title",
+                              "rating"
+                            ],
+                            "properties": {
+                              "category": {
+                                "type": "string"
+                              },
+                              "title": {
+                                "type": "string"
+                              },
+                              "rating": {
+                                "enum": [
+                                  "native",
+                                  "standard",
+                                  "partial",
+                                  "none",
+                                  "unknown"
+                                ]
+                              },
+                              "what": {
+                                "type": "string"
+                              },
+                              "level": {
+                                "enum": [
+                                  "proprietary",
+                                  "mixed",
+                                  "open-source",
+                                  "open-standard",
+                                  "unknown",
+                                  "not-applicable"
+                                ]
+                              },
+                              "outside": {
+                                "type": "boolean"
+                              },
+                              "swap": {
+                                "type": "string"
+                              }
+                            }
+                          }
+                        }
+                      }
+                    }
+                  },
+                  "words_left_out": {
+                    "type": "boolean"
+                  }
+                }
               },
               "held_back": {
                 "type": "array",
@@ -873,7 +1343,7 @@
           "kind": "text/markdown",
           "when": "per_task",
           "presentation": "document",
-          "about": "The same report as Markdown, for a person to read: `# Inspection of <repository>`, then `## At a glance`, then `## <section title>` for sections 2 to 8, one line per finding with its level in words, its category in words and its file and line at the commit, and no finding code."
+          "about": "The same report as Markdown, for a person to read: `# Inspection of <repository>`, then `## At a glance`, then `## <section title>` for sections 2 to 8, with `## Could it move?` after Systems it uses, one line per finding with its level in words, its category in words and its file and line at the commit, and no finding code."
         }
       ],
       "how": {
