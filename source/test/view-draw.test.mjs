@@ -750,7 +750,7 @@ test("[F6.A9] Could it move? comes after Systems it uses: what it is built on an
   assert.equal(lead.querySelector(".k").textContent, "Built on");
   assert.equal(lead.querySelector(".v").textContent, "LangChain, LangGraph and LangSmith");
   assert.equal(lead.querySelector(".under").textContent, "LangGraph · Python");
-  assert.equal(panel.querySelector("p.ties").textContent, "It reaches outside services for tracing and telemetry, evaluations, and sandboxes and code execution.");
+  assert.equal(panel.querySelector("p.ties").textContent, "Tied to its vendor in tracing and telemetry, evaluations, and sandboxes and code execution.");
   assert.deepEqual(panel.querySelectorAll("h2").map((h) => h.textContent), ["How tied it is", "Moving it"]);
   const rows = panel.querySelector("ul.tie-list").querySelectorAll("li").filter((li) => li.parentNode?.className === "tie-list");
   const byName = Object.fromEntries(rows.map((li) => [li.querySelector(".tie-name").textContent, li]));
@@ -777,7 +777,7 @@ test("[F6.A9] Moving it: AgentMesh and two more, the rest behind Every platform;
   assert.equal(dests().length, 3);
   assert.equal(dests()[0].querySelector("h3").textContent, "AgentMesh");
   const mesh = dests()[0];
-  assert.deepEqual(mesh.querySelectorAll("h4").map((h) => h.textContent), ["Swap its outside services", "Re-host its own code3 files, 6 lines"]);
+  assert.deepEqual(mesh.querySelectorAll("h4").map((h) => h.textContent), ["Swap part by part", "Re-host its own code3 files, 6 lines"]);
   const swapCells = mesh.querySelectorAll(".work")[0].querySelectorAll("li");
   const evalCell = swapCells.find((li) => li.querySelector("button.ref").textContent === "Evaluations");
   assert.ok(evalCell, "a service to swap is listed under Swap");

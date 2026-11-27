@@ -52,8 +52,8 @@ export function portabilityAsk(reading) {
   if (!rows.length) return [];
   const facts = (r) => [...new Set(r.sources.flatMap((s) => s.evidence.map((e) => e.fact)).filter(Boolean))].slice(0, 10);
   return [
-    `Also answer "portability". The scripts found that the agent reaches these outside services, each a category with the facts that show it: ${rows.map((r) => `${r.category}, ${r.title.toLowerCase()} from ${[...new Set(r.sources.map((s) => s.vendor ?? s.standard).filter(Boolean))].join(" and ")} (${facts(r).join(", ")})`).join("; ")}.`,
-    'For each, one entry with "category" its key; "needs", what the agent really needs from that service, in a few plain words, from what its code does with it (such as A sandbox that can run a browser and encode media); "choices", what the code already offers in its place, in a few plain words, or "" when it offers nothing else (such as Docker, picked by a setting); and "based_on", the ids of the facts that show both. Write both for an architect, as facts: no advice, no verdict, and nothing about how easy it is to change, which the report says by rule.',
+    `Also answer "portability". The scripts found that the agent uses these parts of its platform, which the vendor offers as its own service or only partly open, each a category with the facts that show it:${rows.map((r) => `${r.category}, ${r.title.toLowerCase()} from ${[...new Set(r.sources.map((s) => s.vendor ?? s.standard).filter(Boolean))].join(" and ")} (${facts(r).join(", ")})`).join("; ")}.`,
+    'For each, one entry with "category" its key; "needs", what the agent really needs from that part, in a few plain words, from what its code does with it (such as A sandbox that can run a browser and encode media); "choices", what the code already offers in its place, in a few plain words, or "" when it offers nothing else (such as Docker, picked by a setting); and "based_on", the ids of the facts that show both. Write both for an architect, as facts: no advice, no verdict, and nothing about how easy it is to change, which the report says by rule.',
   ];
 }
 

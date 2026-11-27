@@ -762,8 +762,8 @@ export function portabilityMarkdown(r) {
   const out = ["## Could it move?", ""];
   const b = p.built_on ?? {};
   const plats = (b.platforms ?? []);
-  if (b.kind) out.push(`Runs in ${and(b.tools ?? []) || "a person's coding tool"}${b.also_for?.length ? `, also packaged for ${and(b.also_for)}` : ""}.${plats.length ? ` Its code uses ${and(plats.map((x) => mdText(x.name)))}.` : ""}${placesOf(r, plats.flatMap((x) => x.evidence ?? []))}`, "");
-  else if (plats.length) out.push(`Built on ${mdText(plats[0].name)}${b.frameworks?.length ? ` (its dependencies name ${and(b.frameworks.map(mdText))})` : ""}${b.language ? `, in ${b.language}` : ""}.${plats.length > 1 ? ` Its code also uses ${and(plats.slice(1).map((x) => mdText(x.name)))}.` : ""}${placesOf(r, plats.flatMap((x) => x.evidence ?? []))}`, "");
+  if (b.kind) out.push(`Runs in ${and(b.tools ?? []) || "a person's coding tool"}${b.also_for?.length ? `, also packaged for ${and(b.also_for)}` : ""}.${plats.length ? ` Its code also imports from ${and(plats.map((x) => `${mdText(x.vendor)}'s platform`))}.` : ""}${placesOf(r, plats.flatMap((x) => x.evidence ?? []))}`, "");
+  else if (plats.length) out.push(`Built on ${mdText(plats[0].name)}${b.frameworks?.length ? ` (its dependencies name ${and(b.frameworks.map(mdText))})` : ""}${b.language ? `, in ${b.language}` : ""}.${plats.length > 1 ? ` Its code also imports from ${and(plats.slice(1).map((x) => `${mdText(x.vendor)}'s platform`))}.` : ""}${placesOf(r, plats.flatMap((x) => x.evidence ?? []))}`, "");
   else out.push(`Built on none of the platforms the database covers${b.frameworks?.length ? ` (its dependencies name ${and(b.frameworks.map(mdText))})` : ""}${b.language ? `, in ${b.language}` : ""}.`, "");
   out.push("### How tied it is", "");
   if (!p.uses.length) out.push("- It uses none of the features the database lists.");
