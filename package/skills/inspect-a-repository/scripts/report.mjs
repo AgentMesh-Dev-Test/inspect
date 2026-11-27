@@ -26,6 +26,8 @@ import { bodyOf } from "./agent-facts.mjs";
 /** The most of one skill's instructions the report carries, and of all of them (0.3.0). */
 export const INSTRUCTIONS_CHARS = 8_000;
 export const INSTRUCTIONS_TOTAL = 250_000;
+/** The most of a plugin's commands', sub-agents' and rules' instructions the report carries, beside the skills' (0.5.4). */
+export const PARTS_TOTAL = 80_000;
 
 const trim = (s) => String(s ?? "").trim();
 const plural = (n, one, many = `${one}s`) => `${n} ${n === 1 ? one : many}`;
@@ -188,13 +190,16 @@ export function scriptFindings({ facts, ctx, owner, name, sha, repoUrl, osv = nu
   // tools, with its size and the tools it may use; its instructions travel
   // with it for the viewer, from the same budget as the skills'.
   const SAID = { "slash-command": "A command the person types to start it", "sub-agent": "A sub-agent the assistant can hand work to", rule: "A rule the assistant follows" };
+  // 0.5.4: their own budget, so a plugin's many skills never leave its
+  // commands and sub-agents with nothing to read (vercel-plugin's forty did).
+  let carriedParts = 0;
   for (const kind of ["slash-command", "sub-agent", "rule"]) {
     for (const c of of(kind)) {
       const d = c.data ?? {};
       const body = bodyOfText(read(c.file));
-      const room = Math.max(0, Math.min(INSTRUCTIONS_CHARS, INSTRUCTIONS_TOTAL - carried));
+      const room = Math.max(0, Math.min(INSTRUCTIONS_CHARS, PARTS_TOTAL - carriedParts));
       const text = body.length <= room ? body : body.slice(0, room).replace(/\s+\S*$/, ""); // cut-ok: the whole file is at instructions_address, and instructions_cut says so
-      carried += text.length;
+      carriedParts += text.length;
       const how = [d.shell ? "It may run shell commands." : null, kind === "rule" && d.always ? "It applies to every request." : null, d.tools?.length && subject?.tools?.length > 1 ? `For ${and(d.tools)}.` : null].filter(Boolean).join(" ");
       push(3, kind, skillTitle(d.name, d.description, cased), `${d.description ? `${d.description}${/[.!?]$/.test(d.description) ? "" : "."} ` : `${SAID[kind]}. `}${how}`.trim(), [c], { detail: { name: d.name, ...(d.description ? { description: d.description } : {}), tools: d.tools ?? [], ...(d.may_use ? { may_use: d.may_use, shell: d.shell === true } : {}), ...(d.model ? { model: d.model } : {}), ...(kind === "rule" ? { always: d.always === true } : {}), size: d.size ?? null, instructions: scrub(text), instructions_cut: text.length < body.length, instructions_address: fileAddress(repoUrl, sha, c.file) } });
     }
