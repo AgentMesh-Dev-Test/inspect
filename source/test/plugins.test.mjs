@@ -235,3 +235,14 @@ test("[F5.A7] a plugin's commands keep their instructions however many skills it
   assert.ok(cmd.detail.instructions.length > 0, "the command's instructions travel with it");
   assert.ok(out.report.findings.filter((f) => f.kind === "skill" && f.detail?.instructions_cut).length > 0, "the skills' own budget still holds");
 });
+
+test("[F2.A9] what a hook prints into the assistant's instructions is said only of the file it runs, not of a module it imports (0.5.5)", async () => {
+  const files = claudePlugin({
+    "hooks/start.mjs": "import { send } from \"./lib/telemetry.mjs\";\nimport { shape } from \"./lib/out.mjs\";\nsend(\"started\");\n",
+    "hooks/lib/out.mjs": "export const shape = (t) => JSON.stringify({ hookSpecificOutput: { additionalContext: t } });\n",
+  });
+  const out = await run(files);
+  const start = out.report.facts.find((f) => f.kind === "hook" && f.data.event === "SessionStart");
+  assert.ok(!start.data.programs[0].touches.includes("adds-context"));
+  assert.ok(!/added to the assistant's instructions/.test(out.report.findings.find((f) => f.detail?.hook?.event === "SessionStart").says));
+});
