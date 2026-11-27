@@ -20,6 +20,7 @@ import { checkEvidence } from "./evidence.mjs";
 import { SECTIONS, categoryOf, LIST_IDS } from "./lists.mjs";
 import { scrub } from "./secrets.mjs";
 import { HOW_ORDER, settingNeed } from "./collect.mjs";
+import { hookLevel, toolWords } from "./plugin-facts.mjs";
 
 /** The most of one skill's instructions the report carries, and of all of them (0.3.0). */
 export const INSTRUCTIONS_CHARS = 8_000;
@@ -99,7 +100,7 @@ export function evidenceOf(cited, ctx) {
  * The scripts' findings, in the order found, each without its id:
  * { section, kind, title, says, by: "script", based_on, evidence?, source?, ... }.
  */
-export function scriptFindings({ facts, ctx, owner, name, sha, repoUrl, osv = null, bomGaps = [], files = [], textFiles = 0, skillTexts = new Map(), cased = (w) => w }) {
+export function scriptFindings({ facts, ctx, owner, name, sha, repoUrl, osv = null, bomGaps = [], files = [], textFiles = 0, skillTexts = new Map(), cased = (w) => w, subject = null, read = () => null }) {
   const out = [];
   const of = (kind) => facts.filter((f) => f.kind === kind);
   const push = (section, kind, title, says, cited, extra = {}) => {
@@ -108,7 +109,14 @@ export function scriptFindings({ facts, ctx, owner, name, sha, repoUrl, osv = nu
     out.push({ section, kind, title, says, by: "script", based_on: cited.map((f) => f.id), ...(evidence.length ? { evidence } : {}), ...(source.length ? { source } : {}), ...extra });
   };
 
-  // Section 2: what was inspected.
+  // Section 2: what was inspected. 0.5.0: first, what a plugin or skill
+  // repository is, where it runs, and the plugins it holds.
+  if (subject) push(2, "subject", "What it is", subjectWords(subject), [...of("plugin-manifest"), ...of("plugin").filter((p) => p.data?.inspected), ...(subject.kind === "skills" ? of("skill").slice(0, 3) : [])], { detail: { kind: subject.kind, name: subject.name ?? null, ...(subject.display_name ? { display_name: subject.display_name } : {}), version: subject.version ?? null, author: subject.author ?? null, tools: subject.tools ?? [], also_for: subject.also_for ?? [], ...(subject.description ? { description: subject.description } : {}) } });
+  if (subject?.plugins?.length) {
+    const listed = subject.plugins.map((p) => `${p.name}${p.elsewhere ? " (kept in another repository)" : ` (${plural(p.skills ?? 0, "skill")}${p.inspected ? ", this report" : ""})`}`);
+    const mine = subject.plugins.find((p) => p.inspected);
+    push(2, "plugins", "The plugins in this repository", `${plural(subject.plugins.length, "plugin")}: ${and(listed)}. This report is ${mine?.name ?? "the first"}${subject.picked_by === "request" ? ", the one asked for" : ", the first listed"}; to inspect another, run Inspect again and name it.`, of("plugin"), { detail: { plugins: subject.plugins, picked_by: subject.picked_by ?? "first" } });
+  }
   const pub = of("publisher")[0]; const act = of("activity")[0]; const com = of("commit")[0]; const rec = of("recent-commits")[0];
   if (pub) push(2, "repository", "The repository", `${owner}/${name} on GitHub, ${repoUrl}.`, [pub], { detail: { owner, name, url: repoUrl } });
   // 0.4.0: a commit read because none was named is the newest on the default branch, and says so.
@@ -141,9 +149,10 @@ export function scriptFindings({ facts, ctx, owner, name, sha, repoUrl, osv = nu
 
   // Section 3: its skills, and the parts that can be lifted out.
   const skills = of("skill");
-  const own = skills.filter((s) => !s.data?.for_coding_assistants);
+  // 0.5.0: a SKILL.md a plugin's tools never load is no skill of it.
+  const own = skills.filter((s) => !s.data?.for_coding_assistants && !s.data?.not_loaded);
   const helpers = skills.filter((s) => s.data?.for_coding_assistants);
-  if (skills.length) push(3, "skill", "Skills", `${plural(own.length, "skill")} of the agent's own${helpers.length ? `, and ${plural(helpers.length, "skill")} kept for coding assistants that work on the repository (${[...new Set(helpers.map((h) => h.data.folder.split("/")[0]))].join(", ")})` : ""}.`, skills, { detail: { own: own.length, for_coding_assistants: helpers.length } });
+  if (skills.length) push(3, "skill", "Skills", `${plural(own.length, "skill")}${subject ? "" : " of the agent's own"}${helpers.length ? `, and ${plural(helpers.length, "skill")} kept for coding assistants that work on the repository (${[...new Set(helpers.map((h) => h.data.folder.split("/")[0]))].join(", ")})` : ""}.`, skills, { detail: { own: own.length, for_coding_assistants: helpers.length } });
   const parts = of("part");
   let carried = 0;
   for (const s of [...own, ...helpers]) {
@@ -158,7 +167,7 @@ export function scriptFindings({ facts, ctx, owner, name, sha, repoUrl, osv = nu
     const room = Math.max(0, Math.min(INSTRUCTIONS_CHARS, INSTRUCTIONS_TOTAL - carried));
     const text = body.length <= room ? body : body.slice(0, room).replace(/\s+\S*$/, ""); // cut-ok: the whole file is at instructions_address, and instructions_cut says so
     carried += text.length;
-    push(3, "skill", skillTitle(s.data.name, s.data.description, cased), `${s.data.description ? `${s.data.description} ` : ""}${s.data.for_coding_assistants ? "A skill for coding assistants that work on the repository. " : ""}${lift}`.trim(), [s, ...(p ? [p] : [])], { detail: { name: s.data.name, path: s.data.folder, ...(s.data.description ? { description: s.data.description } : {}), scripts: s.data.scripts, instructions_only: s.data.instructions_only === true, for_coding_assistants: s.data.for_coding_assistants === true, lift_out: p?.data?.lift_out ?? "no", keeps, size: s.data.size ?? null, instructions: scrub(text), instructions_cut: text.length < body.length, instructions_address: fileAddress(repoUrl, sha, s.file) } });
+    push(3, "skill", skillTitle(s.data.name, s.data.description, cased), `${s.data.description ? `${s.data.description} ` : ""}${s.data.for_coding_assistants ? "A skill for coding assistants that work on the repository. " : ""}${lift}`.trim(), [s, ...(p ? [p] : [])], { detail: { name: s.data.name, path: s.data.folder, ...(s.data.description ? { description: s.data.description } : {}), scripts: s.data.scripts, instructions_only: s.data.instructions_only === true, for_coding_assistants: s.data.for_coding_assistants === true, lift_out: p?.data?.lift_out ?? "no", keeps, size: subject && s.data.size ? { ...s.data.size, instruction_lines: body.split(/\r?\n/).filter((l) => l.trim()).length } : s.data.size ?? null, instructions: scrub(text), instructions_cut: text.length < body.length, instructions_address: fileAddress(repoUrl, sha, s.file) } });
   }
   const scriptParts = parts.filter((p) => p.data?.part === "script");
   for (const p of scriptParts.filter((x) => x.data.lift_out === "yes")) {
@@ -173,6 +182,22 @@ export function scriptFindings({ facts, ctx, owner, name, sha, repoUrl, osv = nu
   // is; the model says what it covers.
   const ownCode = of("own-code")[0];
   if (ownCode) push(3, "code", "Its own code", `${plural(ownCode.data.files, "file")} and ${ownCode.data.lines.toLocaleString("en-US")} lines of code outside its skills and its tests.`, [ownCode], { detail: { files: ownCode.data.files, lines: ownCode.data.lines } });
+
+  // 0.5.0: each command, sub-agent and rule a plugin adds to the person's
+  // tools, with its size and the tools it may use; its instructions travel
+  // with it for the viewer, from the same budget as the skills'.
+  const SAID = { "slash-command": "A command the person types to start it", "sub-agent": "A sub-agent the assistant can hand work to", rule: "A rule the assistant follows" };
+  for (const kind of ["slash-command", "sub-agent", "rule"]) {
+    for (const c of of(kind)) {
+      const d = c.data ?? {};
+      const body = bodyOfText(read(c.file));
+      const room = Math.max(0, Math.min(INSTRUCTIONS_CHARS, INSTRUCTIONS_TOTAL - carried));
+      const text = body.length <= room ? body : body.slice(0, room).replace(/\s+\S*$/, ""); // cut-ok: the whole file is at instructions_address, and instructions_cut says so
+      carried += text.length;
+      const how = [d.shell ? "It may run shell commands." : null, kind === "rule" && d.always ? "It applies to every request." : null, d.tools?.length && subject?.tools?.length > 1 ? `For ${and(d.tools)}.` : null].filter(Boolean).join(" ");
+      push(3, kind, skillTitle(d.name, d.description, cased), `${d.description ? `${d.description}${/[.!?]$/.test(d.description) ? "" : "."} ` : `${SAID[kind]}. `}${how}`.trim(), [c], { detail: { name: d.name, ...(d.description ? { description: d.description } : {}), tools: d.tools ?? [], ...(d.may_use ? { may_use: d.may_use, shell: d.shell === true } : {}), ...(d.model ? { model: d.model } : {}), ...(kind === "rule" ? { always: d.always === true } : {}), size: d.size ?? null, instructions: scrub(text), instructions_cut: text.length < body.length, instructions_address: fileAddress(repoUrl, sha, c.file) } });
+    }
+  }
 
   // Section 4: the models the code names.
   const models = of("model").filter((m) => !m.data?.in_config);
@@ -204,6 +229,29 @@ export function scriptFindings({ facts, ctx, owner, name, sha, repoUrl, osv = nu
     push(5, "credential", credentialTitle(n, cased), says, at, { detail: { env: n, read_by_code: run.length > 0, files: at.map((c) => c.file), how: HOW_ORDER.find((h) => run.some((c) => c.data.how === h)) ?? null, ...(need ? { need: need.need, need_by: "rule", need_why: need.why } : {}) } });
   }
 
+  // 0.5.0: each MCP server a plugin brings, a program it starts on the
+  // person's machine or an address it connects to, with what it needs; and
+  // each key the plugin asks the person for.
+  for (const m of of("mcp-server")) {
+    const d = m.data ?? {};
+    const title = spaced(d.name, cased);
+    const local = d.transport === "stdio";
+    const program = d.programs?.[0];
+    const needs = (d.settings ?? []).map((s) => credentialTitle(String(s).replace(/^user_config\./, ""), cased));
+    const supply = d.auth === "oauth" ? `Your ${title} account, signed in` : needs.length ? `Your ${and(needs)}` : local || !d.auth ? "Nothing to set up" : null;
+    const says = local
+      ? (program ? `Starts ${program.kind} that comes with the plugin (${Number(program.lines).toLocaleString("en-US")} ${program.lines === 1 ? "line" : "lines"} of code) on the person's machine, each time the tool starts.`
+        : d.runner ? `Starts ${d.package ?? "a package"} on the person's machine${d.pinned ? ", at the version the plugin names" : ", fetching its newest version each time it starts"}.`
+          : `Starts the program ${d.command ?? "it names"} on the person's machine.`)
+      : `Connects to ${d.host ?? "an outside address"}${d.auth === "oauth" ? ", where the person signs in with their own account" : d.auth === "header" ? ", sending a key with each request" : ""}.`;
+    push(5, "mcp-server", title, `${says}${needs.length ? ` It needs ${and(needs)}.` : ""}${d.tools?.length && subject?.tools?.length > 1 ? ` For ${and(d.tools)}.` : ""}`, [m], { detail: { name: d.name, transport: d.transport, local, ...(d.host ? { host: d.host } : {}), ...(d.runner ? { runner: d.runner, package: d.package ?? null, pinned: d.pinned === true } : {}), ...(d.auth ? { auth: d.auth } : {}), settings: d.settings ?? [], ...(supply ? { supply } : {}), tools: d.tools ?? [] } });
+  }
+  for (const u of of("user-config").filter((x) => x.data?.sensitive)) {
+    const d = u.data;
+    const title = trim(d.title) || credentialTitle(d.name, cased);
+    push(5, "credential", title, `The plugin asks the person for their ${title.toLowerCase()} when it is turned on${d.tool === "Claude Code" ? ", and Claude Code keeps it in the machine's secure store" : ""}.`, [u], { detail: { env: d.name, read_by_code: true, from: "plugin-settings", need: d.required ? "required" : "optional", need_by: "rule", need_why: d.required ? "the plugin asks for it before it turns on" : "the plugin turns on without it" } });
+  }
+
   // Section 7: known vulnerabilities with OSV's level, and committed credentials.
   // One finding per package at its version (0.2.6): its title says so in
   // words, its level is the highest of its advisories, and each advisory, its
@@ -233,6 +281,70 @@ export function scriptFindings({ facts, ctx, owner, name, sha, repoUrl, osv = nu
   // Its words name no file (0.3.0): the file and line are its evidence.
   for (const c of of("credential-shape")) push(7, "risk", c.data.in_test ? "A committed credential in a test file" : "A committed credential in the code", `${c.data.in_test ? "A test file" : "The code"} holds what looks like ${c.data.what}.${c.data.in_test ? " Inspect cannot tell whether the key is live or made up for the test." : ""} Inspect keeps only where it is, never its characters.`, [c], { level: c.data.in_test ? "medium" : "high", level_by: "rule", categories: [categoryOf("LLM02:2025"), categoryOf("ASI03")], detail: { what: c.data.what, in_test: c.data.in_test === true, safe: "Take the key out of the repository, and replace it if it was ever live." } });
 
+  // 0.5.0: each hook, by rule: what starts it, what it runs, and what that
+  // reaches. A hook runs on the person's machine with their access, without
+  // asking, every time its event comes, so each is a risk of its own.
+  // The hooks one event starts in the same tools, of the same type, are one
+  // risk at the highest level of theirs, so a row never says what another does.
+  const hookGroups = new Map();
+  for (const h of of("hook")) {
+    const d = h.data ?? {};
+    const key = `${d.trigger}|${d.type === "agent" ? "prompt" : d.type}|${(d.tools ?? []).join(",")}`;
+    hookGroups.set(key, [...(hookGroups.get(key) ?? []), h]);
+  }
+  const RANK = ["critical", "high", "medium", "low", "none"];
+  for (const group of hookGroups.values()) {
+    const d = group[0].data ?? {};
+    const levels = group.map((h) => hookLevel(h.data));
+    const lv = levels.sort((a, b) => RANK.indexOf(a.level) - RANK.indexOf(b.level))[0];
+    const n = group.length;
+    const programs = group.flatMap((h) => h.data?.programs ?? []);
+    const own = group.filter((h) => (h.data?.programs ?? []).length);
+    const fetched = group.filter((h) => !(h.data?.programs ?? []).length && h.data?.runner);
+    const lines = programs.reduce((k, p) => k + (Number(p.lines) || 0), 0);
+    const imports = programs.reduce((k, p) => k + (Number(p.imports) || 0), 0);
+    const kinds = [...new Set(own.map((h) => h.data.programs[0].kind))];
+    const progWords = (count) => (kinds.length === 1 ? (count === 1 ? kinds[0] : `${count} ${kinds[0].replace(/^an? /, "").replace(/(script|program)$/, "$1s")}`) : count === 1 ? "a program" : `${count} programs`);
+    const what = d.type === "http" ? `sends what happens in the session to ${and([...new Set(group.map((h) => hostOf(h.data?.url) ?? "an outside address"))])}`
+      : d.type === "prompt" || d.type === "agent" ? `asks a model to check what happens${n > 1 ? `, ${n} times` : ""}, and runs no program`
+        : [own.length ? `runs ${progWords(own.length)} that come${own.length === 1 ? "s" : ""} with the plugin` : null,
+          fetched.length ? `runs ${and(fetched.map((h) => h.data.package ?? "a package"))}, fetched fresh each time` : null,
+          group.length - own.length - fetched.length > 0 ? `runs ${group.length - own.length - fetched.length === 1 ? "a command" : `${group.length - own.length - fetched.length} commands`} the plugin does not hold` : null].filter(Boolean).join(", and ");
+    const hosts = [...new Set(programs.flatMap((p) => p.hosts ?? []))];
+    const touches = new Set(programs.flatMap((p) => p.touches ?? []));
+    const reach = [
+      hosts.length ? `What it runs calls ${and(hosts)}.` : null,
+      touches.has("credential-store") ? "It reads where keys and sign-ins are kept." : null,
+      touches.has("download-run") ? "It downloads code and runs it." : null,
+      touches.has("home-folder") ? "It works in the person's home folder." : null,
+      touches.has("environment") ? "It reads the whole environment, where keys are often kept." : null,
+      programs.some((p) => p.starts?.length) ? "It starts other programs." : null,
+    ].filter(Boolean);
+    // Its words say what its title can't (0.3.4): the tools, where and how it
+    // runs, how much code, and what that code reaches; the title says what
+    // starts it and what it runs.
+    const files = programs.length + imports;
+    const size = own.length ? ` ${lines.toLocaleString("en-US")} ${lines === 1 ? "line" : "lines"} of code${files > 1 ? ` across ${files} files` : ""}` : "";
+    const where = d.type === "command" ? `it runs${size} on the person's machine with their access, without asking` : `it ${what}`;
+    const tail = d.type === "command" && fetched.length + (group.length - own.length - fetched.length) > 0 && own.length ? ` It also ${what.split(", and ").slice(1).join(" and ")}.` : "";
+    const says = `${d.tools?.length ? `In ${and(d.tools)}, ` : ""}${where}.${tail} ${reach.length ? reach.join(" ") : own.length && own.length === n ? "Its code names no outside address and reads no stored credentials." : ""}`.replace(/^i/, "I").trim();
+    const verb = d.type === "http" ? "Sends the session's events out" : d.type === "prompt" || d.type === "agent" ? "Asks a model" : own.length === n ? `Runs ${progWords(n)}` : n === 1 && fetched.length ? `Runs ${fetched[0].data.package ?? "a package"}` : n === 1 ? "Runs a command" : `Runs ${n} commands`;
+    const trigger = String(d.trigger ?? "").replace(/^When /, "when ").replace(/^(Before|After|Each|On) /, (m) => m.toLowerCase());
+    const safe = `${d.type === "command" ? "Read what it runs before allowing the plugin, and allow it only where that code may run with the person's access." : "Check where it sends what it sees before allowing the plugin."}${(d.tools ?? []).includes("Claude Code") ? " In Claude Code, an administrator's managed settings can allow only the hooks a company approves." : ""}`;
+    push(7, "risk", `${verb} ${trigger}`.replace(/\s+/g, " "), says, group, { level: lv.level, level_by: "rule", categories: lv.categories.map(categoryOf).filter(Boolean), detail: { hook: { event: d.event, trigger: d.trigger, type: d.type, tools: d.tools ?? [], hooks: n, runs: what, lines, files: group.reduce((k, h) => k + (h.data?.files ?? []).length, 0), hosts, touches: [...touches], why: lv.why }, safe } });
+  }
+  // An MCP server fetched fresh each time it starts: what runs can change with no change to the plugin.
+  for (const m of of("mcp-server").filter((x) => x.data?.runner && x.data.runner !== "docker" && !x.data.pinned)) {
+    const d = m.data;
+    push(7, "risk", `Starts the newest ${d.package ?? "version of a package"} each time`, `Its ${spaced(d.name, cased)} MCP server fetches ${d.package ?? "a package"} and runs it on the person's machine each time it starts, so what runs can change with no change to the plugin.`, [m], { level: "medium", level_by: "rule", categories: [categoryOf("LLM03:2025"), categoryOf("ASI04")], detail: { package: d.package ?? null, safe: `Pin ${d.package ?? "the package"} to one version you have read, or install a reviewed copy.` } });
+  }
+  // Scripts that read where keys and sign-ins are kept.
+  const stores = of("capability").filter((c) => c.data?.what === "credential-store");
+  if (stores.length) {
+    const kinds = [...new Set(stores.map((c) => storeWord(c.data.match)).filter(Boolean))];
+    push(7, "risk", stores.length === 1 ? "A script that reads stored credentials" : "Scripts that read stored credentials", `${stores.length === 1 ? "One of its scripts reads" : `${plural(stores.length, "script")} read`} where keys and sign-ins are kept on the person's machine${kinds.length ? `: ${and(kinds)}` : ""}. They run with the person's own access.`, stores, { level: "high", level_by: "rule", categories: [categoryOf("LLM02:2025"), categoryOf("ASI03")], detail: { stores: kinds, safe: "Find out why it reads them before allowing the plugin, and run it only where those files hold nothing it may not use." } });
+  }
+
   // Section 8: its tests, and what Inspect could not read or ask.
   const tests = of("test-file"); const cmd = of("test-command")[0];
   // 0.3.0: how many tests, of what kind, and how many run without live keys.
@@ -258,7 +370,40 @@ export function scriptFindings({ facts, ctx, owner, name, sha, repoUrl, osv = nu
   if (links.length) push(8, "could-not-tell", "Links in the repository", `The repository holds ${plural(links.length, "link")} to other files, which Inspect did not follow.`, links, { detail: { links: links.map((l) => l.data) } });
   const refused = of("refused-path");
   if (refused.length) push(8, "could-not-tell", "Files not written", `${plural(refused.length, "file")} of the archive had a path that leads outside it, so Inspect did not read ${refused.length === 1 ? "it" : "them"}.`, refused, { detail: { paths: refused.map((r) => r.data.path) } });
+  // 0.5.0: what a plugin reaches that the repository does not hold.
+  const away = of("plugin").filter((p) => p.data?.elsewhere);
+  if (away.length) push(8, "could-not-tell", "Plugins kept in other repositories", `The repository lists ${plural(away.length, "plugin")} kept elsewhere (${and(away.map((p) => p.data.name))}), which Inspect did not read.`, away, { detail: { plugins: away.map((p) => ({ name: p.data.name, elsewhere: p.data.elsewhere })) } });
+  const outside = of("hook").filter((h) => h.data?.type === "command" && !(h.data.files ?? []).length);
+  if (outside.length) push(8, "could-not-tell", outside.length === 1 ? "What a hook runs is not in the repository" : "What some hooks run is not in the repository", `${outside.length === 1 ? "One hook runs" : `${plural(outside.length, "hook")} run`} a program the plugin does not hold, installed on the machine or fetched when it runs, so Inspect could not read it.`, outside);
+  const remote = of("mcp-server").filter((m) => m.data?.transport !== "stdio" && m.data?.host);
+  if (remote.length) push(8, "could-not-tell", remote.length === 1 ? `What the ${spaced(remote[0].data.name, cased)} connection can do` : "What its MCP connections can do", `The tools ${remote.length === 1 ? `the ${spaced(remote[0].data.name, cased)} connection offers come from its server at ${remote[0].data.host}` : `its MCP connections offer come from their servers (${and(remote.map((m) => m.data.host))})`}, not from the repository, so Inspect could not list them or say what they can change in the person's accounts.`, remote);
   return out;
+}
+
+/** "a, b and c". */
+const and = (xs) => (xs.length < 2 ? xs.join("") : `${xs.slice(0, -1).join(", ")} and ${xs.at(-1)}`);
+/** A SKILL.md's or a command's text without its front matter. */
+const bodyOfText = (text) => { const t = String(text ?? "").replace(/^﻿/, ""); const m = /^---\r?\n[\s\S]*?\r?\n---\r?\n?/.exec(t); return (m ? t.slice(m[0].length) : t).trim(); };
+/** An address's host, or null. */
+const hostOf = (u) => { try { return new URL(String(u ?? "")).hostname || null; } catch { return null; } };
+/** Where keys are kept, in words, from what a script names. */
+function storeWord(match) {
+  const m = String(match ?? "").toLowerCase();
+  if (m.includes(".ssh")) return "SSH keys"; if (m.includes(".aws")) return "AWS credentials"; if (m.includes(".npmrc")) return "npm's token file";
+  if (m.includes(".pypirc")) return "PyPI's token file"; if (m.includes(".netrc")) return "saved sign-ins for sites"; if (m.includes(".docker")) return "Docker's sign-in";
+  if (m.includes(".kube")) return "Kubernetes credentials"; if (m.includes("gh") || m.includes("git-credentials")) return "GitHub's saved token"; if (m.includes("gcloud")) return "Google Cloud's token";
+  if (/keychain|keytar|security/.test(m)) return "the system keychain"; if (/chrom|firefox|brave|cookie|login data/.test(m)) return "a browser's cookies or saved passwords";
+  return null;
+}
+/** What a plugin or skill repository is, as a fact: where it runs and with whose access. */
+export function subjectWords(subject) {
+  const s = subject ?? {};
+  const where = "Once installed, it runs inside the person's own tool, on their machine, with their files and their credentials.";
+  if (s.kind === "skills") return `${s.skills === 1 ? "A skill" : `${plural(s.skills ?? 0, "skill")}`} on ${s.skills === 1 ? "its" : "their"} own, with no plugin manifest, in the Agent Skills format that Claude Code, Cursor and Codex read. ${where.replace("it runs", s.skills === 1 ? "it runs" : "each runs")}`;
+  const tools = toolWords(s);
+  const also = s.also_for?.length ? `, also packaged for ${and(s.also_for)}` : "";
+  const by = [s.version ? `version ${s.version}` : null, s.author ? `made by ${s.author}` : null].filter(Boolean).join(", ");
+  return `A plugin for ${tools || "coding tools"}${also}${by ? `; ${by}` : ""}. ${where}`;
 }
 
 /** The findings that say a judgment was not made, one for each section it
@@ -320,11 +465,13 @@ export function byLevel(findings) {
 const bySection = (findings) => Object.fromEntries(SECTIONS.map((s) => [String(s.number), findings.filter((f) => f.section === s.number).length]));
 
 /** The report as the inspection-report-v1 schema says. */
-export function buildReport({ owner, name, url, sha, checked, date, version, now, findings, held, facts, bom, osv, usage }) {
+export function buildReport({ owner, name, url, sha, checked, date, version, now, findings, held, facts, bom, osv, usage, subject = null }) {
   const by = bySection(findings);
   return {
     format: "inspection-report-v1",
     repository: { owner, name, url },
+    // 0.5.0: what a plugin or skill repository is; an agent's report has none.
+    ...(subject ? { subject } : {}),
     commit: { sha, checked: checked === true, date: date ?? null },
     inspected_at: now,
     inspector: { name: "inspect", version },
@@ -365,8 +512,12 @@ export const WORKING_DETAIL = {
   skill: ["name", "path", "size", "own", "for_coding_assistants", "instructions_only", "lift_out", "plain", "does"],
   code: ["files", "lines"], test: ["files", "cases", "live"],
   system: ["system", "need", "need_by", "supply", "without", "sends", "credentials"],
-  credential: ["env", "how", "need", "need_by", "need_why", "read_by_code"],
-  risk: ["safe"],
+  credential: ["env", "how", "need", "need_by", "need_why", "read_by_code", "from"],
+  risk: ["safe", "hook"],
+  // 0.5.0: a plugin's parts and what it is.
+  subject: ["kind", "name", "display_name", "version", "author", "tools", "also_for"], plugins: ["plugins", "picked_by"],
+  "slash-command": ["name", "size", "tools", "shell"], "sub-agent": ["name", "size", "tools", "shell"], rule: ["name", "size", "always"],
+  "mcp-server": ["name", "transport", "local", "host", "package", "pinned", "auth", "supply", "tools"],
 };
 /** The fields the Overview and the systems' cards need, kept longest (0.4.5):
  *  when the copy is too big for every field, the rest go first. At the end of
@@ -378,7 +529,9 @@ export const WORKING_DETAIL_FIRST = {
   skill: ["path", "size", "own", "for_coding_assistants", "instructions_only"],
   code: WORKING_DETAIL.code, test: WORKING_DETAIL.test,
   system: ["system", "need", "need_by", "supply", "credentials"],
-  credential: ["env", "how", "need", "need_by", "read_by_code"],
+  credential: ["env", "how", "need", "need_by", "read_by_code", "from"],
+  subject: WORKING_DETAIL.subject, plugins: WORKING_DETAIL.plugins,
+  "slash-command": ["size"], "sub-agent": ["size"], "mcp-server": ["name", "transport", "local", "host", "supply"],
 };
 export function workingCopy({ about, findings, stage, limit = WORKING_COPY_CHARS }) {
   const a = about ?? {};
@@ -406,6 +559,7 @@ export function workingCopy({ about, findings, stage, limit = WORKING_COPY_CHARS
     format: "inspection-report-v1",
     partial: { stage: trim(stage) || "Starting.", findings_so_far: all.length, omitted, says_left_out: !words },
     repository: { owner: a.owner, name: a.name, url: a.url },
+    ...(a.subject ? { subject: a.subject } : {}),
     commit: { sha: a.sha, checked: a.checked === true, date: a.date ?? null },
     inspected_at: a.started_at,
     inspector: { name: "inspect", version: a.version },
@@ -483,11 +637,13 @@ function findingLine(f, report) {
   const systemWord = { "code-host": "GitHub's records", "vulnerability-database": "OSV, the vulnerability database", "text-reasoning": "the model", screening: "AgentMesh's screening" };
   const from = !places.length && f.source?.length ? ` From ${mdText([...new Set(f.source.map((s) => systemWord[s.system] ?? s.system))].join(" and "))}.` : "";
   const d = f.detail ?? {};
+  // 0.5.0: an MCP server says what the person supplies.
+  const mcp = f.kind === "mcp-server" && d.supply ? ` You supply: ${mdText(d.supply)}.` : "";
   const need = f.kind === "system" && d.need ? ` ${d.need === "required" ? "Required" : d.need === "optional" ? "Optional" : "Whether it is required is not clear from the code"}.${d.supply ? ` You supply: ${mdText(d.supply)}.` : ""}${d.without ? ` Without it: ${mdText(d.without)}.` : ""}` : "";
   const safe = d.safe ? ` To make it safe: ${mdText(d.safe)}` : "";
   // The names the code gives its models, for the reader who checks them (0.3.4).
   const named = f.kind === "model" && f.by === "script" && Array.isArray(d.models) && d.models.length ? ` Models as the code names them: ${d.models.map(mdText).join(", ")}.` : "";
-  return `- ${level}**${mdText(f.title)}.** ${mdText(f.says)}${need}${named}${advisories}${safe}${cats ? ` Category: ${cats}.` : ""}${places.length ? ` At ${places.join(", ")}${more}.` : ""}${from}`;
+  return `- ${level}**${mdText(f.title)}.** ${mdText(f.says)}${need}${mcp}${named}${advisories}${safe}${cats ? ` Category: ${cats}.` : ""}${places.length ? ` At ${places.join(", ")}${more}.` : ""}${from}`;
 }
 
 /** The whole report as Markdown: the same findings, in the same sections, with
@@ -505,6 +661,8 @@ export function markdownOf(report) {
     "",
     `Repository: ${r.repository.url}`,
     "",
+    // 0.5.0: what a plugin or skill repository is, and which plugin this is.
+    ...(r.subject ? [`${r.subject.kind === "plugin" && r.subject.plugins?.length ? `This report is the plugin ${mdText(r.subject.name)}. ` : ""}${mdText(subjectWords(r.subject))}`, ""] : []),
     "## At a glance",
     "",
     `Risks by level: ${lv.critical} critical, ${lv.high} high, ${lv.medium} medium and ${lv.low} low.`,
@@ -529,6 +687,7 @@ export function replyOf(report, { notes = [] } = {}) {
   const glance = report.findings.filter((f) => f.section === 1);
   const lines = [
     `repository: ${report.repository.owner}/${report.repository.name}`,
+    ...(report.subject?.kind === "plugin" ? [`plugin: ${report.subject.name}`] : []),
     `commit: ${report.commit.sha}`,
     `findings: ${report.counts.findings}`,
     `held_back: ${report.counts.held_back}`,

@@ -174,6 +174,31 @@ export function checkSkillNames(entries, byId) {
   return { kept, held };
 }
 
+/**
+ * The model's words for each hook of a plugin (0.5.0): {kept: Map(fact id →
+ * does), held: [...]}. One plain sentence of at most 240 characters that
+ * gives no verdict and is not written for a model; one that breaks a rule is
+ * held back with why, and the hook keeps only the scripts' words.
+ */
+export function checkHookWords(entries, byId) {
+  const kept = new Map(); const held = [];
+  for (const e of Array.isArray(entries) ? entries : []) {
+    const id = trim(e?.hook); const fact = byId.get(id);
+    const does = plainWords(trim(e?.does)).replace(/\s+/g, " ");
+    const hold = (why) => held.push({ section: 7, title: "What a hook does", ...(does ? { says: does } : {}), why });
+    if (!fact || fact.kind !== "hook") { hold(`it names ${JSON.stringify(e?.hook ?? null)}, which is not a hook the scripts found`); continue; }
+    if (kept.has(id)) continue;
+    if (!does || does.split(/(?<=[.!?])\s+/).filter(Boolean).length > 1 || does.length > 240) { hold("its words are not one plain sentence"); continue; }
+    if (/^(?:use|invoke|run this|call|trigger)\b|\b(?:use (?:this|it) (?:when|for)|route by)\b/i.test(does)) { hold("its words are written for a model, not a person"); continue; }
+    const p = notPlain(does);
+    if (p) { hold(plainWhy(p)); continue; }
+    const v = VERDICT.exec(unquoted(does));
+    if (v) { hold(`it gives a verdict or judges fit ("${v[0]}"), which Inspect does not`); continue; }
+    kept.set(id, `${does[0].toUpperCase()}${does.slice(1)}${/[.!?]$/.test(does) ? "" : "."}`);
+  }
+  return { kept, held };
+}
+
 /** A category the draft names, resolved against the lists and the facts: {list, id, name} or null. */
 export function resolveCategory(raw, { spdx = new Set(), purls = new Set(), osv = new Set() } = {}) {
   const s = trim(typeof raw === "string" ? raw : raw?.id).replace(/^(\S+)\s.*$/, "$1");
@@ -210,6 +235,9 @@ export function checkDrafts(drafts, { sections, byId, ctx, known = {} }) {
     // 0.4.0: a risk that rests only on known flaws OSV has rated says again
     // what the scripts' finding for each of those packages says.
     if (trim(d.kind) === "risk" && ids.every((id) => byId.get(id)?.kind === "vulnerability" && byId.get(id)?.data?.level)) { hold("it says again what the scripts' findings for those packages' known flaws say"); continue; }
+    // 0.5.0: a risk that rests only on hooks says again what the scripts'
+    // finding for those hooks says, with its level by rule.
+    if (trim(d.kind) === "risk" && ids.every((id) => byId.get(id)?.kind === "hook")) { hold("it says again what the scripts' findings for those hooks say"); continue; }
     const cited = ids.map((id) => byId.get(id));
     const { evidence, source } = evidenceOf(cited, ctx);
     const fileFacts = cited.filter((f) => f.file);

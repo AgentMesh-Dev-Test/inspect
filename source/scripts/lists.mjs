@@ -90,10 +90,12 @@ export const SECTIONS = [
 /** The kinds of finding each section holds. */
 export const KINDS = {
   1: ["description", "glance"],
-  2: ["repository", "commit", "publisher", "license", "built-on", "activity"],
-  3: ["job", "skill", "part", "code", "input", "output", "not-judged"],
+  // 0.5.0: what a plugin or skill repository is and the plugins it holds;
+  // each command, sub-agent and rule it adds; each MCP server it brings.
+  2: ["repository", "commit", "publisher", "license", "built-on", "activity", "subject", "plugins"],
+  3: ["job", "skill", "part", "code", "input", "output", "slash-command", "sub-agent", "rule", "not-judged"],
   4: ["model", "how-it-runs", "memory", "human-step", "not-judged"],
-  5: ["system", "credential", "spend", "not-judged"],
+  5: ["system", "credential", "mcp-server", "spend", "not-judged"],
   6: ["tool", "autonomy", "not-judged"],
   7: ["risk", "least-access", "approval", "not-judged"],
   8: ["test", "test-gap", "could-not-tell", "question", "not-judged"],

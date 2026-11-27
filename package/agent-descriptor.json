@@ -1,14 +1,14 @@
 {
   "format": "agent-descriptor-v1",
-  "agent_version": "0.4.6",
+  "agent_version": "0.5.0",
   "name": "Inspect",
-  "summary": "Reads an outside agent's code on GitHub, without running any of it, and reports what it does and how safe it is.",
-  "does": "Inspect reads an outside agent's code in a public GitHub repository, at its newest commit or one you name, without running any of it, and hands back an inspection report on what the agent does and how safe it is: a list of findings in eight sections, each citing a file and line at the commit. Scripts read the code by rule; a model writes only the judgments, and each judgment cites the lines it rests on. It gives no verdict on bringing the agent in and judges no fit with anyone's plan.",
+  "summary": "Reads an outside agent, plugin or skill on GitHub, without running any of it, and reports what it does and how safe it is.",
+  "does": "Inspect reads an outside agent's code, or a plugin or skill for a person's coding tool (Claude Code, Cursor, Codex and others), in a public GitHub repository, at its newest commit or one you name, without running any of it, and hands back an inspection report on what it does and how safe it is: a list of findings in eight sections, each citing a file and line at the commit. For a plugin it says what it adds to the person's tools, what each hook runs on their machine, what each MCP server reaches, and its risks. Scripts read the code by rule; a model writes only the judgments, and each judgment cites the lines it rests on. It gives no verdict on bringing it in and judges no fit with anyone's plan.",
   "offerings": [
     {
       "id": "inspect-a-repository",
       "name": "Inspect a repository",
-      "does": "Inspects one public GitHub repository, at its newest commit or one you name, and hands back the inspection report, a copy of it to read, the dependency list and a short summary.",
+      "does": "Inspects one public GitHub repository (an agent, a plugin or skills), at its newest commit or one you name, and hands back the inspection report, a copy of it to read, the dependency list and a short summary.",
       "inputs": [
         {
           "name": "repository",
@@ -23,6 +23,13 @@
           "required": false,
           "given_by": "either",
           "about": "The commit to inspect, such as 86d8f66; left blank, Inspect reads the newest commit."
+        },
+        {
+          "name": "plugin",
+          "kind": "identifier",
+          "required": false,
+          "given_by": "either",
+          "about": "When the repository holds several plugins, the one to inspect, by its name; left blank, Inspect inspects the first and lists the others."
         }
       ],
       "outputs": [
@@ -36,7 +43,7 @@
           "name": "inspection",
           "kind": "application/vnd.agentmesh.inspection-report+json",
           "when": "per_task",
-          "about": "The inspection report in the inspection-report-v1 format: the repository and commit, the eight sections, the findings in section order, the judgments held back with why, the facts the findings cite, and what the job used. While the job runs, a working copy of it with the findings so far is posted under the same name, marked partial.",
+          "about": "The inspection report in the inspection-report-v1 format: the repository and commit, what was inspected (an agent's report says nothing more; a plugin's or skills' report says what it is, the tools it installs into, and the plugins the repository holds), the eight sections, the findings in section order, the judgments held back with why, the facts the findings cite, and what the job used. While the job runs, a working copy of it with the findings so far is posted under the same name, marked partial.",
           "schema": {
             "title": "The inspection report (inspection-report-v1)",
             "type": "object",
@@ -102,6 +109,101 @@
                   },
                   "url": {
                     "type": "string"
+                  }
+                }
+              },
+              "subject": {
+                "type": "object",
+                "description": "0.5.0: what a plugin or skill repository is; absent from an agent's report. kind plugin or skills; the plugin's name, version and maker as its manifests give them; the tools it installs into (tools, the main ones; also_for, the others); how many skills it has; and, for a repository of several plugins, each one with whether it is the one inspected (picked_by: the request or the first)",
+                "required": [
+                  "kind"
+                ],
+                "properties": {
+                  "kind": {
+                    "enum": [
+                      "plugin",
+                      "skills"
+                    ]
+                  },
+                  "name": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "display_name": {
+                    "type": "string"
+                  },
+                  "version": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "author": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "description": {
+                    "type": "string"
+                  },
+                  "tools": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "also_for": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "skills": {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "plugins": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "required": [
+                        "name",
+                        "inspected"
+                      ],
+                      "properties": {
+                        "name": {
+                          "type": "string"
+                        },
+                        "description": {
+                          "type": "string"
+                        },
+                        "tools": {
+                          "type": "array",
+                          "items": {
+                            "type": "string"
+                          }
+                        },
+                        "skills": {
+                          "type": "integer",
+                          "minimum": 0
+                        },
+                        "elsewhere": {
+                          "type": "string"
+                        },
+                        "inspected": {
+                          "type": "boolean"
+                        }
+                      }
+                    }
+                  },
+                  "picked_by": {
+                    "enum": [
+                      "request",
+                      "first"
+                    ]
                   }
                 }
               },
@@ -478,7 +580,13 @@
                       "test-gap",
                       "could-not-tell",
                       "question",
-                      "not-judged"
+                      "not-judged",
+                      "subject",
+                      "plugins",
+                      "slash-command",
+                      "sub-agent",
+                      "rule",
+                      "mcp-server"
                     ]
                   },
                   "title": {
@@ -543,7 +651,7 @@
                   },
                   "detail": {
                     "type": "object",
-                    "description": "fields of the finding's kind: a skill's name, path, description, scripts and lift_out (yes or no) with the imports that keep it from standing alone, its size (scripts, lines of code, the length of its instructions and the tests that name it) and its instructions as text (instructions, up to 8,000 characters each and 250,000 in all; instructions_cut when shortened, with instructions_address, the file at the commit on GitHub); the agent's own code's files and lines; a job's does; a risk's safe, how to make it safe; a model's name, where it is chosen and whether a setting changes it; a system's name, host, access (read, write, read-write or unknown), the credentials it expects, need (required, optional, unclear, or none when the person has nothing to set up), supply (what the person supplies), without (what happens without it) and sends (what goes to it); since 0.4.0 need is decided by rule from the settings it reads and where the code that reaches it is (need_by rule, with need_why and need_settings), and the model's own answer stands only where they leave it unclear (need_by model), kept as need_by_model either way; a credential's need, need_by and need_why by the same rule; a tool's name, what it does and whether it runs without a person's OK; a vulnerability's package, version, OSV id, aliases and fixed version"
+                    "description": "fields of the finding's kind: a skill's name, path, description, scripts and lift_out (yes or no) with the imports that keep it from standing alone, its size (scripts, lines of code, the length of its instructions and the tests that name it) and its instructions as text (instructions, up to 8,000 characters each and 250,000 in all; instructions_cut when shortened, with instructions_address, the file at the commit on GitHub); the agent's own code's files and lines; a job's does; a risk's safe, how to make it safe; a model's name, where it is chosen and whether a setting changes it; a system's name, host, access (read, write, read-write or unknown), the credentials it expects, need (required, optional, unclear, or none when the person has nothing to set up), supply (what the person supplies), without (what happens without it) and sends (what goes to it); since 0.4.0 need is decided by rule from the settings it reads and where the code that reaches it is (need_by rule, with need_why and need_settings), and the model's own answer stands only where they leave it unclear (need_by model), kept as need_by_model either way; a credential's need, need_by and need_why by the same rule; a tool's name, what it does and whether it runs without a person's OK; a vulnerability's package, version, OSV id, aliases and fixed version; 0.5.0: a plugin's command, sub-agent or rule its name, description, the tools it works in and may use (shell when one runs shell commands), its size (characters and lines of instructions) and its instructions; an MCP server its transport, whether it runs on the machine (local), the host it connects to, the package it fetches and whether that is pinned, how it signs in, the settings it names and what the person supplies; a hook's risk its hook (event, trigger in words, type, tools, how many hooks, what it runs, lines and files, the hosts its code calls, what it touches, why its level, and the model's words for what it does)"
                   }
                 },
                 "anyOf": [
@@ -657,7 +765,13 @@
                       "test-gap",
                       "could-not-tell",
                       "question",
-                      "not-judged"
+                      "not-judged",
+                      "subject",
+                      "plugins",
+                      "slash-command",
+                      "sub-agent",
+                      "rule",
+                      "mcp-server"
                     ]
                   },
                   "title": {
@@ -777,7 +891,7 @@
       }
     }
   ],
-  "refusals": "Running, installing, building or testing the repository's code, because Inspect only reads it; it says so and inspects without running anything.\nGiving a verdict on whether to bring the agent in, or judging how it fits a plan or a catalog role, because that decision is the reader's; it says so and still delivers the report.\nA branch or a tag in place of a commit, because a branch or a tag can move and the report must stand for one commit; it asks for the commit's digest, or for the commit to be left blank so it reads the newest one, and inspects nothing.\nA repository that is not public on GitHub, or a commit that is not in it, because there is nothing it may read; it says which, and inspects nothing.\nAn archive larger than 50 MB or holding more than 20000 files, because it reads no more than that; it says how large the archive is, and inspects nothing.\nWriting a link from the archive, or a file whose path leaves its own folder, because an archive from somebody else must not decide where a file lands; it records each one as a fact and writes neither.\nRepeating the characters of anything that looks like a committed credential, because a report that repeats a key has published it; it keeps only the file, the line and the kind of credential.\nAsking for more than 20 inspections in a day as one asker, or after 200 have started that day, because each inspection asks a model for its judgments and the day is bounded; it says when to try again, and inspects nothing.\nJudging text from the repository that AgentMesh's screening has not passed, because a repository can be written to steer the model that reads it; a passage the screening holds is left out of what the model reads and named as a risk, and when the screening cannot answer, the report holds no judgment and says why.",
+  "refusals": "Running, installing, building or testing the repository's code, because Inspect only reads it; it says so and inspects without running anything.\nGiving a verdict on whether to bring the agent in, or judging how it fits a plan or a catalog role, because that decision is the reader's; it says so and still delivers the report.\nA branch or a tag in place of a commit, because a branch or a tag can move and the report must stand for one commit; it asks for the commit's digest, or for the commit to be left blank so it reads the newest one, and inspects nothing.\nA plugin the request names that the repository does not hold, or one it lists but keeps in another repository, because there is nothing of it here to read; it names the plugins the repository holds, or where that one is kept, and inspects nothing.\nA repository that is not public on GitHub, or a commit that is not in it, because there is nothing it may read; it says which, and inspects nothing.\nAn archive larger than 50 MB or holding more than 20000 files, because it reads no more than that; it says how large the archive is, and inspects nothing.\nWriting a link from the archive, or a file whose path leaves its own folder, because an archive from somebody else must not decide where a file lands; it records each one as a fact and writes neither.\nRepeating the characters of anything that looks like a committed credential, because a report that repeats a key has published it; it keeps only the file, the line and the kind of credential.\nAsking for more than 20 inspections in a day as one asker, or after 200 have started that day, because each inspection asks a model for its judgments and the day is bounded; it says when to try again, and inspects nothing.\nJudging text from the repository that AgentMesh's screening has not passed, because a repository can be written to steer the model that reads it; a passage the screening holds is left out of what the model reads and named as a risk, and when the screening cannot answer, the report holds no judgment and says why.",
   "records": [
     {
       "name": "the signed job manifest of each delivery",
@@ -843,7 +957,7 @@
         "output": "inspection"
       },
       "file": "views/report.html",
-      "digest": "sha256:22220ca477e853f06095917fce24e499c2b74750fc96947512fcde660c0ac93d",
+      "digest": "sha256:48ac16b6cc93c7b627461aafdc0739f55465da023a16993a461334d639fc600d",
       "requests": [
         "resize",
         "copy-text",
