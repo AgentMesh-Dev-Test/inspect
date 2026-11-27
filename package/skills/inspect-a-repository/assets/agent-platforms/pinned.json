@@ -2,7 +2,7 @@
   "about": "A copy of AgentMesh's agent platforms database (data/agent-platforms), taken byte for byte at one AgentMesh commit. Inspect reads it to say how tied an agent is to its platform and what moving it would take. To take a newer copy: copy the folder again from the new commit, set commit, checked and every sha256 here, run the tests, release; that is a normal pull request.",
   "repository": "https://github.com/jeffrschneider/AgentMesh",
   "path": "data/agent-platforms",
-  "commit": "c782cb92279030d14c59c523b12bd5b648972b74",
+  "commit": "fec37275bc1abd82df9eb12847c9b1e99ec4dcff",
   "committed": "2026-11-27",
   "checked": "2026-11-27",
   "files": [
@@ -48,7 +48,7 @@
     },
     {
       "file": "platforms/openai.json",
-      "sha256": "3c29e242ab171b24e44452e30a96159c5ddb2e60837eb505d2abdb31a74bbcc2"
+      "sha256": "be2cdea01741141349b988e7e8e021f69ce6e09322f544ba349176b1ae642548"
     }
   ]
 }

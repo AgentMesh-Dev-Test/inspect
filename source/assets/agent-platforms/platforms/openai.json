@@ -213,13 +213,13 @@
       "evidence": [
         { "kind": "call", "value": "client.beta.agents.sessions.create", "language": "any" },
         { "kind": "config", "value": "OpenAI-Beta: agents=v1", "language": "any", "note": "HTTP header sent on Agents API requests." },
-        { "kind": "package", "value": "@openai/chatkit-react", "language": "typescript" },
-        { "kind": "config", "value": "OpenAI-Beta: chatkit_beta=v1", "language": "any", "note": "HTTP header sent when creating ChatKit sessions for an Agent Builder workflow." }
+        { "kind": "config", "value": "OpenAI-Beta: chatkit_beta=v1", "language": "any", "note": "HTTP header sent when creating ChatKit sessions for an Agent Builder workflow. The ChatKit front end (@openai/chatkit-react) is not evidence on its own: it also talks to a ChatKit server run on your own infrastructure with the ChatKit Python SDK." }
       ],
       "sources": [
         { "url": "https://developers.openai.com/api/docs/guides/agents", "title": "Agents" },
         { "url": "https://developers.openai.com/api/docs/guides/agents-api/overview", "title": "Agents API" },
-        { "url": "https://developers.openai.com/api/docs/guides/agent-builder", "title": "Agent Builder" }
+        { "url": "https://developers.openai.com/api/docs/guides/agent-builder", "title": "Agent Builder" },
+        { "url": "https://developers.openai.com/api/docs/guides/chatkit", "title": "ChatKit" }
       ],
       "checked": "2026-11-27"
     },
