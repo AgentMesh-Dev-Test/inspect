@@ -1566,9 +1566,11 @@ button { font: inherit; color: inherit; cursor: pointer; }
     const outside = (p.uses ?? []).filter((r) => r.outside);
     // The answer first: what it is built on, and the outside services it reaches.
     const name = plugin ? toolList(plugin) || "Its coding tool" : main ? one(main.name) : "None of the platforms in the database";
+    // A framework the platform's own name already says is not said again.
+    const fws = (b.frameworks ?? []).map(one).filter((f) => f && !one(main?.name).includes(f));
     const under = plugin
-      ? ((b.platforms ?? []).length ? `Its code also imports from ${andList(b.platforms.map((x) => `${one(x.vendor)}'s platform`))}` : null)
-      : [b.frameworks?.length ? andList(b.frameworks.map(one)) : null, one(b.language) || null, (b.platforms ?? []).length > 1 ? `also ${andList(b.platforms.slice(1).map((x) => `${one(x.vendor)}'s platform`))}` : null].filter(Boolean).join(" · ");
+      ? [b.also_for?.length ? `Also packaged for ${andList(b.also_for.map(one))}` : null, (b.platforms ?? []).length ? `Its code also imports from ${andList(b.platforms.map((x) => `${one(x.vendor)}'s platform`))}` : null].filter(Boolean).join(" · ") || null
+      : [fws.length ? andList(fws) : null, one(b.language) || null, (b.platforms ?? []).length > 1 ? `also ${andList(b.platforms.slice(1).map((x) => `${one(x.vendor)}'s platform`))}` : null].filter(Boolean).join(" · ");
     out.push(el("div", { class: "move-lead" },
       systemIcon(plugin ? (plugin.tools?.[0] ?? name) : one(main?.vendor) || name),
       el("div", {}, el("span", { class: "k", text: plugin ? "Runs in" : "Built on" }), el("p", { class: "v", text: name }), under ? el("p", { class: "under", text: under }) : null)));
@@ -1576,9 +1578,14 @@ button { font: inherit; color: inherit; cursor: pointer; }
     // own or partly open, said as the ratings say it and no more.
     // A row whose use is kept in the agent's own memory ties it to nothing.
     const ties = (p.uses ?? []).filter((r) => !r.plugin_part && r.swap !== "in-process" && (r.level === "proprietary" || r.level === "mixed"));
-    if (!plugin) out.push(el("p", { class: "ties", text: ties.length ? `Tied to its vendor in ${titles(ties.map((r) => r.title.toLowerCase()))}.` : (p.uses ?? []).length ? "Everything it uses of its platform is open source or an open standard." : "It uses none of the features the database lists." }));
+    // 0.6.4: a plugin is tied to its tools by the parts in their own formats.
+    const toolTies = (p.uses ?? []).filter((r) => r.plugin_part);
+    out.push(el("p", { class: "ties", text: plugin
+      ? (toolTies.length ? `Tied to its tools in ${titles(toolTies.map((r) => r.title.toLowerCase()))}.` : "Nothing it uses ties it to its tools.")
+      : ties.length ? `Tied to its vendor in ${titles(ties.map((r) => r.title.toLowerCase()))}.` : (p.uses ?? []).length ? "Nothing it uses ties it to its vendor." : "It uses none of the features the database lists." }));
 
-    out.push(el("h2", { text: "How tied it is" }));
+    // With nothing used, the line above is the whole of How tied it is.
+    if ((p.uses ?? []).length) out.push(el("h2", { text: "How tied it is" }));
     if ((p.uses ?? []).length) {
       out.push(el("ul", { class: "tie-list" }, p.uses.map((r) => {
         const src = r.sources.find((s) => s.level === r.level) ?? r.sources[0];
@@ -1597,9 +1604,9 @@ button { font: inherit; color: inherit; cursor: pointer; }
             needs,
             r.outside ? el("p", { class: "tie-swap", text: swapLine(r) }) : r.swap === "in-process" ? el("p", { class: "tie-swap", text: "Kept in its own memory: no service to swap" }) : null));
       })));
-    } else out.push(el("p", { class: "quiet", text: "It uses none of the features the database lists." }));
+    }
     const notUsed = (plugin ? p.not_applicable : p.not_used) ?? [];
-    if (notUsed.length) out.push(el("p", { class: "not-used", text: `${plugin ? `Doesn't apply to ${plugin.kind === "skills" ? "skills" : "a plugin"}` : "Not used"}: ${andList(notUsed.map((k) => CAT[k] ?? k))}.` }));
+    if (notUsed.length && (p.uses ?? []).length) out.push(el("p", { class: "not-used", text: `${plugin ? `Doesn't apply to ${plugin.kind === "skills" ? "skills" : "a plugin"}` : "Not used"}: ${andList(notUsed.map((k) => CAT[k] ?? k))}.` }));
 
     out.push(el("h2", { text: "Moving it" }));
     const list = (p.destinations ?? []).filter((x) => state.allPlatforms || x.shown);

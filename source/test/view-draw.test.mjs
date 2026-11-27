@@ -749,7 +749,7 @@ test("[F6.A9] Could it move? comes after Systems it uses: what it is built on an
   const lead = panel.querySelector(".move-lead");
   assert.equal(lead.querySelector(".k").textContent, "Built on");
   assert.equal(lead.querySelector(".v").textContent, "LangChain, LangGraph and LangSmith");
-  assert.equal(lead.querySelector(".under").textContent, "LangGraph · Python");
+  assert.equal(lead.querySelector(".under").textContent, "Python", "a framework the platform's name already says is not said again (0.6.4)");
   assert.equal(panel.querySelector("p.ties").textContent, "Tied to its vendor in tracing and telemetry, evaluations, and sandboxes and code execution.");
   assert.deepEqual(panel.querySelectorAll("h2").map((h) => h.textContent), ["How tied it is", "Moving it"]);
   const rows = panel.querySelector("ul.tie-list").querySelectorAll("li").filter((li) => li.parentNode?.className === "tie-list");

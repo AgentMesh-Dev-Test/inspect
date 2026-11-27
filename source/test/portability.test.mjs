@@ -258,5 +258,5 @@ test("[F6.A2] 0.6.3: a requirements file names frameworks; a type-only import is
   const found = platformUses({ files: filesOf(files), read: readerOf(files), db });
   const plugin = readingOf({ found, db, subject: { kind: "plugin", name: "helper", tools: ["Claude Code"], also_for: [] }, pluginParts: { manifests: [{ id: "F0100", kind: "plugin-manifest", file: ".claude-plugin/plugin.json", line: 2, data: { tool: "Claude Code" } }] } });
   const man = plugin.uses.find((r) => r.category === "manifests");
-  assert.equal(man.level, "proprietary"); assert.match(man.sources[0].what, /Claude Code's own format/);
+  assert.equal(man.level, "proprietary"); assert.equal(man.sources[0].what, "Claude Code reads its own format.");
 });
