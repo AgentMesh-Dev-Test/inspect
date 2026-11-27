@@ -410,7 +410,7 @@ function programOf(file, read, root, fileSet) {
     : ext === ".py" || /\bpython/.test(first) ? "a Python program"
       : /\.(?:sh|bash|zsh)$/.test(ext) || /\b(?:ba|z)?sh\b/.test(first) ? "a shell script"
         : ext === ".cmd" || ext === ".bat" ? "a script" : ext === ".ps1" ? "a PowerShell script" : "a program";
-  return { file, kind, lines, imports: Math.max(0, all.length - 1), hosts: [...hosts].slice(0, 20), starts: [...starts].slice(0, 20), touches: [...touches] };
+  return { file, kind, lines, imports: Math.max(0, all.length - 1), hosts: [...hosts].slice(0, 20), starts: [...starts].slice(0, 20), touches: [...touches], reach: (all.length ? all : [file]).slice(0, 60) };
 }
 
 /** The programs a command line starts that the plugin does not hold. */
@@ -611,6 +611,8 @@ export function pluginFacts(files, read, shape, plugin, allFiles = files) {
       ...(h.type === "command" ? { command: scrub(lineText).slice(0, 300) } : {}), ...(h.url ? { url: scrub(h.url).slice(0, 300) } : {}), ...(h.prompt ? { prompt_chars: h.prompt.length } : {}),
       ...(h.timeout ? { timeout: h.timeout } : {}), ...(h.async ? { background: true } : {}),
       files: runs, programs: programs.map((p) => ({ kind: p.kind, lines: p.lines, imports: p.imports, hosts: p.hosts, starts: p.starts, touches: p.touches })),
+      // 0.5.7: every file its code reaches, so a judgment about that code is said on the hook's row.
+      reach: [...new Set(programs.flatMap((p) => p.reach))].slice(0, 80),
       ...(outside && !runs.length ? { runs_outside: outside.first || null, ...(outside.runner ? { runner: outside.runner, package: outside.package, pinned: pinned(outside.package) } : {}) } : {}),
       ...(outside?.runner && runs.length ? { runner: outside.runner, package: outside.package, pinned: pinned(outside.package) } : {}),
     });

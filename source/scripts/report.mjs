@@ -647,11 +647,13 @@ function findingLine(f, report) {
   const d = f.detail ?? {};
   // 0.5.0: an MCP server says what the person supplies.
   const mcp = f.kind === "mcp-server" && d.supply ? ` You supply: ${mdText(d.supply)}.` : "";
+  // 0.5.7: what the model found in a hook's own code, said on the hook's line.
+  const also = Array.isArray(d.hook?.also) ? d.hook.also.map((a) => ` Also, ${mdText(String(a.title ?? "").replace(/^\w/, (c) => c.toLowerCase()))}: ${mdText(a.says)}${a.safe ? ` To make it safe: ${mdText(a.safe)}` : ""}`).join("") : "";
   const need = f.kind === "system" && d.need ? ` ${d.need === "required" ? "Required" : d.need === "optional" ? "Optional" : "Whether it is required is not clear from the code"}.${d.supply ? ` You supply: ${mdText(d.supply)}.` : ""}${d.without ? ` Without it: ${mdText(d.without)}.` : ""}` : "";
   const safe = d.safe ? ` To make it safe: ${mdText(d.safe)}` : "";
   // The names the code gives its models, for the reader who checks them (0.3.4).
   const named = f.kind === "model" && f.by === "script" && Array.isArray(d.models) && d.models.length ? ` Models as the code names them: ${d.models.map(mdText).join(", ")}.` : "";
-  return `- ${level}**${mdText(f.title)}.** ${mdText(f.says)}${need}${mcp}${named}${advisories}${safe}${cats ? ` Category: ${cats}.` : ""}${places.length ? ` At ${places.join(", ")}${more}.` : ""}${from}`;
+  return `- ${level}**${mdText(f.title)}.** ${mdText(f.says)}${need}${mcp}${also}${named}${advisories}${safe}${cats ? ` Category: ${cats}.` : ""}${places.length ? ` At ${places.join(", ")}${more}.` : ""}${from}`;
 }
 
 /** The whole report as Markdown: the same findings, in the same sections, with

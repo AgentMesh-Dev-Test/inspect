@@ -44,14 +44,14 @@ import { collectFacts, factLine } from "./collect.mjs";
 import { addUvLock, checkWithOsv, lineOfComponent } from "./deps.mjs";
 import { createEmitter, liveUpdates } from "./emit.mjs";
 import { factsRead, glanceLine, judge } from "./judge.mjs";
-import { checkDescription, checkDrafts, checkGlance, checkHookWords, checkSkillNames } from "./checks.mjs";
+import { checkDescription, checkDrafts, checkGlance, checkHookWords, checkSkillNames, foldIntoHooks, withoutCounts } from "./checks.mjs";
 import { buildReport, markdownOf, notJudged, replyOf, screeningFindings, scriptFindings, SCREENING_SOURCE } from "./report.mjs";
 import { screenLines } from "./screen.mjs";
 import { stepLine } from "./lists.mjs";
 import { admit, askerOf } from "./limits.mjs";
 import { loadedSkills, pickPlugin, pluginFacts, scopeOf, shapeOf, subjectOf } from "./plugin-facts.mjs";
 
-export const VERSION = "0.5.6";
+export const VERSION = "0.5.7";
 const DAY_MS = 24 * 60 * 60 * 1000;
 
 /**
@@ -191,7 +191,21 @@ export async function inspect({ text, workDir, env = process.env, fetchImpl = fe
         const [sections, words] = SECTIONS_OF[which];
         if (r.failed) { for (const f of notJudged(sections, r.failed, words)) emitter.emitFinding(f); return; }
         const c = checkDrafts(r.drafts, { sections, byId, ctx, known });
-        for (const f of c.kept) emitter.emitFinding(f);
+        // 0.5.7, a plugin: the counts are the report's, never the model's,
+        // and a risk about a hook's own code is said on that hook's row.
+        if (subject) for (const f of c.kept) { f.title = withoutCounts(f.title); f.says = withoutCounts(f.says); }
+        const fold = subject ? foldIntoHooks(c.kept, emitter.findings().filter((f) => f.detail?.hook && f.by === "script"), byId) : { stay: c.kept, folded: new Map() };
+        for (const [hook, risks] of fold.folded) {
+          const RANK = ["critical", "high", "medium", "low", "none"];
+          const top = [hook.level, ...risks.map((r) => r.level)].filter(Boolean).sort((a, b) => RANK.indexOf(a) - RANK.indexOf(b))[0];
+          if (top && top !== hook.level) { hook.level = top; hook.level_by = "model"; }
+          const cats = [...(hook.categories ?? [])];
+          for (const k of risks.flatMap((r) => r.categories ?? [])) if (!cats.some((x) => x.id === k.id)) cats.push(k);
+          hook.categories = cats;
+          hook.based_on = [...new Set([...(hook.based_on ?? []), ...risks.flatMap((r) => r.based_on ?? [])])];
+          hook.detail = { ...hook.detail, hook: { ...hook.detail.hook, also: [...(hook.detail.hook.also ?? []), ...risks.map((r) => ({ title: r.title, says: r.says, level: r.level, ...(r.detail?.safe ? { safe: r.detail.safe } : {}) }))] } };
+        }
+        for (const f of fold.stay) emitter.emitFinding(f);
         held.push(...c.held);
         // 0.3.3: each skill's plain name and words replace the title its own
         // description gave it; that description stays in its detail, for the viewer.
@@ -203,8 +217,8 @@ export async function inspect({ text, workDir, env = process.env, fetchImpl = fe
             if (!id) continue;
             const { title, does } = s.kept.get(id);
             f.detail = { ...(f.detail ?? {}), plain: true, does, ...(f.title !== title ? { title_by_scripts: f.title } : {}) };
-            f.title = title;
-            f.says = `${does}${f.says && f.detail.description && f.says.startsWith(f.detail.description) ? f.says.slice(f.detail.description.length) : ""}`.trim();
+            f.title = subject ? withoutCounts(title) : title;
+            f.says = `${subject ? withoutCounts(does) : does}${f.says && f.detail.description && f.says.startsWith(f.detail.description) ? f.says.slice(f.detail.description.length) : ""}`.trim();
           }
           held.push(...s.held);
         }
@@ -229,10 +243,10 @@ export async function inspect({ text, workDir, env = process.env, fetchImpl = fe
       if (g.failed) for (const f of notJudged([1], g.failed, "1", ...(g.screening ? [SCREENING_SOURCE] : []))) emitter.emitFinding(f);
       else {
         // The description first (0.3.0), then the findings that matter most.
-        const desc = checkDescription(g.description, emitter.findings());
+        const desc = checkDescription(subject && g.description ? withoutCounts(g.description) : g.description, emitter.findings());
         if (desc.kept) emitter.emitFinding(desc.kept);
         held.push(...desc.held);
-        const c = checkGlance(g.drafts, emitter.findings());
+        const c = checkGlance(subject ? (g.drafts ?? []).map((x) => ({ ...x, says: withoutCounts(x?.says) })) : g.drafts, emitter.findings());
         for (const f of c.kept) emitter.emitFinding(f);
         held.push(...c.held);
       }

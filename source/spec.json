@@ -2,7 +2,7 @@
   "format": "spec-v1",
   "product": {
     "name": "inspect",
-    "version": "0.5.6",
+    "version": "0.5.7",
     "kind": "agent"
   },
   "purpose": "Inspect takes a public GitHub repository address and, optionally, a commit, reads the code at that commit without running any of it, and hands back an inspection report on what it does and how safe it is. The repository may hold an agent, or a plugin or skills for a person's own coding tool (Claude Code, Cursor, Codex and others), which runs on that person's machine with their files and their credentials. The report is a list of findings in eight sections, each finding standing on its own and citing a file and line at the commit. Its readers are the person in charge of a department's agents, deciding whether to bring in an outside agent, and an IT, security or team lead deciding whether employees may install a plugin, before anything is installed or given a credential. It judges no fit with anyone's plan, matches the agent to no catalog role and gives no bring-it-in-or-not verdict.",
@@ -668,6 +668,16 @@
           "source": {
             "said": "Teach Inspect to read plugin and skill repositories (the owner, 2026-11-27): a directory with 600,000 open skills and one-line installers into Claude Code, Cursor and Codex means employees will install unvetted code into their tools every day; Inspect reads a plugin or skill repository the same way it reads an agent: what it does, what it touches, and its risks."
           }
+        },
+        {
+          "id": "F4.R13",
+          "kind": "behavior",
+          "priority": "must",
+          "verify": "test",
+          "shall": "The agent shall, for a plugin or skills, tell the model never to state how many skills, commands, sub-agents, hooks, MCP servers, scripts, tests, files or lines it has, and shall take any such count of two or more out of the model's words (the description, section 1 and every judgment), so the report's own counts are the only ones.",
+          "source": {
+            "said": "The coordinator's review of 0.5.6 (2026-11-27): the Overview's words said four slash commands while the tile said 5; the tiles must be the only counts. Telemetry was said on the session-start hook row and again as a row of its own; say each fact once."
+          }
         }
       ],
       "acceptance": [
@@ -749,6 +759,13 @@
           "gherkin": "Scenario: The model told where a plugin runs\n  Given a plugin's facts\n  When Inspect asks the model\n  Then its prompts say what the plugin is and where it runs, and ask for each hook's words\n  And a risk the model writes on a hook alone is held back, and its words for the hook are on the scripts' risk\n  And an agent's prompts carry none of it",
           "checks": [
             "F4.R12"
+          ]
+        },
+        {
+          "id": "F4.A12",
+          "gherkin": "Scenario: The counts are the report's\n  Given a plugin, and a model that writes \"four deploy commands\" and \"It adds 3 hooks and 1 command\"\n  When Inspect checks its words\n  Then they read \"Deploy commands\" and \"It adds hooks and 1 command\"\n  And the model was told to state no counts",
+          "checks": [
+            "F4.R13"
           ]
         }
       ]
@@ -1583,6 +1600,16 @@
           "source": {
             "said": "Teach Inspect to read plugin and skill repositories (the owner, 2026-11-27): a directory with 600,000 open skills and one-line installers into Claude Code, Cursor and Codex means employees will install unvetted code into their tools every day; Inspect reads a plugin or skill repository the same way it reads an agent: what it does, what it touches, and its risks."
           }
+        },
+        {
+          "id": "F5.R12",
+          "kind": "output",
+          "priority": "must",
+          "verify": "test",
+          "shall": "The agent shall say each fact once: a model's risk about a hook's own code (one citing the hook's fact, or citing only code the hook's code reaches) shall be said on that hook's row, under what else its code does with how to make it safe, at the higher of the two levels, and never as a row of its own; a risk about other code keeps its row.",
+          "source": {
+            "said": "The coordinator's review of 0.5.6 (2026-11-27): the Overview's words said four slash commands while the tile said 5; the tiles must be the only counts. Telemetry was said on the session-start hook row and again as a row of its own; say each fact once."
+          }
         }
       ],
       "acceptance": [
@@ -1635,6 +1662,13 @@
           "gherkin": "Scenario: A plugin's report\n  Given the plugin of F2.A9\n  When Inspect writes the report\n  Then it fits its schema, its subject says a plugin for Claude Code and Cursor made by Acme, and a finding says it runs on the person's machine with their files and their credentials\n  And its session-start hook is a high risk by rule that names the outside address and no file\n  And the view's Overview says what it is and counts its command, sub-agent, hooks and MCP servers, and its Risks open on its hooks",
           "checks": [
             "F5.R11"
+          ]
+        },
+        {
+          "id": "F5.A8",
+          "gherkin": "Scenario: Each fact once\n  Given a plugin whose session-start hook's code calls a telemetry address, and a model that writes a risk on that address, one on the hook and the address, and one on a script no hook runs\n  When Inspect writes the report\n  Then the first two are on the hook's row and have no row of their own\n  And the third keeps its row",
+          "checks": [
+            "F5.R12"
           ]
         }
       ]
