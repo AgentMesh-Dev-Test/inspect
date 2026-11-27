@@ -110,7 +110,7 @@ export function guidanceOf({ all, root = "", read, facts = [], portability = nul
       const fronted = skills.filter((f) => { const t = read(f) ?? ""; const m = /^---\r?\n([\s\S]*?)\r?\n---/.exec(t); return m && /^name\s*:/m.test(m[1]) && /^description\s*:/m.test(m[1]); });
       const off = skills.length - placed.length;
       const bare = skills.length - fronted.length;
-      if (!off && !bare) item(basics, "skills", "Skills in skills/<name>/SKILL.md", "followed", skills.length === 1 ? "Its skill is" : "Every skill is");
+      if (!off && !bare) item(basics, "skills", "Skills in skills/<name>/SKILL.md", "followed", skills.length === 1 ? "Its skill is in place" : "Each skill is in place");
       else item(basics, "skills", "Skills in skills/<name>/SKILL.md", "missing", off ? (off === skills.length ? "Its skills sit outside skills/" : "Some skills sit outside skills/") : "Some skills lack a name or description");
     }
   }
@@ -128,7 +128,7 @@ export function guidanceOf({ all, root = "", read, facts = [], portability = nul
       else if (!servers.length) item(basics, "mcp", "Tool servers in .mcp.json, remote or pinned", "not-applicable", "No tool servers");
       else {
         const loose = servers.filter((s) => !s.pinned).map((s) => s.name);
-        item(basics, "mcp", "Tool servers in .mcp.json, remote or pinned", loose.length ? "missing" : "followed", loose.length ? `${and(loose)} ${loose.length === 1 ? "is" : "are"} fetched at start without a fixed version` : servers.length === 1 ? "Its server is" : "Every server is");
+        item(basics, "mcp", "Tool servers in .mcp.json, remote or pinned", loose.length ? "missing" : "followed", loose.length ? `${and(loose)} ${loose.length === 1 ? "is" : "are"} fetched at start without a fixed version` : servers.length === 1 ? "Its server is remote or pinned" : "Each server is remote or pinned");
       }
     }
   }
@@ -180,7 +180,7 @@ export function guidanceOf({ all, root = "", read, facts = [], portability = nul
     const offline = tests.filter((t) => !t.data?.live);
     const lacks = [!samples ? "no samples folder" : null, !tests.length ? "no tests" : tests.length && !offline.length ? "its tests need live keys" : null].filter(Boolean);
     const words = lacks.length ? lacks.join(" and ") : "";
-    item(basics, "samples", "Samples and tests that run offline", lacks.length ? "missing" : "followed", lacks.length ? words.charAt(0).toUpperCase() + words.slice(1) : "Both");
+    item(basics, "samples", "Samples and tests that run offline", lacks.length ? "missing" : "followed", lacks.length ? words.charAt(0).toUpperCase() + words.slice(1) : "Both are there");
   }
 
   // 9. Vendor extras can be turned off: each outside service the reading
