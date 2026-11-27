@@ -371,6 +371,8 @@ export const TOUCHES = [
   { what: "home-folder", re: /\bos\.homedir\s*\(|\bhomedir\s*\(\)|\bexpanduser\s*\(|\bPath\.home\s*\(|(?:^|[\s"'`(=])~\/(?!\/)|\$\{?HOME\}?\b|\$\{?USERPROFILE\}?|process\.env\.(?:HOME|USERPROFILE)\b|\benviron(?:\.get)?\s*[[(]\s*["'](?:HOME|USERPROFILE)["']/ },
   { what: "credential-store", re: /\.ssh\/|\.aws\/(?:credentials|config)|\.netrc\b|\.npmrc\b|\.pypirc\b|\.docker\/config\.json|\.kube\/config|\.config\/gh\b|\.git-credentials|\bsecurity\s+find-(?:generic|internet)-password|\bgh\s+auth\s+token|\bgcloud\s+auth\s+print-access-token|\bkeychain\b|\bkeytar\b|(?:Google\/Chrome|Chromium|BraveSoftware|Mozilla\/Firefox)\/[^"'\n]*(?:Cookies|Login Data|cookies\.sqlite|logins\.json)/i },
   { what: "environment", re: /\.\.\.\s*process\.env\b|Object\.(?:keys|entries|assign)\s*\(\s*(?:\{\s*\}\s*,\s*)?process\.env\s*\)|JSON\.stringify\s*\(\s*process\.env|\benv\s*:\s*process\.env\b|\bos\.environ\.copy\s*\(|\bdict\s*\(\s*os\.environ\s*\)|\bos\.environ\.items\s*\(|^\s*printenv\b/m },
+  // A hook's output that the tool adds to the assistant's instructions (0.5.3).
+  { what: "adds-context", re: /\badditionalContext\b|\badditional_context\b|\bhookSpecificOutput\b/, hooksOnly: true },
   { what: "download-run", re: /\b(?:curl|wget)\b[^\n|]*\|\s*(?:sudo\s+)?(?:ba|z)?sh\b|\b(?:iex|Invoke-Expression)\b[^\n]*\b(?:irm|iwr|Invoke-RestMethod|Invoke-WebRequest|DownloadString)\b|\bnpx\s+(?:-y|--yes)\b|\bnpm\s+(?:i|install)\s+(?:-g|--global)\b|\bpip3?\s+install\b|\buv\s+(?:tool\s+)?install\b|\bgit\s+(?:pull|clone)\b/i, runs: true },
 ];
 /** A line that starts a program, in a file that is not a shell script: a
@@ -668,7 +670,7 @@ export function touchFacts(files, read, R = "") {
     const code = CODE.has(posix.extname(f).toLowerCase()) || ((!posix.extname(f) || /\.(?:cmd|ps1)$/i.test(f)) && /^#!|^@echo|^:\s*<</.test(t));
     if (!code || ASSISTANT_DIRS.some((d) => under(join(R, d.replace(/\/$/, "")), f))) continue;
     const lines = linesOf(t);
-    for (const p of TOUCHES) {
+    for (const p of TOUCHES.filter((x) => !x.hooksOnly)) {
       const at = linesWhere(p, f, t);
       if (at.length) add("capability", f, at[0], { what: p.what, match: (lines[at[0] - 1].match(p.re)?.[0] ?? "").trim().slice(0, 80), lines: at.slice(0, 40) });
     }

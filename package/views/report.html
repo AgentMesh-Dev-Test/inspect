@@ -805,9 +805,10 @@ button { font: inherit; color: inherit; cursor: pointer; }
     const desc = d.findings.find((f) => f.section === 1 && f.kind === "description");
     if (desc?.says) out.push(el("p", { class: "lead" }, prose(desc.says)));
     else if (pending.has(1)) out.push(skLead());
-    // 0.5.0: what a plugin is and where it runs, under the description.
+    // 0.5.0: what a plugin is and where it runs, by rule, until the
+    // description (which says it in full) arrives: never said twice (0.5.3).
     const s = pluginOf(d);
-    if (s) out.push(el("p", { class: "kind-line" }, el("span", { class: "kind-word", text: whatItIs(s) }), s.also_for?.length ? el("span", { class: "muted", text: ` · also packaged for ${andList(s.also_for)}` }) : null));
+    if (s && !desc?.says) out.push(el("p", { class: "kind-line" }, el("span", { class: "kind-word", text: whatItIs(s) }), s.also_for?.length ? el("span", { class: "muted", text: ` · also packaged for ${andList(s.also_for)}` }) : null));
     const tiles = sizeOf(d, pending);
     // 0.4.4: until the first of the scripts' facts arrive, all five tiles
     // are placeholders, never one wide tile alone.
@@ -932,9 +933,12 @@ button { font: inherit; color: inherit; cursor: pointer; }
   // programs does in the model's plain words, how to make it safe, its category.
   function hookDetail(d, f) {
     const does = Array.isArray(f.detail?.hook?.does) ? f.detail.hook.does.map(one).filter(Boolean) : [];
-    const out = plainDetail(d, f);
-    if (does.length) out.splice(1, 0, pairsOf([["What it does", does.length === 1 ? prose(does[0]) : el("ul", { class: "advisories" }, does.map((w) => el("li", {}, prose(w))))]]));
-    return out;
+    const pairs = [];
+    if (does.length) pairs.push(["What it does", does.length === 1 ? prose(does[0]) : el("ul", { class: "advisories" }, does.map((w) => el("li", {}, prose(w))))]);
+    if (one(f.detail?.safe)) pairs.push(["To make it safe", prose(f.detail.safe)]);
+    const cat = categoryWords(f);
+    if (cat) pairs.push(["Category", cat]);
+    return [f.says ? el("p", {}, prose(f.says)) : null, pairs.length ? pairsOf(pairs) : null];
   }
   // A list of findings in the order drawn: the highest level first, else the
   // report's order.
@@ -1065,10 +1069,15 @@ button { font: inherit; color: inherit; cursor: pointer; }
     };
     // 0.5.0: a plugin's MCP servers, first: a program it starts on the
     // machine, or a service it connects to, with what the person supplies.
-    const mcp = d.findings.filter((f) => f.section === 5 && f.kind === "mcp-server").map((f) => ({ finding: f, mcp: true, name: displayTitle(f), purpose: one(f.says).split(/(?<=\.)\s/)[0].replace(/\.$/, ""), need: f.detail?.local ? "machine" : "remote", supply: one(f.detail?.supply) }));
+    const mcp = d.findings.filter((f) => f.section === 5 && f.kind === "mcp-server").map((f) => ({ finding: f, mcp: true, name: displayTitle(f), purpose: one(f.says).split(/(?<=\.)\s/)[0].replace(/\.$/, ""), need: f.detail?.local ? "machine" : "remote", supply: one(f.detail?.supply), reach: [] }));
+    // 0.5.3: the model's judgment of a service an MCP server reaches is that
+    // server's card, what it reaches; never a second card for the same thing.
+    const mcpFacts = new Map(mcp.flatMap((x) => (x.finding.based_on ?? []).map((id) => [id, x])));
+    const onMcp = (f) => (f.based_on ?? []).map((id) => mcpFacts.get(id)).find(Boolean) ?? null;
+    for (const f of sys) { const x = onMcp(f); if (x) x.reach.push(f); }
     return [
       ...mcp,
-      ...sys.map((f) => ({ finding: f, ...split(f), need: order.includes(f.detail?.need) ? f.detail.need : "unclear", supply: one(f.detail?.supply) })),
+      ...sys.filter((f) => !onMcp(f)).map((f) => ({ finding: f, ...split(f), need: order.includes(f.detail?.need) ? f.detail.need : "unclear", supply: one(f.detail?.supply) })),
       ...[...byName].map(([name, group]) => ({ finding: group[0], group, name, purpose: "", need: order.find((n) => group.some((f) => needOfCred(f) === n)), supply: `Your ${and(group.map((f) => displayTitle(f)))}` })),
     ].map((x, i) => ({ ...x, i })).sort((a, b) => Number(!a.mcp) - Number(!b.mcp) || order.indexOf(a.need) - order.indexOf(b.need) || a.i - b.i);
   }
@@ -1102,10 +1111,14 @@ button { font: inherit; color: inherit; cursor: pointer; }
       }, detail: (f) => {
         const x = byFinding.get(f);
         if (x.mcp) {
-          // Its card says where it runs and what it needs; opened, what else it says, and the tools it works in.
+          // Its card says where it runs and what it needs; opened, what it
+          // reaches (the model's judgment of the service), what else the
+          // scripts say, and the tools it works in.
           const rest = one(f.says).split(/(?<=\.)\s/).slice(1).filter((w) => !/^For [^.]+\.$/.test(w)).join(" ");
           const tools = Array.isArray(f.detail?.tools) ? f.detail.tools : [];
-          const pairs = tools.length ? [["Works in", andList(tools)]] : [];
+          const pairs = [];
+          for (const r of x.reach ?? []) { const w = one(r.says); if (w) pairs.push(["What it reaches", prose(w)]); }
+          if (tools.length) pairs.push(["Works in", andList(tools)]);
           return [rest ? el("p", {}, prose(rest)) : null, pairs.length ? pairsOf(pairs) : null];
         }
         const users = [...new Set((x.group ?? [f]).flatMap((c) => skillsOf(c)))];

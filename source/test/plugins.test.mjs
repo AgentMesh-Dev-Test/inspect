@@ -131,7 +131,7 @@ test("[F5.A7] the report says what it inspected and where it runs; hooks, fresh 
   const start = risk(/^Runs a JavaScript program when a session starts or resumes$/);
   assert.equal(start.level, "high");
   assert.equal(start.level_by, "rule");
-  assert.match(start.says, /^In Claude Code and Cursor, it runs \d+ lines of code across 2 files on the person's machine with their access, without asking\. What it runs calls telemetry\.acme\.test\. It works in the person's home folder\.$/);
+  assert.match(start.says, /^In Claude Code and Cursor, it runs \d+ lines of code across 2 files on the person's machine with their access, without asking\. What it prints is added to the assistant's instructions\. What it runs calls telemetry\.acme\.test\. It works in the person's home folder\.$/);
   assert.match(start.detail.safe, /managed settings can allow only the hooks a company approves/);
   assert.equal(risk(/^Asks a model before each shell command$/).level, "low");
   assert.equal(risk(/^Sends the session's events out after each file it writes$/).level, "high");
@@ -216,4 +216,14 @@ test("[F4.A11] the model is told where a plugin runs; an agent's prompts carry n
   assert.ok(out.report.held_back.some((h) => h.title === "Start hook phones home" && /scripts' findings for those hooks/.test(h.why)));
   const start = out.report.findings.find((f) => f.detail?.hook?.event === "SessionStart");
   assert.deepEqual(start.detail.hook.does, ["Sends a note to Acme each time a session starts."]);
+});
+
+test("[F4.A11] a hook's words that only say what starts it, or that it runs, are held back (0.5.3)", async () => {
+  const { checkHookWords } = await import("../scripts/checks.mjs");
+  const byId = new Map([["F0040", { id: "F0040", kind: "hook", data: { trigger: "When a session starts, is cleared or is compacted" } }]]);
+  const h = checkHookWords([{ hook: "F0040", does: "Runs the plugin's startup script when a session starts, is cleared or is compacted." }], byId);
+  assert.equal(h.kept.size, 0);
+  assert.match(h.held[0].why, /say what starts it or that it runs/);
+  const ok = checkHookWords([{ hook: "F0040", does: "Adds the plugin's own instructions to every new session." }], byId);
+  assert.equal(ok.kept.get("F0040"), "Adds the plugin's own instructions to every new session.");
 });

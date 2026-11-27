@@ -314,6 +314,8 @@ export function scriptFindings({ facts, ctx, owner, name, sha, repoUrl, osv = nu
     const hosts = [...new Set(programs.flatMap((p) => p.hosts ?? []))];
     const touches = new Set(programs.flatMap((p) => p.touches ?? []));
     const reach = [
+      // 0.5.3: what it prints, the tool adds to the assistant's instructions.
+      touches.has("adds-context") ? "What it prints is added to the assistant's instructions." : null,
       hosts.length ? `What it runs calls ${and(hosts)}.` : null,
       touches.has("credential-store") ? "It reads where keys and sign-ins are kept." : null,
       touches.has("download-run") ? "It downloads code and runs it." : null,
