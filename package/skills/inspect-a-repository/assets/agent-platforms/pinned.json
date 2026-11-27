@@ -2,7 +2,7 @@
   "about": "A copy of AgentMesh's agent platforms database (data/agent-platforms), taken byte for byte at one AgentMesh commit. Inspect reads it to say how tied an agent is to its platform and what moving it would take. To take a newer copy: copy the folder again from the new commit, set commit, checked and every sha256 here, run the tests, release; that is a normal pull request.",
   "repository": "https://github.com/jeffrschneider/AgentMesh",
   "path": "data/agent-platforms",
-  "commit": "aa16cb6b38d51a86465b761adab2cfd51e643a15",
+  "commit": "419be6ae2bd8006de9f68a6593b255a884d21fb3",
   "committed": "2026-11-27",
   "checked": "2026-11-27",
   "files": [
@@ -24,11 +24,11 @@
     },
     {
       "file": "harnesses/claude-agent-sdk.json",
-      "sha256": "f0b528325ef5cdad8509e7f155a13e867ee7942caf2f3c53918ab8a3eb5cca59"
+      "sha256": "cefd08424010f81a30ed807dbbaaafa6f280110a6ad2800efd651bbe7697d5c8"
     },
     {
       "file": "harnesses/claude-apps.json",
-      "sha256": "051b6517bef884bc919b7d58c075751ea30d2cd9fb63b1fe7e3bd60c64171728"
+      "sha256": "d259c23679db1a5aebd891c11d39f73a588151322a05f834b711cc0eed84da2e"
     },
     {
       "file": "harnesses/claude-code.json",
@@ -36,7 +36,7 @@
     },
     {
       "file": "harnesses/claude-managed-agents.json",
-      "sha256": "52dca7b47f27ff01ee0f46d6a6f98c8f741d3320a019faf3929d04654759bbcd"
+      "sha256": "627559c6a869b19e3bf61760639c4adabf241c7c0bbecf6afbdf768d7252c7b9"
     },
     {
       "file": "harnesses/codex.json",

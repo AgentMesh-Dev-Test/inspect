@@ -4,7 +4,7 @@
   "name": "Claude Managed Agents",
   "vendor": "Anthropic",
   "kind": "cloud-runtime",
-  "summary": "Anthropic's hosted agent harness (beta) that runs Claude as an agent in sessions on managed infrastructure, with each session in its own cloud or self-hosted sandbox.",
+  "summary": "Anthropic's hosted agent harness (beta) that runs agents in sessions on managed infrastructure, with each session in its own cloud or self-hosted sandbox.",
   "platform": "anthropic",
   "plugin_formats": [],
   "documentation": [

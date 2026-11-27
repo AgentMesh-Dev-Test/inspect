@@ -4,7 +4,7 @@
   "name": "Claude apps",
   "vendor": "Anthropic",
   "kind": "assistant",
-  "summary": "Anthropic's Claude assistant on the web (claude.ai), desktop and mobile, including Cowork tasks in the desktop app, which takes Agent Skills, MCP connectors and plugins.",
+  "summary": "Anthropic's assistant on the web (claude.ai), desktop and mobile, including Cowork tasks in the desktop app, which takes Agent Skills, MCP connectors and plugins.",
   "platform": "anthropic",
   "plugin_formats": [
     "Claude Code"

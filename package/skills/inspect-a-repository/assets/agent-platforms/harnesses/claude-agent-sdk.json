@@ -4,7 +4,7 @@
   "name": "Claude Agent SDK",
   "vendor": "Anthropic",
   "kind": "harness",
-  "summary": "A Python and TypeScript library that runs the Claude Code CLI as a subprocess, so an application can run Claude agents with Claude Code's tools on infrastructure its owner operates.",
+  "summary": "A Python and TypeScript library that runs the Claude Code CLI as a subprocess, so an application can run agents with Claude Code's tools on infrastructure its owner operates.",
   "platform": "anthropic",
   "plugin_formats": [
     "Claude Code"
