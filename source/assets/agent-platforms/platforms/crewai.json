@@ -1,0 +1,291 @@
+{
+  "$schema": "../platform.schema.json",
+  "id": "crewai",
+  "vendor": "CrewAI",
+  "name": "CrewAI and CrewAI AMP",
+  "summary": "CrewAI is an open-source Python framework for building multi-agent Crews and event-driven Flows. CrewAI AMP (Agent Management Platform) is CrewAI's hosted platform for building, deploying, operating and governing Crews and Flows, including the Crew Studio no-code builder.",
+  "products": [
+    {
+      "name": "CrewAI",
+      "kind": "framework",
+      "license": "MIT",
+      "languages": ["python"],
+      "docs": "https://docs.crewai.com/"
+    },
+    {
+      "name": "CrewAI AMP",
+      "kind": "hosted-service",
+      "license": "proprietary",
+      "languages": ["python"],
+      "docs": "https://docs-platform.crewai.com/platform/en/introduction"
+    },
+    {
+      "name": "Crew Studio",
+      "kind": "low-code",
+      "license": "proprietary",
+      "docs": "https://docs-platform.crewai.com/platform/en/features/crew-studio"
+    }
+  ],
+  "documentation": [
+    "https://docs.crewai.com/",
+    "https://docs-platform.crewai.com/",
+    "https://github.com/crewAIInc/"
+  ],
+  "checked": "2026-11-27",
+  "categories": {
+    "tracing": {
+      "rating": "native",
+      "what": "CrewAI Tracing, built into the framework, records agent decisions, task timelines, tool use and LLM calls for Crews and Flows and shows them in the Traces view of CrewAI AMP; it is turned on with tracing=True or the CREWAI_TRACING_ENABLED variable, and uploads after crewai login or with consent to anonymous sharing. CrewAI AMP's OpenTelemetry Export sends traces and logs from deployments and Crew Studio runs to any OTLP-compatible collector.",
+      "portability": {
+        "level": "mixed",
+        "standards": ["OpenTelemetry", "OTLP", "OpenTelemetry GenAI semantic conventions"],
+        "note": "The framework's built-in tracing sends OpenTelemetry spans to CrewAI AMP, whose Traces view is proprietary. AMP can export traces and logs over OTLP to any compatible backend using the OpenTelemetry GenAI semantic conventions plus CrewAI attributes, and the docs list third-party integrations such as OpenLIT, Arize Phoenix, Langfuse and MLflow."
+      },
+      "evidence": [
+        { "kind": "call", "value": "tracing=True", "language": "python", "note": "Keyword argument on Crew(...) or a Flow constructor." },
+        { "kind": "env", "value": "CREWAI_TRACING_ENABLED", "language": "any" },
+        { "kind": "cli", "value": "crewai login", "language": "any" },
+        { "kind": "cli", "value": "crewai traces enable", "language": "any" },
+        { "kind": "not-in-code", "value": "OpenTelemetry Collectors", "note": "OTLP export is set in CrewAI AMP under Settings, OpenTelemetry Collectors; the agent's code shows nothing." }
+      ],
+      "sources": [
+        { "url": "https://docs.crewai.com/en/observability/tracing", "title": "CrewAI Tracing" },
+        { "url": "https://docs-platform.crewai.com/platform/en/guides/capture_telemetry_logs", "title": "OpenTelemetry Export" },
+        { "url": "https://docs.crewai.com/en/observability/overview", "title": "Observability Overview" }
+      ],
+      "checked": "2026-11-27"
+    },
+    "evaluations": {
+      "rating": "native",
+      "what": "The framework's crewai test command runs a crew for a set number of iterations and reports scores from 1 to 10 per task and for the crew, using a model chosen with --model; the docs say OpenAI is the only provider currently available for it. The CrewAI AMP docs describe no separate evaluation feature.",
+      "portability": {
+        "level": "open-source",
+        "standards": [],
+        "note": "crewai test is part of the open-source CLI and follows no open standard. The docs also list third-party evaluation integrations, such as Patronus AI and MLflow, on the observability overview."
+      },
+      "evidence": [
+        { "kind": "cli", "value": "crewai test", "language": "any" },
+        { "kind": "cli", "value": "--n-iterations", "language": "any", "note": "Option of crewai test." }
+      ],
+      "sources": [
+        { "url": "https://docs.crewai.com/en/concepts/testing", "title": "Testing" },
+        { "url": "https://docs.crewai.com/en/concepts/cli", "title": "CLI" }
+      ],
+      "checked": "2026-11-27"
+    },
+    "prompt-management": {
+      "rating": "partial",
+      "what": "In CrewAI AMP, Agent Repositories store agent definitions (roles, goals, tools) that code loads with Agent(from_repository=...); the docs do not describe prompt versioning. In the framework, prompts live in project files: role, goal and backstory in agent config files, a prompt_file JSON of prompt slices, or system_template and prompt_template on an Agent.",
+      "portability": {
+        "level": "mixed",
+        "standards": [],
+        "note": "Prompt files and templates in the framework are CrewAI's own open-source formats kept in the repository. Agent Repositories are a proprietary AMP service; no open prompt standard is involved."
+      },
+      "evidence": [
+        { "kind": "call", "value": "from_repository", "language": "python", "note": "Agent(from_repository=\"...\") loads an agent definition from an AMP Agent Repository." },
+        { "kind": "call", "value": "prompt_file", "language": "python" },
+        { "kind": "call", "value": "system_template", "language": "python" },
+        { "kind": "file", "value": "config/agents.yaml", "language": "any" }
+      ],
+      "sources": [
+        { "url": "https://docs-platform.crewai.com/platform/en/features/agent-repositories", "title": "Agent Repositories" },
+        { "url": "https://docs.crewai.com/en/guides/advanced/customizing-prompts", "title": "Customizing Prompts" }
+      ],
+      "checked": "2026-11-27"
+    },
+    "keys-and-secrets": {
+      "rating": "native",
+      "what": "CrewAI AMP sets environment variables per automation, and its Secrets Manager (labeled Beta) lets those variables reference secrets in AWS Secrets Manager, Google Cloud Secret Manager or Azure Key Vault, through static credentials or workload identity (OIDC federation). The framework reads provider keys such as OPENAI_API_KEY from environment variables or a .env file.",
+      "portability": {
+        "level": "mixed",
+        "standards": ["OpenID Connect"],
+        "note": "Agent code reads plain environment variables, which work anywhere. The secret references are proprietary AMP configuration; the stores are the cloud providers' own, and workload identity uses OIDC federation."
+      },
+      "evidence": [
+        { "kind": "file", "value": ".env", "language": "any" },
+        { "kind": "env", "value": "OPENAI_API_KEY", "language": "any" },
+        { "kind": "env", "value": "ANTHROPIC_API_KEY", "language": "any" },
+        { "kind": "not-in-code", "value": "secret-name#json_key", "note": "Secret references are set on an automation's Environment Variables in CrewAI AMP; the code only reads the environment variable." }
+      ],
+      "sources": [
+        { "url": "https://docs-platform.crewai.com/platform/en/features/secrets-manager/overview", "title": "Secrets Manager Overview" },
+        { "url": "https://docs-platform.crewai.com/platform/en/features/secrets-manager/usage", "title": "Using the Secrets Manager" },
+        { "url": "https://docs.crewai.com/en/concepts/llms", "title": "LLMs" }
+      ],
+      "checked": "2026-11-27"
+    },
+    "memory-and-state": {
+      "rating": "native",
+      "what": "The framework's Memory class (memory=True on a Crew, built into every Flow) replaces the separate short-term, long-term, entity and external memory types and stores in LanceDB by default, with a pluggable StorageBackend. Flows persist state with the @persist decorator, and Checkpointing saves Crew, Flow and Agent runs to JSON or SQLite so they can resume or fork.",
+      "portability": {
+        "level": "open-source",
+        "standards": [],
+        "note": "Memory, flow persistence and checkpoints use CrewAI's own open-source formats stored locally (LanceDB, SQLite, JSON files) or in a custom or MongoDB backend. The docs describe no hosted AMP memory and no open standard."
+      },
+      "evidence": [
+        { "kind": "import", "value": "from crewai import Memory", "language": "python" },
+        { "kind": "call", "value": "memory=True", "language": "python" },
+        { "kind": "import", "value": "from crewai.flow.persistence import persist", "language": "python" },
+        { "kind": "call", "value": "@persist", "language": "python" },
+        { "kind": "call", "value": "CheckpointConfig", "language": "python" },
+        { "kind": "env", "value": "CREWAI_STORAGE_DIR", "language": "any" }
+      ],
+      "sources": [
+        { "url": "https://docs.crewai.com/en/concepts/memory", "title": "Memory" },
+        { "url": "https://docs.crewai.com/en/guides/flows/mastering-flow-state", "title": "Mastering Flow State Management" },
+        { "url": "https://docs.crewai.com/en/concepts/checkpointing", "title": "Checkpointing" }
+      ],
+      "checked": "2026-11-27"
+    },
+    "human-approval": {
+      "rating": "native",
+      "what": "In the framework, human_input=True on a Task asks a person for input before the final answer, and the @human_feedback decorator in Flows pauses a run (HumanFeedbackPending) and resumes it with flow.resume(feedback). In CrewAI AMP, a deployed crew waiting for human input notifies a webhook and resumes through the /resume endpoint, and Flow HITL requests can be routed to people by email.",
+      "portability": {
+        "level": "mixed",
+        "standards": [],
+        "note": "The framework mechanisms are open source. The resume endpoint, webhooks and email routing are proprietary AMP features; no open standard is involved."
+      },
+      "evidence": [
+        { "kind": "call", "value": "human_input=True", "language": "python" },
+        { "kind": "import", "value": "from crewai.flow.human_feedback import human_feedback", "language": "python" },
+        { "kind": "call", "value": "@human_feedback", "language": "python" },
+        { "kind": "call", "value": "HumanFeedbackPending", "language": "python" },
+        { "kind": "config", "value": "is_approve", "language": "any", "note": "Field in the body sent to the AMP /resume endpoint." }
+      ],
+      "sources": [
+        { "url": "https://docs.crewai.com/en/learn/human-feedback-in-flows", "title": "Human Feedback in Flows" },
+        { "url": "https://docs.crewai.com/en/learn/human-input-on-execution", "title": "Human Input on Execution" },
+        { "url": "https://docs-platform.crewai.com/platform/en/guides/human-in-the-loop", "title": "HITL Workflows" }
+      ],
+      "checked": "2026-11-27"
+    },
+    "deployment": {
+      "rating": "native",
+      "what": "CrewAI AMP runs Crews and Flows as automations, deployed with crewai deploy create or from a GitHub repository, each with its own API (/kickoff, /status) protected by a bearer token. The docs list Cloud (app.crewai.com), Factory (self-hosted) and Hybrid as hosting options for AMP.",
+      "portability": {
+        "level": "mixed",
+        "standards": [],
+        "note": "The framework is open source, so a crew's code is not tied to AMP. AMP's deployment flow, project requirements ([tool.crewai] in pyproject.toml, uv.lock) and automation API are CrewAI's own."
+      },
+      "evidence": [
+        { "kind": "cli", "value": "crewai deploy create", "language": "any" },
+        { "kind": "cli", "value": "crewai deploy push", "language": "any" },
+        { "kind": "config", "value": "[tool.crewai]", "language": "any", "note": "Section in pyproject.toml with type = \"crew\" or type = \"flow\"." },
+        { "kind": "file", "value": "uv.lock", "language": "any" }
+      ],
+      "sources": [
+        { "url": "https://docs-platform.crewai.com/platform/en/guides/deploy-to-amp", "title": "Deploy to AMP" },
+        { "url": "https://docs.crewai.com/en/guides/coding-tools/build-with-ai", "title": "Build with AI" }
+      ],
+      "checked": "2026-11-27"
+    },
+    "sandboxes": {
+      "rating": "partial",
+      "what": "The docs mark the framework's Docker-based CodeInterpreterTool and the Agent allow_code_execution option as deprecated (the tool has been removed from crewai-tools) and recommend a dedicated sandbox service such as E2B or Modal. crewai-tools includes E2B Sandbox Tools (E2BPythonTool, E2BExecTool, E2BFileTool) that run code in E2B's isolated VMs.",
+      "portability": {
+        "level": "mixed",
+        "standards": [],
+        "note": "The tool wrappers are open source in crewai-tools; the sandboxes are third-party hosted services with their own APIs. No open standard is involved."
+      },
+      "evidence": [
+        { "kind": "package", "value": "crewai-tools[e2b]", "language": "python" },
+        { "kind": "call", "value": "E2BPythonTool", "language": "python" },
+        { "kind": "env", "value": "E2B_API_KEY", "language": "any" },
+        { "kind": "call", "value": "CodeInterpreterTool", "language": "python", "note": "Deprecated and removed from crewai-tools; still found in older code." },
+        { "kind": "call", "value": "allow_code_execution=True", "language": "python", "note": "Deprecated Agent option that added CodeInterpreterTool." }
+      ],
+      "sources": [
+        { "url": "https://docs.crewai.com/en/tools/ai-ml/codeinterpretertool", "title": "Code Interpreter" },
+        { "url": "https://docs.crewai.com/en/tools/ai-ml/e2bsandboxtools", "title": "E2B Sandbox Tools" }
+      ],
+      "checked": "2026-11-27"
+    },
+    "tool-connections": {
+      "rating": "standard",
+      "what": "Framework agents connect to MCP servers as clients through the mcps field on Agent or MCPServerAdapter in crewai-tools, over stdio, SSE or Streamable HTTP, and CrewAI AMP connects to custom MCP servers over Streamable HTTP with token or OAuth 2.0 authentication. As a server, the AMP docs show only an Export as MCP option for published Crew Studio automations, without further detail.",
+      "portability": {
+        "level": "open-standard",
+        "standards": ["MCP", "OAuth 2.0"],
+        "note": "Tool connections use the Model Context Protocol directly, so the same MCP servers work with other MCP clients. Connected catalog integrations referenced by slug (for example \"snowflake\") are configured in AMP."
+      },
+      "evidence": [
+        { "kind": "call", "value": "mcps=[", "language": "python" },
+        { "kind": "import", "value": "from crewai.mcp import MCPServerStdio, MCPServerHTTP, MCPServerSSE", "language": "python" },
+        { "kind": "import", "value": "from crewai_tools import MCPServerAdapter", "language": "python" },
+        { "kind": "package", "value": "crewai-tools[mcp]", "language": "python" },
+        { "kind": "not-in-code", "value": "Export as MCP", "note": "Option in the Options menu of a published automation in Crew Studio on CrewAI AMP." }
+      ],
+      "sources": [
+        { "url": "https://docs.crewai.com/en/mcp/overview", "title": "MCP Servers as Tools in CrewAI" },
+        { "url": "https://docs-platform.crewai.com/platform/en/guides/custom-mcp-server", "title": "Custom MCP Servers" },
+        { "url": "https://docs-platform.crewai.com/platform/en/features/crew-studio", "title": "Crew Studio" }
+      ],
+      "checked": "2026-11-27"
+    },
+    "agent-to-agent": {
+      "rating": "standard",
+      "what": "The framework's A2A support (crewai[a2a]) lets an agent delegate to remote A2A agents with A2AClientConfig and serve as an A2A server with A2AServerConfig, over JSONRPC, GRPC or HTTP+JSON. CrewAI AMP hosts A2A server agents with generated agent cards and A2A versions 0.2 and 0.3, labeled early release.",
+      "portability": {
+        "level": "open-standard",
+        "standards": ["A2A", "OAuth 2.0", "OpenID Connect"],
+        "note": "Agents speak the Agent2Agent protocol as client and server, so they can call or be called by any A2A agent. EnterpriseTokenAuth is CrewAI's own scheme for AMP-to-AMP calls; OAuth 2.0, OIDC, API key and mTLS schemes are also listed."
+      },
+      "evidence": [
+        { "kind": "package", "value": "crewai[a2a]", "language": "python" },
+        { "kind": "import", "value": "from crewai.a2a import A2AClientConfig, A2AServerConfig", "language": "python" },
+        { "kind": "call", "value": "A2AClientConfig", "language": "python" },
+        { "kind": "call", "value": "A2AServerConfig", "language": "python" },
+        { "kind": "call", "value": "EnterpriseTokenAuth", "language": "python" }
+      ],
+      "sources": [
+        { "url": "https://docs.crewai.com/en/learn/a2a-agent-delegation", "title": "Agent-to-Agent (A2A) Protocol" },
+        { "url": "https://docs-platform.crewai.com/platform/en/features/a2a", "title": "A2A on AMP" }
+      ],
+      "checked": "2026-11-27"
+    },
+    "identity-and-access": {
+      "rating": "native",
+      "what": "CrewAI AMP controls who can see and change automations, Studio projects, connections and settings with RBAC v2 (roles, teams and scopes), supports SSO sign-in with Just-in-Time provisioning and group-to-team mappings, and protects each deployed automation's API with a bearer token. Developers sign the CLI in with crewai login, a device code flow.",
+      "portability": {
+        "level": "mixed",
+        "standards": ["SAML 2.0", "OpenID Connect", "OAuth 2.0"],
+        "note": "Roles, teams and automation tokens are proprietary to AMP. SSO uses SAML connections or OIDC claims through the customer's identity provider, and OAuth 2.0 is used for MCP server connections and A2A client authentication."
+      },
+      "evidence": [
+        { "kind": "cli", "value": "crewai login", "language": "any" },
+        { "kind": "cli", "value": "crewai org switch", "language": "any" },
+        { "kind": "call", "value": "OAuth2ClientCredentials", "language": "python", "note": "A2A client authentication class from crewai.a2a.auth." },
+        { "kind": "not-in-code", "value": "Role-Based Access Control (RBAC)", "note": "Roles, teams and SSO group mappings are set in CrewAI AMP settings." }
+      ],
+      "sources": [
+        { "url": "https://docs-platform.crewai.com/platform/en/features/rbac", "title": "Role-Based Access Control (RBAC)" },
+        { "url": "https://docs-platform.crewai.com/platform/en/features/jit-sso", "title": "Just-in-Time SSO provisioning" },
+        { "url": "https://docs-platform.crewai.com/platform/en/guides/deploy-to-amp", "title": "Deploy to AMP" }
+      ],
+      "checked": "2026-11-27"
+    },
+    "packaging": {
+      "rating": "standard",
+      "what": "CrewAI Skills are folders with a SKILL.md carrying name and description frontmatter, attached with skills=[...] on an Agent or Crew and published to an organization-scoped registry with crewai skill publish; the framework source calls this an Agent Skills standard implementation. Projects use CrewAI's own layout: crewai create crew makes a JSON-first project (crew.jsonc, agents/*.jsonc), and --classic makes config/agents.yaml and config/tasks.yaml.",
+      "portability": {
+        "level": "mixed",
+        "standards": ["Agent Skills"],
+        "note": "Skill folders follow the Agent Skills format (SKILL.md frontmatter, scripts/, references/, assets/), though the docs page does not name the specification. The project layout and pyproject.toml settings are CrewAI's own open-source formats, the skill registry is an AMP service, and the docs show no Agent Plugins (plugin.json) support."
+      },
+      "evidence": [
+        { "kind": "file", "value": "SKILL.md", "language": "any" },
+        { "kind": "call", "value": "skills=[\"./skills\"]", "language": "python" },
+        { "kind": "import", "value": "from crewai.skills import discover_skills, activate_skill", "language": "python" },
+        { "kind": "cli", "value": "crewai skill publish", "language": "any" },
+        { "kind": "file", "value": "crew.jsonc", "language": "any" },
+        { "kind": "file", "value": "config/agents.yaml", "language": "any" }
+      ],
+      "sources": [
+        { "url": "https://docs.crewai.com/en/concepts/skills", "title": "Skills" },
+        { "url": "https://github.com/crewAIInc/crewAI/blob/main/lib/crewai/src/crewai/skills/__init__.py", "title": "crewAI skills module (lib/crewai/src/crewai/skills/__init__.py)" },
+        { "url": "https://docs.crewai.com/en/guides/crews/first-crew", "title": "Build Your First Crew" }
+      ],
+      "checked": "2026-11-27"
+    }
+  }
+}

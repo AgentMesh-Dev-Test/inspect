@@ -1,0 +1,321 @@
+{
+  "$schema": "../platform.schema.json",
+  "id": "aws",
+  "vendor": "Amazon Web Services",
+  "name": "Amazon Bedrock AgentCore and Strands Agents",
+  "summary": "This entry covers Amazon Bedrock AgentCore, AWS's managed services for running and operating agents built with any framework (Runtime, Memory, Gateway, Identity, Code Interpreter, Browser, Observability, Evaluations and related services), together with the open-source Strands Agents SDK for Python and TypeScript. It also counts Amazon Bedrock Prompt management and AWS Agent Registry where they work with AgentCore.",
+  "products": [
+    {
+      "name": "Amazon Bedrock AgentCore",
+      "kind": "hosted-service",
+      "license": "proprietary",
+      "languages": ["python", "typescript"],
+      "docs": "https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/what-is-bedrock-agentcore.html"
+    },
+    {
+      "name": "Amazon Bedrock AgentCore SDK for Python (bedrock-agentcore)",
+      "kind": "framework",
+      "license": "Apache-2.0",
+      "languages": ["python"],
+      "docs": "https://github.com/aws/bedrock-agentcore-sdk-python"
+    },
+    {
+      "name": "Strands Agents",
+      "kind": "framework",
+      "license": "Apache-2.0",
+      "languages": ["python", "typescript"],
+      "docs": "https://strandsagents.com/"
+    },
+    {
+      "name": "Amazon Bedrock Prompt management",
+      "kind": "hosted-service",
+      "license": "proprietary",
+      "docs": "https://docs.aws.amazon.com/bedrock/latest/userguide/prompt-management.html"
+    },
+    {
+      "name": "AWS Agent Registry",
+      "kind": "hosted-service",
+      "license": "proprietary",
+      "docs": "https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/registry.html"
+    }
+  ],
+  "documentation": [
+    "https://docs.aws.amazon.com/bedrock-agentcore/",
+    "https://docs.aws.amazon.com/bedrock/",
+    "https://strandsagents.com/",
+    "https://github.com/aws/",
+    "https://github.com/awslabs/",
+    "https://github.com/strands-agents/"
+  ],
+  "checked": "2026-11-27",
+  "categories": {
+    "tracing": {
+      "rating": "standard",
+      "what": "Strands Agents emits OpenTelemetry traces whose attributes follow the OpenTelemetry GenAI semantic conventions, and AgentCore Observability collects OpenTelemetry data through the AWS Distro for OpenTelemetry (ADOT) into Amazon CloudWatch. Viewing traces in the AgentCore observability page and the CloudWatch generative AI observability dashboard needs CloudWatch Transaction Search turned on.",
+      "portability": {
+        "level": "open-standard",
+        "standards": ["OpenTelemetry", "OTLP", "OpenTelemetry GenAI semantic conventions", "W3C Trace Context"],
+        "note": "Spans are standard OpenTelemetry and Strands can export them to any OTLP endpoint; agents on AgentCore Runtime can set DISABLE_ADOT_OBSERVABILITY=true to send telemetry to another observability platform. Data sent through ADOT is stored in Amazon CloudWatch, and the AgentCore dashboards are AWS's own."
+      },
+      "evidence": [
+        { "kind": "package", "value": "aws-opentelemetry-distro", "language": "python" },
+        { "kind": "cli", "value": "opentelemetry-instrument", "language": "any" },
+        { "kind": "env", "value": "AGENT_OBSERVABILITY_ENABLED", "language": "any" },
+        { "kind": "env", "value": "DISABLE_ADOT_OBSERVABILITY", "language": "any", "note": "Set to true when an AgentCore Runtime agent sends telemetry to another platform instead." },
+        { "kind": "import", "value": "from strands.telemetry import StrandsTelemetry", "language": "python" },
+        { "kind": "package", "value": "strands-agents[otel]", "language": "python" }
+      ],
+      "sources": [
+        { "url": "https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/observability-configure.html", "title": "Add observability to your Amazon Bedrock AgentCore resources" },
+        { "url": "https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/observability.html", "title": "Observability, audit logging, and tracing for your agents" },
+        { "url": "https://strandsagents.com/latest/documentation/docs/user-guide/observability-evaluation/traces/", "title": "Traces | Strands Agents" }
+      ],
+      "checked": "2026-11-27"
+    },
+    "evaluations": {
+      "rating": "native",
+      "what": "AgentCore Evaluations scores sessions, traces and spans from Strands Agents or LangGraph agents with built-in evaluators (such as Builtin.Helpfulness) and custom LLM-as-a-Judge evaluators, online on live traffic or on demand. The open-source Strands Evals SDK (strands-agents-evals) runs test cases and evaluators from code.",
+      "portability": {
+        "level": "mixed",
+        "standards": ["OpenTelemetry"],
+        "note": "AgentCore Evaluations is an AWS service with its own API and evaluator resources, but it reads agent spans instrumented with OpenTelemetry or OpenInference. Strands Evals is open source (Apache-2.0) and runs anywhere."
+      },
+      "evidence": [
+        { "kind": "cli", "value": "agentcore eval ondemand evaluate", "language": "any" },
+        { "kind": "import", "value": "from bedrock_agentcore_starter_toolkit import Evaluation", "language": "python" },
+        { "kind": "package", "value": "strands-agents-evals", "language": "python" },
+        { "kind": "import", "value": "from strands_evals import eval_task, Case, Experiment", "language": "python" },
+        { "kind": "call", "value": "OutputEvaluator", "language": "python" }
+      ],
+      "sources": [
+        { "url": "https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/evaluations.html", "title": "Evaluate agent performance with Amazon Bedrock AgentCore Evaluations" },
+        { "url": "https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/getting-started-on-demand.html", "title": "Getting started with on-demand evaluation" },
+        { "url": "https://strandsagents.com/latest/documentation/docs/user-guide/evals-sdk/quickstart/", "title": "Strands evaluation quickstart" }
+      ],
+      "checked": "2026-11-27"
+    },
+    "prompt-management": {
+      "rating": "native",
+      "what": "Amazon Bedrock Prompt management stores and versions prompts with variables, and agent code runs a prompt version by passing its ARN as the modelId to the Converse API. AgentCore configuration bundles hold versioned system prompts, model IDs and tool descriptions that agent code reads at run time with BedrockAgentCoreContext.get_config_bundle().",
+      "portability": {
+        "level": "proprietary",
+        "standards": ["MCP", "W3C Baggage"],
+        "note": "Prompt management and configuration bundles use AWS's own APIs and formats; the bundle reference travels in a standard W3C Baggage header. AgentCore Gateway also supports the standard MCP prompts/list and prompts/get methods."
+      },
+      "evidence": [
+        { "kind": "call", "value": "get_config_bundle", "language": "python" },
+        { "kind": "import", "value": "from bedrock_agentcore.runtime import BedrockAgentCoreContext", "language": "python" },
+        { "kind": "call", "value": "create_prompt_version", "language": "python" },
+        { "kind": "call", "value": "get_prompt", "language": "python" },
+        { "kind": "call", "value": "promptVariables", "language": "python", "note": "Argument to converse when modelId is a Prompt management prompt ARN." }
+      ],
+      "sources": [
+        { "url": "https://docs.aws.amazon.com/bedrock/latest/userguide/prompt-management-code-ex.html", "title": "Run Prompt management code samples" },
+        { "url": "https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/configuration-bundles.html", "title": "Configuration bundles" },
+        { "url": "https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/gateway-using.html", "title": "Use an AgentCore gateway" }
+      ],
+      "checked": "2026-11-27"
+    },
+    "keys-and-secrets": {
+      "rating": "native",
+      "what": "AgentCore Identity keeps OAuth 2.0 tokens and API keys in its token vault through credential providers, and agent code fetches them with the AgentCore SDK's @requires_access_token and @requires_api_key decorators. A provider's client secret or API key can also be a reference to a secret in AWS Secrets Manager.",
+      "portability": {
+        "level": "proprietary",
+        "standards": ["OAuth 2.0"],
+        "note": "The token vault, credential providers and SDK decorators are AWS's own interfaces. The tokens themselves come from standard OAuth 2.0 flows."
+      },
+      "evidence": [
+        { "kind": "import", "value": "from bedrock_agentcore.identity.auth import requires_access_token, requires_api_key", "language": "python" },
+        { "kind": "call", "value": "@requires_api_key", "language": "python" },
+        { "kind": "call", "value": "IdentityClient", "language": "python" },
+        { "kind": "call", "value": "create_api_key_credential_provider", "language": "python" },
+        { "kind": "cli", "value": "agentcore identity api-key-credential-provider create", "language": "any" },
+        { "kind": "file", "value": "agentcore/.env.local", "language": "any", "note": "Local secrets file of an AgentCore CLI project; the docs say not to commit it, so it may appear only in .gitignore." }
+      ],
+      "sources": [
+        { "url": "https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/resource-providers.html", "title": "Configure credential provider" },
+        { "url": "https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/obtain-api-key.html", "title": "Obtain API key" },
+        { "url": "https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/obtain-credentials.html", "title": "Obtain credentials" }
+      ],
+      "checked": "2026-11-27"
+    },
+    "memory-and-state": {
+      "rating": "native",
+      "what": "AgentCore Memory provides short-term memory for turns within a session and long-term memory that extracts facts, user preferences and session summaries across sessions, and Strands Agents connects to it through AgentCoreMemorySessionManager. Strands also ships its own session managers (SnapshotSessionManager, FileSessionManager, S3SessionManager) that save agent state as JSON to local files or Amazon S3.",
+      "portability": {
+        "level": "mixed",
+        "standards": [],
+        "note": "AgentCore Memory is an AWS service with its own API. The Strands session managers are open source (Apache-2.0) and store JSON in local files, Amazon S3 or a custom repository."
+      },
+      "evidence": [
+        { "kind": "import", "value": "from bedrock_agentcore.memory.integrations.strands.session_manager import AgentCoreMemorySessionManager", "language": "python" },
+        { "kind": "import", "value": "from bedrock_agentcore.memory import MemoryClient", "language": "python" },
+        { "kind": "call", "value": "create_memory_and_wait", "language": "python" },
+        { "kind": "cli", "value": "agentcore add memory", "language": "any" },
+        { "kind": "import", "value": "from strands.session import FileSessionManager, S3SessionManager", "language": "python" },
+        { "kind": "call", "value": "SnapshotSessionManager", "language": "python" }
+      ],
+      "sources": [
+        { "url": "https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/memory.html", "title": "Add memory to your Amazon Bedrock AgentCore agent" },
+        { "url": "https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/strands-sdk-memory.html", "title": "Strands Agents SDK" },
+        { "url": "https://strandsagents.com/latest/documentation/docs/user-guide/concepts/agents/session-management/", "title": "Persist state across sessions | Strands Agents" }
+      ],
+      "checked": "2026-11-27"
+    },
+    "human-approval": {
+      "rating": "native",
+      "what": "Strands Agents interrupts pause the agent loop from a hook (such as BeforeToolCallEvent) or from a tool for a person's approval or input, and the run resumes when the caller answers with an interruptResponse. Interrupt state can be saved with a session manager so the answer can arrive in a later session.",
+      "portability": {
+        "level": "open-source",
+        "standards": ["MCP"],
+        "note": "Interrupts are the Strands SDK's own open-source (Apache-2.0) mechanism and run wherever Strands runs. For tool calls, AgentCore Gateway and the Strands MCPClient also support MCP elicitation, the standard way for a tool to ask the user for input."
+      },
+      "evidence": [
+        { "kind": "call", "value": "BeforeToolCallEvent", "language": "python" },
+        { "kind": "call", "value": "event.interrupt", "language": "python" },
+        { "kind": "call", "value": "tool_context.interrupt", "language": "python" },
+        { "kind": "call", "value": "context.interrupt", "language": "typescript" },
+        { "kind": "call", "value": "interruptResponse", "language": "any", "note": "Content block the caller sends to answer an interrupt and resume the run." },
+        { "kind": "call", "value": "elicitation_callback", "language": "python", "note": "MCPClient argument that handles MCP elicitation requests." }
+      ],
+      "sources": [
+        { "url": "https://strandsagents.com/latest/documentation/docs/user-guide/concepts/interrupts/", "title": "Interrupts | Strands Agents" },
+        { "url": "https://strandsagents.com/latest/documentation/docs/user-guide/concepts/tools/mcp-tools/", "title": "Connect your agent to MCP tools | Strands Agents" },
+        { "url": "https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/gateway-using.html", "title": "Use an AgentCore gateway" }
+      ],
+      "checked": "2026-11-27"
+    },
+    "deployment": {
+      "rating": "native",
+      "what": "AgentCore Runtime hosts agents and tools as serverless sessions, each in a dedicated microVM for up to 8 hours or on Instances for up to 14 days, deployed as a code zip or a container image with the AgentCore CLI (agentcore deploy). Runtime serves HTTP (port 8080, /invocations), MCP, A2A and AG-UI protocols, and Python agents usually wrap their entry point with the bedrock-agentcore SDK's BedrockAgentCoreApp.",
+      "portability": {
+        "level": "mixed",
+        "standards": ["MCP", "A2A", "AG-UI"],
+        "note": "AgentCore Runtime is an AWS-only hosting service, but the agent is ordinary code or a container image and the bedrock-agentcore SDK is open source (Apache-2.0). Agents on Runtime can serve the standard MCP, A2A or AG-UI protocols."
+      },
+      "evidence": [
+        { "kind": "package", "value": "bedrock-agentcore", "language": "python" },
+        { "kind": "call", "value": "BedrockAgentCoreApp", "language": "python" },
+        { "kind": "call", "value": "@app.entrypoint", "language": "python" },
+        { "kind": "cli", "value": "agentcore deploy", "language": "any" },
+        { "kind": "call", "value": "invoke_agent_runtime", "language": "python" }
+      ],
+      "sources": [
+        { "url": "https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/agents-tools-runtime.html", "title": "Host agent or tools with Amazon Bedrock AgentCore Runtime" },
+        { "url": "https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/runtime-service-contract.html", "title": "Understand the AgentCore Runtime service contract" },
+        { "url": "https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/agentcore-get-started-cli.html", "title": "Get started with Amazon Bedrock AgentCore" }
+      ],
+      "checked": "2026-11-27"
+    },
+    "sandboxes": {
+      "rating": "native",
+      "what": "AgentCore Code Interpreter runs agent-written code (Python, JavaScript and TypeScript) in isolated sandbox sessions, and AgentCore Browser gives agents an isolated managed browser that they drive through a WebSocket automation endpoint with libraries such as Strands, Nova Act or Playwright. Strands Agents Tools provides an AgentCoreBrowser tool.",
+      "portability": {
+        "level": "proprietary",
+        "standards": [],
+        "note": "Code Interpreter and Browser are AWS-hosted services reached through AWS APIs and the bedrock-agentcore SDK. Browser sessions can be driven with open-source automation libraries such as Playwright."
+      },
+      "evidence": [
+        { "kind": "import", "value": "from bedrock_agentcore.tools.code_interpreter_client import code_session", "language": "python" },
+        { "kind": "call", "value": "code_session", "language": "python" },
+        { "kind": "call", "value": "executeCode", "language": "python", "note": "Operation name passed to invoke on a Code Interpreter session." },
+        { "kind": "import", "value": "from strands_tools.browser import AgentCoreBrowser", "language": "python" },
+        { "kind": "package", "value": "strands-agents-tools", "language": "python" }
+      ],
+      "sources": [
+        { "url": "https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/code-interpreter-tool.html", "title": "Execute code and analyze data using Amazon Bedrock AgentCore Code Interpreter" },
+        { "url": "https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/browser-tool.html", "title": "Interact with web applications using Amazon Bedrock AgentCore Browser" },
+        { "url": "https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/browser-quickstart.html", "title": "Get started with AgentCore Browser" }
+      ],
+      "checked": "2026-11-27"
+    },
+    "tool-connections": {
+      "rating": "standard",
+      "what": "AgentCore Gateway turns APIs, Lambda functions and existing MCP servers into MCP tools behind one endpoint (MCP versions 2025-03-26, 2025-06-18, 2025-11-25 and 2026-07-28), AgentCore Runtime can host MCP servers, and Strands Agents connects to MCP servers with MCPClient over stdio, Streamable HTTP or SSE.",
+      "portability": {
+        "level": "open-standard",
+        "standards": ["MCP", "OpenAPI", "OAuth 2.0"],
+        "note": "Gateway endpoints are MCP servers that any MCP client can use, and targets can be described with OpenAPI. Gateway setup itself uses AWS's own control API."
+      },
+      "evidence": [
+        { "kind": "import", "value": "from strands.tools.mcp import MCPClient", "language": "python" },
+        { "kind": "import", "value": "from mcp.client.streamable_http import streamablehttp_client", "language": "python" },
+        { "kind": "call", "value": "list_tools_sync", "language": "python" },
+        { "kind": "call", "value": "McpClient", "language": "typescript" },
+        { "kind": "cli", "value": "agentcore add gateway", "language": "any" }
+      ],
+      "sources": [
+        { "url": "https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/what-is-bedrock-agentcore.html", "title": "What is Amazon Bedrock AgentCore?" },
+        { "url": "https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/gateway-using.html", "title": "Use an AgentCore gateway" },
+        { "url": "https://strandsagents.com/latest/documentation/docs/user-guide/concepts/tools/mcp-tools/", "title": "Connect your agent to MCP tools | Strands Agents" }
+      ],
+      "checked": "2026-11-27"
+    },
+    "agent-to-agent": {
+      "rating": "standard",
+      "what": "AgentCore Runtime hosts A2A servers (JSON-RPC 2.0 on port 9000, with an Agent Card at /.well-known/agent-card.json) and adds SigV4 or OAuth 2.0 authentication. Strands Agents supports A2A as both server (A2AServer) and client (A2AAgent) in Python and TypeScript.",
+      "portability": {
+        "level": "open-standard",
+        "standards": ["A2A", "JSON-RPC 2.0", "OAuth 2.0"],
+        "note": "Runtime passes A2A JSON-RPC payloads through unchanged, so A2A clients and servers are portable. The docs note one difference: Runtime returns real HTTP status codes for errors rather than the A2A convention of HTTP 200."
+      },
+      "evidence": [
+        { "kind": "package", "value": "strands-agents[a2a]", "language": "python" },
+        { "kind": "import", "value": "from strands.multiagent.a2a import A2AServer", "language": "python" },
+        { "kind": "import", "value": "from strands.agent.a2a_agent import A2AAgent", "language": "python" },
+        { "kind": "call", "value": "serve_a2a", "language": "python" },
+        { "kind": "call", "value": "StrandsA2AExecutor", "language": "python" },
+        { "kind": "cli", "value": "--protocol A2A", "language": "any" }
+      ],
+      "sources": [
+        { "url": "https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/runtime-a2a.html", "title": "Deploy A2A servers in AgentCore Runtime" },
+        { "url": "https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/runtime-a2a-protocol-contract.html", "title": "A2A protocol contract" },
+        { "url": "https://strandsagents.com/latest/documentation/docs/user-guide/concepts/multi-agent/agent-to-agent/", "title": "Agent-to-Agent (A2A) Protocol | Strands Agents" }
+      ],
+      "checked": "2026-11-27"
+    },
+    "identity-and-access": {
+      "rating": "native",
+      "what": "AgentCore Identity gives agents workload identities and lets them reach AWS resources and third-party services on behalf of users, and its inbound JWT authorizer accepts OAuth 2.0 tokens from any OAuth 2.0 or OpenID Connect identity provider for AgentCore Runtime and Gateway. Runtime endpoints accept either IAM SigV4 or OAuth 2.0.",
+      "portability": {
+        "level": "mixed",
+        "standards": ["OAuth 2.0", "OpenID Connect", "JWT"],
+        "note": "Inbound tokens are standard OAuth 2.0 JWTs validated through OIDC or RFC 8414 discovery, so existing identity providers work without migration. Workload identities, IAM SigV4 and the SDK decorators are AWS's own."
+      },
+      "evidence": [
+        { "kind": "config", "value": "customJwtAuthorizer", "language": "any" },
+        { "kind": "config", "value": "discoveryUrl", "language": "any" },
+        { "kind": "cli", "value": "--authorizer-type CUSTOM_JWT", "language": "any" },
+        { "kind": "call", "value": "@requires_access_token", "language": "python" }
+      ],
+      "sources": [
+        { "url": "https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/identity.html", "title": "Provide identity and credential management for agent applications with Amazon Bedrock AgentCore Identity" },
+        { "url": "https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/inbound-jwt-authorizer.html", "title": "Configure inbound JWT authorizer" },
+        { "url": "https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/runtime-service-contract.html", "title": "Understand the AgentCore Runtime service contract" }
+      ],
+      "checked": "2026-11-27"
+    },
+    "packaging": {
+      "rating": "standard",
+      "what": "Strands Agents loads skills in the Agent Skills format (a folder with SKILL.md) through its AgentSkills plugin, and AWS Agent Registry stores skill records whose packages it validates against the Agent Skills specification. The docs show no support for Agent Plugins (plugin.json); AgentCore's own project format is the AgentCore CLI's agentcore.json, and the CLI can import the older Starter Toolkit's .bedrock_agentcore.yaml.",
+      "portability": {
+        "level": "mixed",
+        "standards": ["Agent Skills"],
+        "note": "Skills use the open Agent Skills format and move between platforms as is. The AgentCore CLI project files (agentcore.json, aws-targets.json) are AWS's own format."
+      },
+      "evidence": [
+        { "kind": "file", "value": "SKILL.md", "language": "any" },
+        { "kind": "import", "value": "from strands import Agent, AgentSkills, Skill", "language": "python" },
+        { "kind": "import", "value": "import { AgentSkills, Skill } from '@strands-agents/sdk/vended-plugins/skills'", "language": "typescript" },
+        { "kind": "file", "value": "agentcore.json", "language": "any", "note": "AgentCore CLI project specification, kept at agentcore/agentcore.json." },
+        { "kind": "file", "value": ".bedrock_agentcore.yaml", "language": "any", "note": "Configuration file of the older Bedrock AgentCore Starter Toolkit; agentcore import migrates it." }
+      ],
+      "sources": [
+        { "url": "https://strandsagents.com/docs/user-guide/sdk/plugins/skills/", "title": "Skills | Strands Agents" },
+        { "url": "https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/registry-concepts.html", "title": "Concepts and terminology (AWS Agent Registry)" },
+        { "url": "https://github.com/aws/agentcore-cli/blob/main/docs/commands.md", "title": "agentcore-cli/docs/commands.md" }
+      ],
+      "checked": "2026-11-27"
+    }
+  }
+}

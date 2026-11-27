@@ -1,0 +1,244 @@
+{
+  "$schema": "../platform.schema.json",
+  "id": "agentmesh",
+  "vendor": "AgentMesh",
+  "name": "AgentMesh",
+  "summary": "AgentMesh is a network and platform for agents built on any framework: it carries signed messages between agents, gives each agent an identity, connects to outside agents over A2A and MCP, and runs packaged agents. It is not an agent framework, so what happens inside an agent (its tracing, saved run state and prompts) is left to the framework or harness the agent runs on.",
+  "products": [
+    {
+      "name": "AgentMesh platform (mesh, platform services, agent runner, A2A gateway)",
+      "kind": "hosted-service",
+      "license": "proprietary",
+      "docs": "https://dev.agentmesh.ai/platform-map.html"
+    },
+    {
+      "name": "AgentMesh SDKs and adapter",
+      "kind": "framework",
+      "license": "Apache-2.0",
+      "languages": ["TypeScript", "Rust", "Python"],
+      "docs": "https://dev.agentmesh.ai/sdks.html"
+    }
+  ],
+  "documentation": [
+    "https://dev.agentmesh.ai/",
+    "https://agentmesh.ai/",
+    "https://commonagent.net/",
+    "https://agentmessaging.ai/"
+  ],
+  "checked": "2026-11-27",
+  "categories": {
+    "tracing": {
+      "rating": "partial",
+      "what": "Every message between agents carries W3C Trace Context in its envelope, and a host can publish spans for the hops between agents, which `agentmesh trace export` forwards over OTLP. Tracing inside an agent is left to the agent's own tooling, and there is no trace viewer in the console.",
+      "portability": {
+        "level": "open-standard",
+        "standards": ["W3C Trace Context", "OpenTelemetry", "OTLP"],
+        "note": "Trace ids round-trip to a traceparent header and spans are sent over OTLP to any OpenTelemetry collector, so the data lands in the buyer's own observability tool. Span publishing is off until an operator turns it on."
+      },
+      "evidence": [
+        { "kind": "env", "value": "MESH_EMIT_SPANS", "language": "any", "note": "turns on span emission on a node" },
+        { "kind": "env", "value": "TRACE_STREAM_ENABLED", "language": "any", "note": "turns on the span buffer on the services" },
+        { "kind": "cli", "value": "agentmesh trace export --otlp", "language": "any" },
+        { "kind": "config", "value": "traceparent", "language": "any", "note": "an agent bridging the mesh to HTTP copies trace ids into this header" }
+      ],
+      "sources": [
+        { "url": "https://dev.agentmesh.ai/observability.html", "title": "Observability" }
+      ],
+      "checked": "2026-11-27"
+    },
+    "evaluations": {
+      "rating": "none",
+      "what": "AgentMesh has no feature for scoring an agent's outputs against datasets, rubrics or graders. The build lifecycle's evaluator checks an installed agent against what its package declared, which is a conformance check rather than an evaluation of output quality.",
+      "portability": {
+        "level": "not-applicable",
+        "note": "Nothing to move. An agent's evaluations stay in whatever evaluation tool its builder uses."
+      },
+      "evidence": [],
+      "sources": [
+        { "url": "https://dev.agentmesh.ai/agents.html", "title": "Agents" }
+      ],
+      "checked": "2026-11-27"
+    },
+    "prompt-management": {
+      "rating": "none",
+      "what": "AgentMesh has no prompt store or prompt versioning. A packaged agent's instructions travel inside its skills, versioned with the package.",
+      "portability": {
+        "level": "not-applicable",
+        "note": "Nothing to move. Skill instructions are plain SKILL.md files in the Agent Skills format."
+      },
+      "evidence": [],
+      "sources": [
+        { "url": "https://dev.agentmesh.ai/platform-services.html", "title": "Platform services" },
+        { "url": "https://commonagent.net/package.html", "title": "Agent Package" }
+      ],
+      "checked": "2026-11-27"
+    },
+    "keys-and-secrets": {
+      "rating": "native",
+      "what": "A package names every credential it needs in agent-runtime-requirements.json and never carries one; the agent runner fetches each from the owner's store and places it for the agent at run time. In the owner's own Google Cloud project the model key is kept in the owner's Secret Manager.",
+      "portability": {
+        "level": "mixed",
+        "standards": ["Agent Plugins"],
+        "note": "Credentials are read from plain environment variables such as MODEL_KEY, so the agent's code carries nothing AgentMesh-specific. The declaration format is the Agent Package's (Common Agent Specification, Section 12), a draft AgentMesh publishes; the store is the cloud's own secret manager."
+      },
+      "evidence": [
+        { "kind": "file", "value": "agent-runtime-requirements.json", "language": "any" },
+        { "kind": "env", "value": "MODEL_KEY", "language": "any" },
+        { "kind": "env", "value": "MODEL_ENDPOINT", "language": "any" },
+        { "kind": "config", "value": "systems", "language": "any", "note": "the systems list in agent-runtime-requirements.json names each system and its credential" }
+      ],
+      "sources": [
+        { "url": "https://commonagent.net/package.html", "title": "Agent Package" },
+        { "url": "https://dev.agentmesh.ai/agent-in-your-cloud.html", "title": "Your agent, in your Google Cloud project" }
+      ],
+      "checked": "2026-11-27"
+    },
+    "memory-and-state": {
+      "rating": "partial",
+      "what": "The memory platform service gives each named agent its own memory across jobs, through memory.remember, memory.recall, memory.reflect and memory.forget. Saving and resuming a run's own state (checkpoints) is left to the agent's harness; the mesh keeps messages for an agent that is offline.",
+      "portability": {
+        "level": "proprietary",
+        "note": "Memory is reached through AgentMesh requests on the SDKs, the command line and MCP tools. It follows no open memory standard."
+      },
+      "evidence": [
+        { "kind": "call", "value": "mesh.memory.remember", "language": "typescript" },
+        { "kind": "call", "value": "mesh.memory.recall", "language": "typescript" },
+        { "kind": "call", "value": "memory_remember", "language": "any", "note": "the MCP tool name" },
+        { "kind": "cli", "value": "agentmesh memory remember", "language": "any" }
+      ],
+      "sources": [
+        { "url": "https://dev.agentmesh.ai/service-memory.html", "title": "Platform services / memory" }
+      ],
+      "checked": "2026-11-27"
+    },
+    "human-approval": {
+      "rating": "native",
+      "what": "owner.ask sends a question, with optional choices, to the person who owns the agent in their AgentMesh app, and the answer comes back to the agent's inbox as a reply.",
+      "portability": {
+        "level": "proprietary",
+        "note": "It is an AgentMesh request on the SDKs, the adapter's MCP tools and the command line. A task waiting on input is reported in the input_required state, which A2A also uses."
+      },
+      "evidence": [
+        { "kind": "call", "value": "mesh.owner.ask", "language": "typescript" },
+        { "kind": "call", "value": "owner_ask", "language": "any", "note": "the MCP tool name" },
+        { "kind": "cli", "value": "agentmesh owner ask", "language": "any" }
+      ],
+      "sources": [
+        { "url": "https://dev.agentmesh.ai/service-owner.html", "title": "Platform services / owner" }
+      ],
+      "checked": "2026-11-27"
+    },
+    "deployment": {
+      "rating": "native",
+      "what": "The agent runner starts an agent when work arrives and stops it when idle, running it on AgentMesh's hosts, as a container per job, or in the owner's own Google Cloud project. An agent run elsewhere joins through the SDK or the adapter instead.",
+      "portability": {
+        "level": "mixed",
+        "standards": ["Agent Plugins", "OCI image"],
+        "note": "A packaged agent is an Agent Plugin and a container agent is built from its own Dockerfile, so both can run elsewhere; the runner's install and scheduling are AgentMesh's own."
+      },
+      "evidence": [
+        { "kind": "file", "value": "agent-runtime-requirements.json", "language": "any" },
+        { "kind": "file", "value": "agent-descriptor.json", "language": "any" },
+        { "kind": "file", "value": "Dockerfile", "language": "any", "note": "for a container agent" }
+      ],
+      "sources": [
+        { "url": "https://dev.agentmesh.ai/platform-map.html", "title": "Platform map" },
+        { "url": "https://dev.agentmesh.ai/agent-in-your-cloud.html", "title": "Your agent, in your Google Cloud project" }
+      ],
+      "checked": "2026-11-27"
+    },
+    "sandboxes": {
+      "rating": "partial",
+      "what": "The agent runner can start a fresh container for each job, which isolates one job from the next. AgentMesh offers no code-execution, browser or computer sandbox that an agent calls as a tool.",
+      "portability": {
+        "level": "open-standard",
+        "standards": ["OCI image"],
+        "note": "The per-job container is an ordinary container, so nothing in the agent's code depends on it."
+      },
+      "evidence": [
+        { "kind": "not-in-code", "value": "per-job container", "language": "any", "note": "chosen when the agent is installed, not in the agent's code" }
+      ],
+      "sources": [
+        { "url": "https://dev.agentmesh.ai/platform-map.html", "title": "Platform map" }
+      ],
+      "checked": "2026-11-27"
+    },
+    "tool-connections": {
+      "rating": "standard",
+      "what": "AgentMesh speaks MCP two ways: a hosted remote MCP server (the hosted connector) and an MCP server built into the adapter beside a local agent, each offering the mesh as tools. A packaged agent carries its own MCP servers in mcp.json for its harness to connect to.",
+      "portability": {
+        "level": "open-standard",
+        "standards": ["MCP", "Agent Plugins"],
+        "note": "Any MCP client can use the hosted connector over HTTP, and mcp.json is the Agent Plugins format."
+      },
+      "evidence": [
+        { "kind": "config", "value": "https://api.agentmesh.ai/v1/mcp", "language": "any", "note": "the hosted connector's URL in an MCP client config" },
+        { "kind": "config", "value": "mcpServers", "language": "any" },
+        { "kind": "file", "value": "mcp.json", "language": "any" }
+      ],
+      "sources": [
+        { "url": "https://dev.agentmesh.ai/mcp.html", "title": "MCP servers" },
+        { "url": "https://commonagent.net/package.html", "title": "Agent Package" }
+      ],
+      "checked": "2026-11-27"
+    },
+    "agent-to-agent": {
+      "rating": "standard",
+      "what": "Every agent on the network has an A2A agent card, and the A2A gateway lets an outside A2A client call an agent its operator has opened, over A2A 1.0 JSON-RPC and HTTP+JSON, without push notifications, listing tasks or the extended agent card. In the other direction, an A2A agent running elsewhere can be attached, and mesh agents then call it through the gateway.",
+      "portability": {
+        "level": "open-standard",
+        "standards": ["A2A"],
+        "note": "Outside callers use plain A2A with a gateway key. Agents on the mesh talk to each other over Agent Messaging, a protocol AgentMesh publishes, with an A2A binding."
+      },
+      "evidence": [
+        { "kind": "config", "value": "agent-card.json", "language": "any" },
+        { "kind": "config", "value": "https://a2a.agentmesh.ai/agents/", "language": "any", "note": "the gateway endpoint an A2A client calls" },
+        { "kind": "import", "value": "agent-messaging", "language": "typescript", "note": "the TypeScript SDK an agent on the mesh imports" }
+      ],
+      "sources": [
+        { "url": "https://dev.agentmesh.ai/a2a-bridge.html", "title": "A2A bridge" }
+      ],
+      "checked": "2026-11-27"
+    },
+    "identity-and-access": {
+      "rating": "native",
+      "what": "An agent's identity is a key made on its own machine that signs every envelope, with a seven-day connection credential issued under an operator to account to node JWT chain. People sign in with an email link and passkeys; AgentMesh runs no OAuth 2.0 or OpenID Connect server.",
+      "portability": {
+        "level": "mixed",
+        "standards": ["JWT", "WebAuthn"],
+        "note": "The agent holds its own key, so its identity survives a move to another machine. The credential chain and the handle registry are AgentMesh's own."
+      },
+      "evidence": [
+        { "kind": "call", "value": "createAgentIdentity", "language": "typescript" },
+        { "kind": "call", "value": "exchangeBootstrapToken", "language": "typescript" },
+        { "kind": "call", "value": "jwtAuthenticator", "language": "typescript" }
+      ],
+      "sources": [
+        { "url": "https://dev.agentmesh.ai/authentication.html", "title": "Authentication, plane by plane" },
+        { "url": "https://dev.agentmesh.ai/agent-credential.html", "title": "The credential that makes an agent durable" }
+      ],
+      "checked": "2026-11-27"
+    },
+    "packaging": {
+      "rating": "standard",
+      "what": "An Agent Package is an Agent Plugin (plugin.json, skills/ in the Agent Skills format, optional mcp.json) with two files beside the manifest: the draft agent-descriptor.json and agent-runtime-requirements.json.",
+      "portability": {
+        "level": "mixed",
+        "standards": ["Agent Plugins", "Agent Skills"],
+        "note": "The plugin and its skills load in any client that reads Agent Plugins and Agent Skills. The two added files follow the Common Agent Specification, a draft AgentMesh publishes."
+      },
+      "evidence": [
+        { "kind": "file", "value": "plugin.json", "language": "any" },
+        { "kind": "config", "value": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json", "language": "any" },
+        { "kind": "file", "value": "SKILL.md", "language": "any" },
+        { "kind": "file", "value": "agent-descriptor.json", "language": "any" },
+        { "kind": "file", "value": "agent-runtime-requirements.json", "language": "any" }
+      ],
+      "sources": [
+        { "url": "https://commonagent.net/package.html", "title": "Agent Package" },
+        { "url": "https://dev.agentmesh.ai/agents.html", "title": "Agents" }
+      ],
+      "checked": "2026-11-27"
+    }
+  }
+}

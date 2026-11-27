@@ -2,7 +2,7 @@
   "format": "spec-v1",
   "product": {
     "name": "inspect",
-    "version": "0.5.8",
+    "version": "0.6.0",
     "kind": "agent"
   },
   "purpose": "Inspect takes a public GitHub repository address and, optionally, a commit, reads the code at that commit without running any of it, and hands back an inspection report on what it does and how safe it is. The repository may hold an agent, or a plugin or skills for a person's own coding tool (Claude Code, Cursor, Codex and others), which runs on that person's machine with their files and their credentials. The report is a list of findings in eight sections, each finding standing on its own and citing a file and line at the commit. Its readers are the person in charge of a department's agents, deciding whether to bring in an outside agent, and an IT, security or team lead deciding whether employees may install a plugin, before anything is installed or given a credential. It judges no fit with anyone's plan, matches the agent to no catalog role and gives no bring-it-in-or-not verdict.",
@@ -1669,6 +1669,171 @@
           "gherkin": "Scenario: Each fact once\n  Given a plugin whose session-start hook's code calls a telemetry address, and a model that writes a risk on that address, one on the hook and the address, and one on a script no hook runs\n  When Inspect writes the report\n  Then the first two are on the hook's row and have no row of their own\n  And the third keeps its row",
           "checks": [
             "F5.R12"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "F6",
+      "name": "Say how tied it is to its platform, and what moving it would take",
+      "offering": "inspect-a-repository",
+      "does": "From a copy of AgentMesh's agent platforms database pinned to one AgentMesh commit, reads by rule which platforms the code is built on, which of their features it uses at each file and line, and the open standards it uses; and from those alone says, for each category it uses, what it uses and how open that is, and, for every other platform, the work to move it, what it would lose and what replaces each part, in the database's own words, with no recommendation.",
+      "requirements": [
+        {
+          "id": "F6.R1",
+          "kind": "behavior",
+          "priority": "must",
+          "verify": "test",
+          "shall": "The agent shall carry AgentMesh's agent platforms database (data/agent-platforms) byte for byte at one AgentMesh commit, recording that commit, the date its entries were checked and the sha256 of every file, so that updating it is a normal pull request.",
+          "source": {
+            "said": "Add a portability reading to the Inspect agent (the owner, 2026-11-27, through the coordinator): how tied an agent is to its platform, and what moving it elsewhere would take and cost; \"we'd need to also state what you might be missing if you do the switch, like LangGraph is associated with Evals, Key Stores, Telemetry\", and \"what each destination provides, this is important\". The aim is to show buyers how open an agent really is, fairly."
+          }
+        },
+        {
+          "id": "F6.R2",
+          "kind": "behavior",
+          "priority": "must",
+          "verify": "test",
+          "shall": "The agent shall count a platform only from its packages in the manifests (development dependencies aside), its modules in the code's imports (a module the repository holds being its own), a config file only that platform names, or the frameworks its dependencies name; and a feature of it only from that feature's evidence in the database, at its file and line: an import with one of the names it or its cell's own words give, a call or a code key only in a file that imports that platform, a setting, file, config key or command only once the platform counts; never in a comment, a docstring, a test, a lockfile or a folder kept for coding assistants; and never a feature the platform merely offers.",
+          "source": {
+            "said": "Add a portability reading to the Inspect agent (the owner, 2026-11-27, through the coordinator): how tied an agent is to its platform, and what moving it elsewhere would take and cost; \"we'd need to also state what you might be missing if you do the switch, like LangGraph is associated with Evals, Key Stores, Telemetry\", and \"what each destination provides, this is important\". The aim is to show buyers how open an agent really is, fairly."
+          }
+        },
+        {
+          "id": "F6.R3",
+          "kind": "behavior",
+          "priority": "must",
+          "verify": "test",
+          "shall": "The agent shall say what the agent is built on, the platform with the most categories first, and for a plugin or skills the tools it runs in.",
+          "source": {
+            "said": "Add a portability reading to the Inspect agent (the owner, 2026-11-27, through the coordinator): how tied an agent is to its platform, and what moving it elsewhere would take and cost; \"we'd need to also state what you might be missing if you do the switch, like LangGraph is associated with Evals, Key Stores, Telemetry\", and \"what each destination provides, this is important\". The aim is to show buyers how open an agent really is, fairly."
+          }
+        },
+        {
+          "id": "F6.R4",
+          "kind": "behavior",
+          "priority": "must",
+          "verify": "test",
+          "shall": "The agent shall give one row for each category the code uses, saying what it uses in the database's words, how open it is (the vendor's own, partly open, open source, an open standard), and the open standards it uses through their own libraries (MCP, A2A, OpenTelemetry) or files (Agent Skills, Agent Plugins 1.0.0); and, for an outside service, how it swaps by rule (settings only, its code in one file, or in several) and what it really needs and what the code already offers in its place, in the model's checked words.",
+          "source": {
+            "said": "Add a portability reading to the Inspect agent (the owner, 2026-11-27, through the coordinator): how tied an agent is to its platform, and what moving it elsewhere would take and cost; \"we'd need to also state what you might be missing if you do the switch, like LangGraph is associated with Evals, Key Stores, Telemetry\", and \"what each destination provides, this is important\". The aim is to show buyers how open an agent really is, fairly."
+          }
+        },
+        {
+          "id": "F6.R5",
+          "kind": "behavior",
+          "priority": "must",
+          "verify": "test",
+          "shall": "The agent shall, for every platform it is not built on, say the work to move it, keeping apart swapping its outside services from re-hosting its own code on that platform's deployment, what it would lose (each category used that the platform rates none or partial) and what replaces each (that platform's own words for each category used); show AgentMesh and then the two that keep the most of what it uses, in its language, with the rest behind Every platform; by one rule for every vendor, AgentMesh included; give no recommendation; and show the database's date in one small line.",
+          "source": {
+            "said": "Add a portability reading to the Inspect agent (the owner, 2026-11-27, through the coordinator): how tied an agent is to its platform, and what moving it elsewhere would take and cost; \"we'd need to also state what you might be missing if you do the switch, like LangGraph is associated with Evals, Key Stores, Telemetry\", and \"what each destination provides, this is important\". The aim is to show buyers how open an agent really is, fairly."
+          }
+        },
+        {
+          "id": "F6.R6",
+          "kind": "behavior",
+          "priority": "must",
+          "verify": "test",
+          "shall": "The agent shall read a plugin or skills only for what applies to them (how they are packaged, the MCP servers they connect to, and their tool's own hooks, commands and sub-agents), say plainly which categories do not apply, and give no runtime to re-host.",
+          "source": {
+            "said": "Add a portability reading to the Inspect agent (the owner, 2026-11-27, through the coordinator): how tied an agent is to its platform, and what moving it elsewhere would take and cost; \"we'd need to also state what you might be missing if you do the switch, like LangGraph is associated with Evals, Key Stores, Telemetry\", and \"what each destination provides, this is important\". The aim is to show buyers how open an agent really is, fairly."
+          }
+        },
+        {
+          "id": "F6.R7",
+          "kind": "behavior",
+          "priority": "must",
+          "verify": "test",
+          "shall": "The agent shall carry the reading in the report's JSON with every place in the code that shows it, and in its Markdown after Systems it uses, each place a link to its line; the working copy shall carry it without the evidence, giving up the database's words and then the reading itself before any field the Overview draws.",
+          "source": {
+            "said": "Add a portability reading to the Inspect agent (the owner, 2026-11-27, through the coordinator): how tied an agent is to its platform, and what moving it elsewhere would take and cost; \"we'd need to also state what you might be missing if you do the switch, like LangGraph is associated with Evals, Key Stores, Telemetry\", and \"what each destination provides, this is important\". The aim is to show buyers how open an agent really is, fairly."
+          }
+        },
+        {
+          "id": "F6.R8",
+          "kind": "behavior",
+          "priority": "must",
+          "verify": "test",
+          "shall": "The agent shall ask the model only, in its first call, what each outside service is really needed for and what the code already offers in its place, citing facts; it shall keep an answer only when it is a few plain words, cites facts the scripts found and gives no advice, verdict or ease of change, holding the rest back with why; and the second call shall read what it read before.",
+          "source": {
+            "said": "Add a portability reading to the Inspect agent (the owner, 2026-11-27, through the coordinator): how tied an agent is to its platform, and what moving it elsewhere would take and cost; \"we'd need to also state what you might be missing if you do the switch, like LangGraph is associated with Evals, Key Stores, Telemetry\", and \"what each destination provides, this is important\". The aim is to show buyers how open an agent really is, fairly."
+          }
+        },
+        {
+          "id": "F6.R9",
+          "kind": "behavior",
+          "priority": "must",
+          "verify": "test",
+          "shall": "The agent's view shall draw the reading as a tab, Could it move?, after Systems it uses: the answer first, the rows with how open each is in a word and a shape in the text's color, each destination's cells with their rating in a word and a shape, the database's whole words in a dialog, placeholders while the job runs, and no file, line or path of the repository.",
+          "source": {
+            "said": "Add a portability reading to the Inspect agent (the owner, 2026-11-27, through the coordinator): how tied an agent is to its platform, and what moving it elsewhere would take and cost; \"we'd need to also state what you might be missing if you do the switch, like LangGraph is associated with Evals, Key Stores, Telemetry\", and \"what each destination provides, this is important\". The aim is to show buyers how open an agent really is, fairly."
+          }
+        }
+      ],
+      "acceptance": [
+        {
+          "id": "F6.A1",
+          "gherkin": "Scenario: The database is pinned\n  Given the copy in assets/agent-platforms\n  Then every file's sha256 is the one pinned.json names, at a 40-character AgentMesh commit\n  And the database's date is its oldest entry's",
+          "checks": [
+            "F6.R1"
+          ]
+        },
+        {
+          "id": "F6.A2",
+          "gherkin": "Scenario: A LangGraph agent\n  Given a LangGraph agent that uses LangSmith's sandboxes and tracing and LangGraph's checkpoints, with a comment, a test and a coding assistant's folder that name other features\n  When Inspect reads it\n  Then it is built on LangChain's stack\n  And each row cites its file and line, the sandbox at its import, not the docstring above it\n  And evaluations and deployment are not used",
+          "checks": [
+            "F6.R2",
+            "F6.R3",
+            "F6.R4"
+          ]
+        },
+        {
+          "id": "F6.A3",
+          "gherkin": "Scenario: Names that are not the platform's\n  Given a package of its own named agents, and a class of its own named Memory\n  Then neither OpenAI nor Mastra counts\n  And comments and docstrings are never read as code",
+          "checks": [
+            "F6.R2"
+          ]
+        },
+        {
+          "id": "F6.A4",
+          "gherkin": "Scenario: Moving it\n  Given an agent that scores its runs with LangSmith\n  Then every other platform is a destination, AgentMesh first and three shown\n  And each destination's cells are its own ratings and words\n  And AgentMesh's none for evaluations is what it would lose, as any platform's none is",
+          "checks": [
+            "F6.R5"
+          ]
+        },
+        {
+          "id": "F6.A5",
+          "gherkin": "Scenario: A plugin\n  Given a Claude Code plugin\n  Then its rows are packaging, its MCP servers, its hooks and its commands\n  And the other ten categories are said not to apply\n  And no destination has a runtime to re-host",
+          "checks": [
+            "F6.R6"
+          ]
+        },
+        {
+          "id": "F6.A6",
+          "gherkin": "Scenario: What it needs\n  Given an agent that reaches LangSmith's sandboxes\n  Then the first call asks what each outside service is needed for, naming its facts, and the second does not\n  And a plain answer citing facts is kept, and one with a path, advice or no fact is held back",
+          "checks": [
+            "F6.R8"
+          ]
+        },
+        {
+          "id": "F6.A7",
+          "gherkin": "Scenario: The report\n  Given an inspection of such an agent\n  Then the report carries the reading with its evidence and fits its schema\n  And the Markdown says it after Systems it uses, each place a link to its line, with the database's commit and date\n  And the working copy carries it without the evidence",
+          "checks": [
+            "F6.R7"
+          ]
+        },
+        {
+          "id": "F6.A8",
+          "gherkin": "Scenario: A working copy short of room\n  Given more findings than fit\n  Then the database's words go first, then the reading, and each system's need is kept",
+          "checks": [
+            "F6.R7"
+          ]
+        },
+        {
+          "id": "F6.A9",
+          "gherkin": "Scenario: The tab\n  Given a delivered report with a reading\n  Then Could it move? follows Systems it uses, opens on what it is built on and the services it reaches, draws each row and each destination's cells in a word and a shape, opens the database's words in a dialog, keeps the reading through a copy that leaves it out, and names no file of the repository",
+          "checks": [
+            "F6.R9"
           ]
         }
       ]

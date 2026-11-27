@@ -28,13 +28,15 @@ import vm from "node:vm";
 import { buildReport, workingCopy } from "../scripts/report.mjs";
 import { ROOT, SHA, descriptor, claudePlugin, ENV, inTemp, model, world } from "./helpers.mjs";
 import { inspect } from "../scripts/inspect-a-repository.mjs";
+import { loadDatabase, platformUses, readingOf } from "../scripts/platforms.mjs";
 
 const html = readFileSync(join(ROOT, "views", "report.html"), "utf8");
 const script = html.match(/<script>([\s\S]*?)<\/script>/)[1];
 const style = html.match(/<style>([\s\S]*?)<\/style>/)[1];
 const KIND = "application/vnd.agentmesh.inspection-report+json";
 const WORDS = ["Critical", "High", "Medium", "Low", "No risk", "Not rated"];
-const TAB_NAMES = ["Overview", "What it does", "Systems it uses", "Risks", "Tests and gaps"];
+// 0.6.0: Could it move? after Systems it uses.
+const TAB_NAMES = ["Overview", "What it does", "Systems it uses", "Could it move?", "Risks", "Tests and gaps"];
 // Words that explain a count, a section or how the report was made, a
 // status, a section code or a category code: never drawn.
 const NEVER = [
@@ -258,7 +260,7 @@ function rich() {
 }
 const richReport = (held = []) => { const { list, facts } = rich(); return report(list, held, facts); };
 
-test("[F5.R9] the view is one row of five tabs with nothing above it, in the ARIA tabs pattern, with no count on any tab; Risks names its highest level as a word and a shape; it starts on Overview", () => {
+test("[F5.R9] the view is one row of six tabs with nothing above it, in the ARIA tabs pattern, with no count on any tab; Risks names its highest level as a word and a shape; it starts on Overview", () => {
   const r = richReport();
   const { app } = drawn(r);
   assert.equal(app.children[0].className, "tabs-wrap", "the tabs come first: no head, no title, no status line above them");
@@ -674,7 +676,10 @@ test("[F5.A7] What it does lists a plugin's commands and sub-agents, measured; S
   for (const name of TAB_NAMES) {
     tabNamed(p.app, name).click();
     const words = readable(shownPanel(p.app));
-    for (const re of [...NEVER, /\.mjs\b/, /\.json\b/, /\.sh\b/, /CLAUDE_PLUGIN_ROOT/, /docs-header-value/]) assert.doesNotMatch(words, re, `${name}: ${re}`);
+    // 0.6.0: Could it move? quotes the database's words, which name formats
+    // such as plugin.json; it never names a file of the repository.
+    const files = name === "Could it move?" ? [/hooks\//, /\.mcp\.json/, /read-keys/] : [/\.json\b/];
+    for (const re of [...NEVER, /\.mjs\b/, ...files, /\.sh\b/, /CLAUDE_PLUGIN_ROOT/, /docs-header-value/]) assert.doesNotMatch(words, re, `${name}: ${re}`);
   }
 });
 
@@ -716,4 +721,118 @@ test("[F5.A8] for a plugin, Risks lists risks only: a system the Overview's few 
   const agent = drawn(report());
   tabNamed(agent.app, "Risks").click();
   assert.ok(readable(shownPanel(agent.app)).includes("Which tools run without an OK"), "an agent's Risks are as before");
+});
+
+// ── Could it move? (0.6.0) ──
+// A reading of a small LangGraph agent that scores its runs with LangSmith
+// (so AgentMesh, which offers no evaluations, would lose that), uses
+// LangSmith's sandboxes, and keeps LangGraph's checkpoints.
+function moveReading({ needs = true } = {}) {
+  const files = {
+    "pyproject.toml": "[project]\nname = \"maker\"\ndependencies = [\"langgraph>=1.2\", \"langsmith>=0.14\"]\n",
+    "src/maker/graph.py": "from langgraph.checkpoint.memory import InMemorySaver\nsaver = InMemorySaver()\n",
+    "src/maker/sandbox.py": "from langsmith.sandbox import SandboxClient\nSandboxClient()\n",
+    "src/maker/score.py": "from langsmith import Client\nclient = Client()\nclient.evaluate(lambda x: x)\n",
+  };
+  const db = loadDatabase();
+  const found = platformUses({ files: Object.keys(files), read: (f) => files[f] ?? null, db, frameworks: [{ framework: "LangGraph", package: "langgraph", file: "pyproject.toml", line: 3 }] });
+  const reading = readingOf({ found, db, frameworks: [{ framework: "LangGraph", package: "langgraph" }], languages: [{ language: "Python", files: 3 }], ownCode: { files: 3, lines: 6 } });
+  if (needs) Object.assign(reading.uses.find((r) => r.category === "sandboxes"), { needs: "A sandbox that can run a browser", choices: "Docker, picked by a setting" });
+  return reading;
+}
+const withReading = (r, reading = moveReading()) => ({ ...r, portability: reading });
+
+test("[F6.A9] Could it move? comes after Systems it uses: what it is built on and the services it reaches first; a row for each category it uses with how open it is in a word and a shape; for an outside service, what it needs and how it swaps", () => {
+  const { app } = drawn(withReading(richReport()));
+  tabNamed(app, "Could it move?").click();
+  const panel = shownPanel(app);
+  const lead = panel.querySelector(".move-lead");
+  assert.equal(lead.querySelector(".k").textContent, "Built on");
+  assert.equal(lead.querySelector(".v").textContent, "LangChain, LangGraph and LangSmith");
+  assert.equal(lead.querySelector(".under").textContent, "LangGraph · Python");
+  assert.equal(panel.querySelector("p.ties").textContent, "It reaches outside services for tracing and telemetry, evaluations, and sandboxes and code execution.");
+  assert.deepEqual(panel.querySelectorAll("h2").map((h) => h.textContent), ["How tied it is", "Moving it"]);
+  const rows = panel.querySelector("ul.tie-list").querySelectorAll("li").filter((li) => li.parentNode?.className === "tie-list");
+  const byName = Object.fromEntries(rows.map((li) => [li.querySelector(".tie-name").textContent, li]));
+  assert.deepEqual(Object.keys(byName).sort(), ["Evaluations", "Memory and saved state", "Sandboxes and code execution", "Tracing and telemetry"].sort());
+  const sand = byName["Sandboxes and code execution"];
+  assert.equal(sand.querySelector(".lv .word").textContent, "Partly open");
+  assert.equal(levelOf(sand.querySelector(".lv")).shape, SHAPE_OF.medium, "a shape with the word, never a color alone");
+  assert.match(sand.querySelector(".tie-need").textContent, /^NeedsA sandbox that can run a browserAlso offersDocker, picked by a setting$/);
+  assert.equal(sand.querySelector(".tie-swap").textContent, "Light to swap: its code is in one file");
+  const mem = byName["Memory and saved state"];
+  assert.equal(mem.querySelector(".lv .word").textContent, "Open source");
+  assert.equal(mem.querySelector(".tie-swap"), null, "how it swaps is said only of an outside service");
+  assert.equal(mem.querySelector(".tie-need"), null);
+  assert.match(panel.querySelector("p.not-used").textContent, /^Not used: .*Prompt management/);
+  for (const b of panel.querySelectorAll(".lv")) assert.ok(/\bfact\b/.test(b.className), "its shapes are facts in the text's color, never a warning");
+});
+
+test("[F6.A9] Moving it: AgentMesh and two more, the rest behind Every platform; each keeps swapping its outside services apart from re-hosting its own code; what it would lose first, in the destination's own words; the database's date in one small line", () => {
+  const reading = moveReading();
+  const { app, sent } = drawn(withReading(richReport()));
+  tabNamed(app, "Could it move?").click();
+  const panel = () => shownPanel(app);
+  const dests = () => panel().querySelectorAll("section.dest");
+  assert.equal(dests().length, 3);
+  assert.equal(dests()[0].querySelector("h3").textContent, "AgentMesh");
+  const mesh = dests()[0];
+  assert.deepEqual(mesh.querySelectorAll("h4").map((h) => h.textContent), ["Swap its outside services", "Re-host its own code3 files, 6 lines"]);
+  const swapCells = mesh.querySelectorAll(".work")[0].querySelectorAll("li");
+  const evalCell = swapCells.find((li) => li.querySelector("button.ref").textContent === "Evaluations");
+  assert.ok(evalCell, "a service to swap is listed under Swap");
+  assert.equal(evalCell.querySelector(".lv .word").textContent, "Not offered", "AgentMesh's none shows like anyone else's");
+  assert.equal(levelOf(evalCell.querySelector(".lv")).shape, SHAPE_OF.high);
+  const meshDb = loadDatabase().platforms.find((p) => p.id === "agentmesh");
+  assert.equal(evalCell.querySelector(".cell-what").textContent, meshDb.categories.evaluations.what.split(/(?<=\.)\s/)[0], "the database's own first sentence");
+  assert.equal(swapCells[0], evalCell, "what it would lose comes first");
+  const before = resizes(sent);
+  const every = panel().querySelector('button[data-k="every-platform"]') ?? panel().querySelectorAll("button.btn").find((b) => b.textContent === "Every platform");
+  assert.equal(every.textContent, "Every platform");
+  assert.equal(every.getAttribute("aria-expanded"), "false");
+  every.click();
+  assert.equal(dests().length, reading.destinations.length);
+  assert.ok(resizes(sent) > before, "the frame is made to fit");
+  assert.equal(panel().querySelectorAll("button.btn").find((b) => b.getAttribute("aria-expanded") === "true").textContent, "Fewer platforms");
+  assert.match(panel().querySelector("p.db-line").textContent, /^From the agent platforms database, checked Nov 2\d, 2026\.$/);
+  assert.ok(!/Nov 26/.test(panel().querySelector("p.db-line").textContent), "a date alone is never drawn as the day before");
+  const words = readable(panel());
+  for (const re of [/\bsrc\/maker\b/, /\.py\b/, /:\d+\b/]) assert.ok(!re.test(words), `nothing like ${re}: ${words.match(re)?.[0]}`);
+  // Inspect's own words give no advice; the database's are the vendors' own.
+  const own = [...panel().querySelectorAll("p.ties"), ...panel().querySelectorAll("h4"), ...panel().querySelectorAll("p.tie-swap"), ...panel().querySelectorAll("p.db-line")].map((n) => n.textContent).join("\n");
+  for (const re of [/recommend/i, /\bbest\b/i, /\bshould\b/i, /\bchoose\b/i]) assert.ok(!re.test(own), `nothing like ${re}`);
+});
+
+test("[F6.A9] a category's title opens the database's whole words in the dialog, and Close brings focus back", async () => {
+  const p = drawn(withReading(richReport()));
+  const { app } = p;
+  tabNamed(app, "Could it move?").click();
+  const btn = shownPanel(app).querySelectorAll("button.ref").find((b) => b.textContent === "Evaluations" && b.getAttribute("data-k").startsWith("cell:agentmesh:"));
+  btn.click();
+  await ticks(30);
+  const dlg = p.layer.querySelector("section.dialog");
+  assert.ok(dlg, "the dialog is open");
+  assert.equal(dlg.querySelector("h2").textContent, "Evaluations: AgentMesh");
+  const meshDb = loadDatabase().platforms.find((p) => p.id === "agentmesh");
+  assert.ok(readable(dlg).includes(meshDb.categories.evaluations.what), "its whole words");
+  dlg.querySelectorAll("button").find((b) => b.textContent === "Close").click();
+  await ticks(5);
+  assert.equal(p.layer.querySelector("section.dialog"), null, "closed");
+});
+
+test("[F6.A9] while the job runs the tab shows placeholders until the reading arrives, and what it needs until the model answers; a later copy that leaves the reading out keeps the one drawn", () => {
+  const scripts = findings().filter((f) => f.by === "script");
+  const p = drawn(copyOf(scripts, "Step 2 of 5: Reading the code."), { job_state: "working", lifecycle: null });
+  tabNamed(p.app, "Could it move?").click();
+  assert.match(tabNamed(p.app, "Could it move?").getAttribute("aria-label"), /still to come$/);
+  assert.ok(shownPanel(p.app).querySelector(".sk-lead"), "the reading still to come is a placeholder");
+  const reading = moveReading({ needs: false });
+  const copy = workingCopy({ about: { ...ABOUT, portability: reading }, findings: scripts, stage: "Step 3 of 5: Judging what it does and the systems it uses." });
+  p.data(copy);
+  const sand = () => shownPanel(p.app).querySelectorAll("li").find((li) => li.querySelector?.(".tie-name")?.textContent === "Sandboxes and code execution");
+  assert.ok(sand().querySelector(".tie-need .sk"), "what it needs is a placeholder until the model answers");
+  const bare = { ...copyOf(scripts, "Step 4 of 5: Judging its risks and its tests.") };
+  delete bare.portability;
+  p.data(bare);
+  assert.ok(shownPanel(p.app).querySelector(".move-lead"), "a copy short of room keeps the reading drawn before");
 });

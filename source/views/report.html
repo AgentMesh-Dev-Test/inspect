@@ -26,6 +26,12 @@
     system, with its icon, its name, required or optional as a word and a
     shape, and what the person supplies; then what it spends and what it can
     do on its own.
+  - Could it move? (0.6.0): what it is built on; how tied it is, one row
+    for each category it uses, with how open that is and, for an outside
+    service, what it really needs and how it swaps; and for each other
+    platform (three shown, Every platform for the rest) the work to move it
+    and the platform's own rating and words for each category, from
+    AgentMesh's agent platforms database. Facts by rule, never advice.
   - Risks: the risks by level, which are also the filter, the summary for
     security, and every risk highest first.
   - Tests and gaps (0.4.0): a document, every item's words shown, under
@@ -257,6 +263,48 @@ button { font: inherit; color: inherit; cursor: pointer; }
 .md pre { margin: 0; padding: calc(var(--s) * 1.1); background: var(--surface); border-radius: calc(var(--radius) * 0.6); overflow-x: auto; font-family: var(--mono); font-size: 0.875em; line-height: 1.45; white-space: pre; }
 .cut { color: var(--muted); }
 
+/* Could it move? (0.6.0): what it is built on, how tied it is in each
+   category it uses, and what moving it elsewhere would take. Its shapes
+   are in the text's color: a fact about a platform, never a warning. */
+.move-lead { display: grid; grid-template-columns: 44px minmax(0, 1fr); gap: calc(var(--s) * 0.25) calc(var(--s) * 1.5); align-items: center; margin-bottom: calc(var(--s) * 1); max-width: 80ch; }
+.move-lead .sys-icon { width: 44px; height: 44px; }
+.move-lead .sys-icon svg { width: 24px; height: 24px; }
+.move-lead .k { display: block; color: var(--muted); font-size: 0.94em; }
+.move-lead .v { font-size: 1.25em; font-weight: 700; line-height: 1.3; }
+.move-lead .under { color: var(--muted); }
+.ties { font-size: 1.05em; line-height: 1.5; max-width: 72ch; margin: calc(var(--s) * 1.25) 0 0; }
+.lv.fact, .lv.fact .word { color: var(--text); }
+.lv.fact.dim, .lv.fact.dim .word { color: var(--muted); font-weight: 500; }
+.tie-list { list-style: none; margin: 0; padding: 0; border-top: 1px solid var(--border); }
+.tie-list > li { border-bottom: 1px solid var(--border); padding: calc(var(--s) * 1.25) calc(var(--s) * 0.5); display: grid; grid-template-columns: 10em minmax(0, 1fr); gap: calc(var(--s) * 0.3) calc(var(--s) * 1.5); align-items: baseline; }
+.tie-body { display: grid; gap: calc(var(--s) * 0.4); min-width: 0; max-width: 76ch; }
+.tie-name { font-weight: 650; justify-self: start; }
+.tie-what, .cell-what, .tie-also { color: var(--muted); overflow-wrap: anywhere; }
+.tie-need { display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: 0.15em calc(var(--s) * 1.25); }
+.tie-need .k, .work .k { color: var(--muted); }
+.tie-swap { font-weight: 600; }
+.not-used { color: var(--muted); margin-top: calc(var(--s) * 1.5); max-width: 76ch; }
+.dests { display: grid; gap: calc(var(--s) * 1.5); }
+.dest { border: 1px solid var(--border); border-radius: var(--radius); padding: calc(var(--s) * 1.75) calc(var(--s) * 2); display: grid; gap: calc(var(--s) * 1.5); min-width: 0; }
+.dest-head { display: flex; gap: calc(var(--s) * 1.25); align-items: center; flex-wrap: wrap; }
+.dest-head h3 { margin: 0; color: var(--text); font-size: 1.1em; font-weight: 700; letter-spacing: 0; }
+.dest-head .also { color: var(--muted); font-size: 0.94em; }
+.work { display: grid; gap: calc(var(--s) * 0.9); padding-top: calc(var(--s) * 1.25); border-top: 1px solid var(--border); min-width: 0; }
+.work h4 { margin: 0; font-size: 1em; font-weight: 650; display: flex; flex-wrap: wrap; gap: 0.2em 0.75em; align-items: baseline; }
+.work h4 .n { color: var(--muted); font-weight: 500; font-size: 0.94em; font-variant-numeric: tabular-nums; }
+.work > .cell-what { max-width: 76ch; }
+.cells { list-style: none; margin: 0; padding: 0; display: grid; gap: calc(var(--s) * 1.1); }
+.cells li { display: grid; grid-template-columns: 10em minmax(0, 1fr); gap: 0.15em calc(var(--s) * 1.5); align-items: baseline; }
+.cells .cell-body { display: grid; gap: 0.15em; min-width: 0; max-width: 76ch; }
+.cells .ref { justify-self: start; }
+.more { margin: calc(var(--s) * 1.5) 0 0; }
+.db-line { margin-top: calc(var(--s) * 2.5); color: var(--muted); font-size: 0.875em; }
+.dlg-body .lv { margin-top: calc(var(--s) * 0.25); }
+@media (max-width: 640px) {
+  .tie-list > li, .cells li { grid-template-columns: minmax(0, 1fr); }
+  .dest { padding: calc(var(--s) * 1.5) calc(var(--s) * 1.25); }
+}
+
 .toast { position: fixed; right: calc(var(--s) * 2); bottom: calc(var(--s) * 2); background: var(--text); color: var(--bg); border-radius: var(--radius); padding: calc(var(--s) * 0.75) calc(var(--s) * 1.5); font-size: 0.94em; opacity: 0; transition: opacity 0.2s; pointer-events: none; z-index: 20; }
 .toast.on { opacity: 1; }
 
@@ -303,6 +351,8 @@ button { font: inherit; color: inherit; cursor: pointer; }
     { id: "overview", name: "Overview", sections: [1, 2] },
     { id: "does", name: "What it does", sections: [3, 4] },
     { id: "systems", name: "Systems it uses", sections: [5, 6] },
+    // 0.6.0: from the report's portability member, not from its sections.
+    { id: "move", name: "Could it move?", sections: [] },
     { id: "risks", name: "Risks", sections: [7] },
     { id: "tests", name: "Tests and gaps", sections: [8] },
   ];
@@ -330,7 +380,7 @@ button { font: inherit; color: inherit; cursor: pointer; }
   const root = document.documentElement;
   const app = document.getElementById("app");
   const layer = document.getElementById("layer");
-  const state = { initialized: false, ready: false, locale: undefined, width: null, doc: null, params: null, tab: TABS[0].id, level: "all", open: new Set(), viewer: null, viewerFrom: null, place: null };
+  const state = { initialized: false, ready: false, locale: undefined, width: null, doc: null, params: null, tab: TABS[0].id, level: "all", open: new Set(), viewer: null, viewerFrom: null, place: null, allPlatforms: false };
   let seq = 0;
   const waiting = new Map();
 
@@ -408,7 +458,15 @@ button { font: inherit; color: inherit; cursor: pointer; }
       if (doc && (doc.format !== "inspection-report-v1" || !Array.isArray(doc.findings) || !doc.repository || !doc.commit)) { doc = null; why = "what it was handed is not an inspection report"; }
     }
     state.params = p;
-    if (doc) { state.doc = doc; draw(); return; }
+    if (doc) {
+      // 0.6.0: the reading is made before the first finding and changes only
+      // when the model answers; a working copy short of room leaves it out,
+      // or its words, so the one drawn before is kept.
+      const prev = state.doc?.portability;
+      if (prev && doc.partial && !doc.portability) doc.portability = prev;
+      else if (prev && doc.portability?.words_left_out) fillWords(doc.portability, prev);
+      state.doc = doc; draw(); return;
+    }
     if (state.doc && running(p, state.doc)) { draw(); return; }
     fail(`Inspect's report view cannot draw this: ${why}.`);
   }
@@ -624,6 +682,7 @@ button { font: inherit; color: inherit; cursor: pointer; }
       if (!d.findings.some((f) => call.includes(f.section) && (f.by === "model" || f.kind === "not-judged"))) for (const s of call) out.add(s);
     }
     if (!ofSection(d, 1).length) out.add(1);
+    if (!d.portability) out.add("move");
     return out;
   }
   // The highest level a risk carries, for the Risks tab.
@@ -638,7 +697,7 @@ button { font: inherit; color: inherit; cursor: pointer; }
           // A tab is its name; Risks also names its highest level, once
           // its risks are judged. No count: a number on a tab answers nothing.
           const on = state.tab === t.id;
-          const coming = t.sections.some((s) => pending.has(s));
+          const coming = t.id === "move" ? pending.has("move") : t.sections.some((s) => pending.has(s));
           const top = d && t.id === "risks" && !pending.has(RISKS) ? highestRisk(d) : null;
           const said = coming ? `${t.name}, still to come` : `${t.name}${top ? `, the highest ${LEVEL_WORD[top]}` : ""}`;
           return el("button", { class: "tab", type: "button", role: "tab", id: `tab-${t.id}`, "aria-selected": on ? "true" : "false", "aria-controls": `panel-${t.id}`, tabindex: on ? "0" : "-1", "aria-label": said, "data-k": `tab:${t.id}`, onclick: () => setTab(t.id, true) },
@@ -1341,8 +1400,10 @@ button { font: inherit; color: inherit; cursor: pointer; }
   }
   let layerFor = "";
   function drawLayer(d) {
-    const f = state.viewer ? d?.findings.find((x) => x.id === state.viewer) : null;
-    if (!f) {
+    // 0.6.0: a cell of the reading opens here too, as {key, title, parts}.
+    const cell = state.viewer && typeof state.viewer === "object" ? state.viewer : null;
+    const f = state.viewer && !cell ? d?.findings.find((x) => x.id === state.viewer) : null;
+    if (!f && !cell) {
       state.viewer = null;
       if (layerFor) { layer.replaceChildren(); layer.removeAttribute("class"); layer.removeAttribute("style"); layerFor = ""; }
       app.removeAttribute("inert"); app.removeAttribute("aria-hidden");
@@ -1351,19 +1412,19 @@ button { font: inherit; color: inherit; cursor: pointer; }
     app.setAttribute("inert", ""); app.setAttribute("aria-hidden", "true");
     // New data while it is open (the job still running) leaves it as it is,
     // scrolled where the person put it.
-    const key = `${f.id}:${String(f.detail?.instructions ?? "").length}:${displayTitle(f)}`;
+    const key = cell ? `cell:${cell.key}:${cell.words ?? ""}` : `${f.id}:${String(f.detail?.instructions ?? "").length}:${displayTitle(f)}`;
     if (layerFor === key && layer.firstChild) { layer.style.height = `${pageHeight()}px`; return; }
     layerFor = key;
-    const text = typeof f.detail?.instructions === "string" ? f.detail.instructions : "";
+    const text = typeof f?.detail?.instructions === "string" ? f.detail.instructions : "";
     const place = state.place ?? { top: 8, max: 640 };
     layer.className = "layer";
     layer.replaceChildren(
       el("div", { class: "veil", onclick: closeViewer }),
       el("section", { class: "dialog", role: "dialog", "aria-modal": "true", "aria-labelledby": "viewer-title", style: `top:${Number(place.top) || 0}px;max-height:${Number(place.max) || 640}px`, onkeydown: trapTab },
         el("div", { class: "dlg-head" },
-          el("h2", { id: "viewer-title" }, prose(displayTitle(f))),
+          el("h2", { id: "viewer-title" }, prose(cell ? cell.title : displayTitle(f))),
           el("button", { class: "btn", type: "button", "data-k": "viewer-close", onclick: closeViewer }, "Close")),
-        el("div", { class: "dlg-body", tabindex: "0", "aria-label": "Its instructions", "data-k": "viewer-body" },
+        cell ? el("div", { class: "dlg-body", tabindex: "0", "aria-label": cell.title, "data-k": "viewer-body" }, cell.parts()) : el("div", { class: "dlg-body", tabindex: "0", "aria-label": "Its instructions", "data-k": "viewer-body" },
           one(f.detail?.description) ? el("p", { class: "own" }, prose(one(f.detail.description))) : null,
           el("div", { class: "md" }, text ? markdown(text) : el("p", { class: "muted", text: "This report does not carry its instructions." })),
           f.detail?.instructions_cut && f.detail?.instructions_address
@@ -1458,10 +1519,135 @@ button { font: inherit; color: inherit; cursor: pointer; }
     .replace(/(^|[^\w*])\*(?=\S)([^*]+?)(?<=\S)\*(?!\w)/g, "$1$2")
     .replace(/(^|[^\w])_(?=\S)([^_]+?)(?<=\S)_(?!\w)/g, "$1$2"));
 
+  // ── Could it move? (0.6.0) ──
+  // What it is built on, how tied it is in each category it uses, and for
+  // each other platform what moving it would take, what it would lose and
+  // what replaces each part, in the database's own words. Facts by rule,
+  // never a recommendation, and nothing that names a file: the places in the
+  // code are in the Markdown and the JSON.
+  const OPEN = { proprietary: ["high", "Vendor's own"], mixed: ["medium", "Partly open"], "open-source": ["low", "Open source"], "open-standard": ["low", "Open standard"], unknown: ["unrated", "Not known"], "not-applicable": ["unrated", "Not offered"] };
+  const OFFER = { none: ["high", "Not offered"], partial: ["medium", "Only partly"], unknown: ["unrated", "Not documented"], native: ["low", "Offers it"], standard: ["low", "Open standard"] };
+  const OFFER_ORDER = ["none", "partial", "unknown", "native", "standard"];
+  const CAT = { tracing: "Tracing and telemetry", evaluations: "Evaluations", "prompt-management": "Prompt management", "keys-and-secrets": "Keys and secrets", "memory-and-state": "Memory and saved state", "human-approval": "Human approval steps", deployment: "Deployment and scaling", sandboxes: "Sandboxes and code execution", "tool-connections": "Tool connections", "agent-to-agent": "Agent-to-agent", "identity-and-access": "Identity and access", packaging: "Packaging" };
+  const STANDARD_WORDS = { MCP: "the MCP library itself", A2A: "the A2A library itself", OpenTelemetry: "the OpenTelemetry library itself", "Agent Skills": "skills in the Agent Skills format", "Agent Plugins 1.0.0": "an Agent Plugins 1.0.0 manifest" };
+  const factBadge = ([s, w], dim = false) => el("span", { class: `lv fact${dim ? " dim" : ""}` }, shape(s), el("span", { class: "word", text: w }));
+  const firstOf = (s) => { const x = one(s); const m = /^(.+?[.!?])(?:\s+(?=[A-Z`(])|$)/.exec(x); return m ? m[1] : x; };
+  const swapLine = (r) => ({ settings: "Light to swap: settings only", "one-file": "Light to swap: its code is in one file" })[r.swap] ?? `${r.code_files >= 5 ? "Heavier" : "Moderate"} to swap: its code is in ${num(r.code_files)} files`;
+  const sourceName = (s) => one(s.vendor ?? s.standard ?? andList(s.tools ?? [])) || "Its tool";
+  // A working copy short of room carries the reading without its words; the
+  // words of an earlier copy, of the same platform and category, are kept.
+  function fillWords(now, before) {
+    for (const r of now.uses ?? []) {
+      const o = (before.uses ?? []).find((x) => x.category === r.category);
+      if (!o) continue;
+      for (const s of r.sources ?? []) { const os = o.sources?.find((x) => (x.platform ?? x.standard) === (s.platform ?? s.standard)); if (os && !one(s.what)) { s.what = os.what; if (os.note && !s.note) s.note = os.note; } }
+      if (!r.needs && o.needs) { r.needs = o.needs; r.choices = o.choices; }
+    }
+    for (const x of now.destinations ?? []) {
+      const o = (before.destinations ?? []).find((y) => y.platform === x.platform);
+      if (!o) continue;
+      if (!x.runtime && o.runtime) x.runtime = o.runtime;
+      else if (x.runtime && !x.runtime.deployment?.what && o.runtime?.deployment?.what) x.runtime.deployment = o.runtime.deployment;
+      for (const c of x.cells ?? []) { const oc = o.cells?.find((y) => y.category === c.category); if (oc && !one(c.what)) c.what = oc.what; }
+    }
+  }
+  // A date alone is that day wherever the reader is, never the day before.
+  const dayOf = (s) => dateOf(/^\d{4}-\d{2}-\d{2}$/.test(one(s)) ? `${one(s)}T12:00:00` : s);
+  const dbLine = (p) => el("p", { class: "db-line", text: `From the agent platforms database, checked ${dayOf(p.database?.checked) ?? (one(p.database?.checked) || "on a date it does not give")}.` });
+  // Names that hold "and" themselves, listed so each reads whole.
+  const titles = (xs) => (xs.length < 3 ? xs.join(xs.some((x) => / and /.test(x)) ? ", and " : " and ") : `${xs.slice(0, -1).join(", ")}, and ${xs.at(-1)}`);
+  function drawMove(d, pending) {
+    const p = d.portability;
+    if (!p) return pending.has("move") ? [skLead(), skRows(4)] : [el("p", { class: "quiet", text: "This report has no reading of its platform." })];
+    const out = [];
+    const b = p.built_on ?? {};
+    const plugin = pluginOf(d);
+    const main = (b.platforms ?? [])[0];
+    const outside = (p.uses ?? []).filter((r) => r.outside);
+    // The answer first: what it is built on, and the outside services it reaches.
+    const name = plugin ? toolList(plugin) || "Its coding tool" : main ? one(main.name) : "None of the platforms in the database";
+    const under = plugin
+      ? ((b.platforms ?? []).length ? `Its code also uses ${andList(b.platforms.map((x) => one(x.name)))}` : null)
+      : [b.frameworks?.length ? andList(b.frameworks.map(one)) : null, one(b.language) || null, (b.platforms ?? []).length > 1 ? `also ${andList(b.platforms.slice(1).map((x) => one(x.name)))}` : null].filter(Boolean).join(" · ");
+    out.push(el("div", { class: "move-lead" },
+      systemIcon(plugin ? (plugin.tools?.[0] ?? name) : one(main?.vendor) || name),
+      el("div", {}, el("span", { class: "k", text: plugin ? "Runs in" : "Built on" }), el("p", { class: "v", text: name }), under ? el("p", { class: "under", text: under }) : null)));
+    if (!plugin) out.push(el("p", { class: "ties", text: outside.length ? `It reaches outside services for ${titles(outside.map((r) => r.title.toLowerCase()))}.` : (p.uses ?? []).length ? "It reaches no outside service of its platform." : "It uses none of the features the database lists." }));
+
+    out.push(el("h2", { text: "How tied it is" }));
+    if ((p.uses ?? []).length) {
+      out.push(el("ul", { class: "tie-list" }, p.uses.map((r) => {
+        const src = r.sources.find((s) => s.level === r.level) ?? r.sources[0];
+        const others = r.sources.filter((s) => s !== src);
+        const words = one(src?.what);
+        const needs = r.needs
+          ? el("div", { class: "tie-need" }, el("span", { class: "k", text: "Needs" }), el("span", { text: cap(r.needs) }), r.choices ? el("span", { class: "k", text: "Also offers" }) : null, r.choices ? el("span", { text: cap(r.choices) }) : null)
+          : r.outside && pending.has(3) ? el("div", { class: "tie-need" }, el("span", { class: "k", text: "Needs" }), el("span", {}, skInline(), el("span", { class: "sr", text: SOON }))) : null;
+        return el("li", {},
+          factBadge(r.plugin_part ? ["high", "Its tool's own"] : OPEN[r.level] ?? OPEN.unknown),
+          el("div", { class: "tie-body" },
+            el("button", { class: "ref tie-name", type: "button", "data-k": `tie:${r.category}`, onclick: (e) => openViewer(tieCell(p, r), e.currentTarget) }, r.title),
+            words ? el("p", { class: "tie-what" }, prose(firstOf(words))) : sk("80%"),
+            others.length ? el("p", { class: "tie-also" }, `Also ${andList(others.map((s) => (s.standard ? STANDARD_WORDS[s.standard] ?? s.standard : sourceName(s))))}.`) : null,
+            needs,
+            r.outside ? el("p", { class: "tie-swap", text: swapLine(r) }) : null));
+      })));
+    } else out.push(el("p", { class: "quiet", text: "It uses none of the features the database lists." }));
+    const notUsed = (plugin ? p.not_applicable : p.not_used) ?? [];
+    if (notUsed.length) out.push(el("p", { class: "not-used", text: `${plugin ? `Doesn't apply to ${plugin.kind === "skills" ? "skills" : "a plugin"}` : "Not used"}: ${andList(notUsed.map((k) => CAT[k] ?? k))}.` }));
+
+    out.push(el("h2", { text: "Moving it" }));
+    const list = (p.destinations ?? []).filter((x) => state.allPlatforms || x.shown);
+    out.push(el("div", { class: "dests" }, list.map((x) => drawDest(p, x, outside))));
+    const rest = (p.destinations ?? []).filter((x) => !x.shown).length;
+    if (rest) out.push(el("p", { class: "more" }, el("button", { class: "btn", type: "button", "aria-expanded": state.allPlatforms ? "true" : "false", "data-k": "every-platform", onclick: () => { state.allPlatforms = !state.allPlatforms; draw(); resize(true); } }, state.allPlatforms ? "Fewer platforms" : "Every platform")));
+    out.push(dbLine(p));
+    return out;
+  }
+  // One destination: the two kinds of work kept apart. Its outside services
+  // are swapped one by one, each for the destination's own; its own code is
+  // re-hosted on the destination's deployment, where what it uses comes
+  // along or is replaced. Under each, the destination's rating and words
+  // for every category it uses, what it would lose first.
+  function drawDest(p, x, outside) {
+    const byRating = (a, c) => OFFER_ORDER.indexOf(a.rating) - OFFER_ORDER.indexOf(c.rating);
+    const swapping = new Set(outside.map((r) => r.category));
+    const cells = [...(x.cells ?? [])].sort(byRating);
+    const list = (cs) => el("ul", { class: "cells" }, cs.map((c) => el("li", {},
+      factBadge(OFFER[c.rating] ?? OFFER.unknown, c.rating === "native" || c.rating === "standard"),
+      el("div", { class: "cell-body" },
+        el("button", { class: "ref", type: "button", "data-k": `cell:${x.platform}:${c.category}`, onclick: (e) => openViewer(destCell(p, x, c), e.currentTarget) }, c.title),
+        one(c.what) ? el("p", { class: "cell-what" }, prose(firstOf(c.what))) : sk("80%")))));
+    const swaps = cells.filter((c) => swapping.has(c.category));
+    const rest = cells.filter((c) => !swapping.has(c.category));
+    const out = [el("div", { class: "dest-head" }, systemIcon(one(x.vendor) || one(x.name)), el("h3", { text: one(x.name) }), x.also_used ? el("span", { class: "also", text: "Its code uses it too" }) : null)];
+    if (swaps.length) out.push(el("div", { class: "work" }, el("h4", { text: "Swap its outside services" }), list(swaps)));
+    if (!pluginOf(state.doc)) {
+      const rt = x.runtime;
+      const size = rt && rt.own_files !== null && Number.isFinite(Number(rt.own_files)) ? `${num(rt.own_files)} ${Number(rt.own_files) === 1 ? "file" : "files"}, ${num(Number(rt.own_lines) || 0)} lines` : null;
+      const how = one(rt?.deployment?.what);
+      out.push(el("div", { class: "work" }, el("h4", {}, "Re-host its own code", size ? el("span", { class: "n", text: size }) : null), how ? el("p", { class: "cell-what" }, prose(firstOf(how))) : sk("70%"), rest.length ? list(rest) : null));
+    } else if (rest.length) out.push(el("div", { class: "work" }, list(rest)));
+    if (!cells.length && pluginOf(state.doc)) out.push(el("p", { class: "quiet", text: "Nothing it uses is rated here." }));
+    return el("section", { class: "dest", "aria-label": one(x.name) }, out);
+  }
+  // The dialog's content for one row, and for one destination's cell: the
+  // database's whole words, how open the feature is and why.
+  function tieCell(p, r) {
+    return { key: `tie:${r.category}`, title: r.title, words: r.sources.map((s) => one(s.what).length).join(","), parts: () => [
+      ...r.sources.flatMap((s) => [el("h3", { class: "md-h", text: sourceName(s) }), factBadge(OPEN[s.level] ?? OPEN.unknown), one(s.what) ? el("p", {}, prose(one(s.what))) : sk("90%"), one(s.note) ? el("p", { class: "muted" }, prose(one(s.note))) : null]),
+      dbLine(p)] };
+  }
+  function destCell(p, x, c) {
+    return { key: `cell:${x.platform}:${c.category}`, title: `${c.title}: ${one(x.name)}`, words: String(one(c.what).length), parts: () => [factBadge(OFFER[c.rating] ?? OFFER.unknown), one(c.what) ? el("p", {}, prose(one(c.what))) : sk("90%"), dbLine(p)] };
+  }
+
+
   function drawPanel(d, t, pending) {
     if (t.id === "overview") return drawOverview(d, pending);
     if (t.id === "does") return drawDoes(d, pending);
     if (t.id === "systems") return drawSystems(d, pending);
+    if (t.id === "move") return drawMove(d, pending);
     if (t.id === "risks") return drawRisks(d, pending);
     return drawTests(d, pending);
   }
@@ -1484,7 +1670,7 @@ button { font: inherit; color: inherit; cursor: pointer; }
     keyed = new Map(kept);
     app.replaceChildren();
     const p = state.params ?? {};
-    const pending = d ? pendingOf(d, p) : new Set([1, 2, 3, 4, 5, 6, 7, 8]);
+    const pending = d ? pendingOf(d, p) : new Set([1, 2, 3, 4, 5, 6, 7, 8, "move"]);
     app.append(drawTabs(d, pending));
     const status = drawStatus(d, p);
     if (status) app.append(status);

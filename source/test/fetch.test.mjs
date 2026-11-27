@@ -207,12 +207,14 @@ test("[F5.R4] the first working copy goes to the running job the moment the job 
     const starts = [];
     const out = await inspect({ text: "repository: acme/helper", workDir: at, env: ENV, fetchImpl: w.fetchImpl, ask: model().ask, onStart: (a) => starts.push({ ...a, calls: w.calls.map((c) => new URL(c.url).pathname) }) });
     assert.equal(out.code, 0);
-    assert.equal(starts.length, 3, "at once, with the commit, with the archive checked");
+    // 0.6.0: a fourth, once the reading of its platform is made, before the model is asked.
+    assert.equal(starts.length, 4, "at once, with the commit, with the archive checked, with the reading of its platform");
     assert.deepEqual(starts[0].calls, [], "before any call to GitHub");
     assert.deepEqual([starts[0].owner, starts[0].name, starts[0].sha, starts[0].url], ["acme", "helper", null, "https://github.com/acme/helper"]);
     assert.deepEqual(starts[1].calls, ["/repos/acme/helper", "/repos/acme/helper/commits/main"], "then before the archive is asked for");
     assert.equal(starts[1].sha, SHA);
     assert.equal(starts[1].checked, false);
     assert.equal(starts[2].checked, true);
+    assert.ok(starts[3].portability?.database?.commit, "the reading names the database's commit");
   });
 });

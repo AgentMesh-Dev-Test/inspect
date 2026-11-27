@@ -1,0 +1,314 @@
+{
+  "$schema": "../platform.schema.json",
+  "id": "langchain",
+  "vendor": "LangChain",
+  "name": "LangChain, LangGraph and LangSmith",
+  "summary": "This entry covers LangChain's agent stack: the open-source LangChain, LangGraph and Deep Agents frameworks for Python and TypeScript, LangSmith for tracing, evaluation and prompts, and LangSmith Agent Server (formerly LangSmith Deployment) for running agents as a service.",
+  "products": [
+    {
+      "name": "LangChain",
+      "kind": "framework",
+      "license": "MIT",
+      "languages": ["python", "typescript"],
+      "docs": "https://docs.langchain.com/oss/python/langchain/overview"
+    },
+    {
+      "name": "LangGraph",
+      "kind": "framework",
+      "license": "MIT",
+      "languages": ["python", "typescript"],
+      "docs": "https://docs.langchain.com/oss/python/langgraph/overview"
+    },
+    {
+      "name": "Deep Agents",
+      "kind": "framework",
+      "license": "MIT",
+      "languages": ["python", "typescript"],
+      "docs": "https://docs.langchain.com/oss/python/deepagents/overview"
+    },
+    {
+      "name": "LangSmith",
+      "kind": "hosted-service",
+      "license": "proprietary",
+      "languages": ["python", "typescript"],
+      "docs": "https://docs.langchain.com/langsmith/observability"
+    },
+    {
+      "name": "LangSmith Agent Server",
+      "kind": "hosted-service",
+      "license": "proprietary",
+      "languages": ["python", "typescript"],
+      "docs": "https://docs.langchain.com/langsmith/agent-server"
+    }
+  ],
+  "documentation": [
+    "https://docs.langchain.com/",
+    "https://reference.langchain.com/",
+    "https://github.com/langchain-ai/"
+  ],
+  "checked": "2026-11-27",
+  "categories": {
+    "tracing": {
+      "rating": "native",
+      "what": "LangSmith tracing records LangGraph runs once environment variables such as `LANGSMITH_TRACING` and `LANGSMITH_API_KEY` are set, and other code through the `traceable` decorator and client wrappers such as `wrap_openai`.",
+      "portability": {
+        "level": "mixed",
+        "standards": ["OpenTelemetry", "OTLP", "OpenTelemetry GenAI semantic conventions"],
+        "note": "The LangSmith SDK sends runs in LangSmith's own format to the LangSmith service. LangSmith also accepts OpenTelemetry traces over OTLP at its /otel endpoint and maps gen_ai.* attributes, and the SDK can fan out to other OpenTelemetry backends (`LANGSMITH_OTEL_ENABLED`) or send only to an OpenTelemetry endpoint (`LANGSMITH_OTEL_ONLY`)."
+      },
+      "evidence": [
+        { "kind": "env", "value": "LANGSMITH_TRACING", "language": "any" },
+        { "kind": "env", "value": "LANGSMITH_API_KEY", "language": "any" },
+        { "kind": "package", "value": "langsmith", "language": "any" },
+        { "kind": "call", "value": "@traceable", "language": "python" },
+        { "kind": "import", "value": "import { traceable } from \"langsmith/traceable\";", "language": "typescript" },
+        { "kind": "env", "value": "LANGSMITH_OTEL_ENABLED", "language": "any", "note": "Present when traces also go to OpenTelemetry backends." }
+      ],
+      "sources": [
+        { "url": "https://docs.langchain.com/langsmith/observability-quickstart", "title": "Tracing quickstart" },
+        { "url": "https://docs.langchain.com/langsmith/trace-with-opentelemetry", "title": "Trace with OpenTelemetry" },
+        { "url": "https://docs.langchain.com/oss/python/langgraph/observability", "title": "LangSmith Observability" }
+      ],
+      "checked": "2026-11-27"
+    },
+    "evaluations": {
+      "rating": "native",
+      "what": "LangSmith evaluation scores a target function against a dataset of examples with evaluators, run with `client.evaluate` in Python or `evaluate` in TypeScript. Online evaluators score production traces with an LLM as a judge and are set up in the LangSmith UI.",
+      "portability": {
+        "level": "proprietary",
+        "standards": ["OpenTelemetry"],
+        "note": "Datasets, results and online evaluator settings live in LangSmith; evaluators are ordinary functions in the agent's code, and prebuilt ones come from the `openevals` package. LangSmith can also evaluate applications instrumented with OpenTelemetry, linking OTel traces to dataset examples without the SDK's evaluate function."
+      },
+      "evidence": [
+        { "kind": "call", "value": "client.evaluate", "language": "python" },
+        { "kind": "call", "value": "client.create_dataset", "language": "python" },
+        { "kind": "import", "value": "import { evaluate } from \"langsmith/evaluation\";", "language": "typescript" },
+        { "kind": "package", "value": "openevals", "language": "any" },
+        { "kind": "not-in-code", "value": "Online evaluators", "note": "Set up in the LangSmith UI under the agent's Tracing view, on the Online Evaluators tab." }
+      ],
+      "sources": [
+        { "url": "https://docs.langchain.com/langsmith/evaluation-quickstart", "title": "Evaluation quickstart" },
+        { "url": "https://docs.langchain.com/langsmith/online-evaluations-llm-as-judge", "title": "Set up LLM-as-a-judge online evaluators" },
+        { "url": "https://docs.langchain.com/langsmith/evaluate-with-opentelemetry", "title": "How to evaluate with OpenTelemetry" }
+      ],
+      "checked": "2026-11-27"
+    },
+    "prompt-management": {
+      "rating": "native",
+      "what": "LangSmith stores versioned prompts (formerly called repos) that code pushes and pulls with `client.push_prompt` and `client.pull_prompt`, or `hub.push` and `hub.pull` from `langchain/hub`, optionally at a commit hash or tag; public prompts are shared through the LangChain Hub. The older `langchainhub` package is deprecated.",
+      "portability": {
+        "level": "proprietary",
+        "standards": [],
+        "note": "Prompts are stored in the LangSmith service and written as LangChain prompt templates such as `ChatPromptTemplate`. The cited page names no open standard for prompt storage."
+      },
+      "evidence": [
+        { "kind": "call", "value": "client.pull_prompt", "language": "python" },
+        { "kind": "call", "value": "client.push_prompt", "language": "python" },
+        { "kind": "import", "value": "import * as hub from \"langchain/hub\";", "language": "typescript" },
+        { "kind": "import", "value": "from langchain_classic import hub as prompts", "language": "python" },
+        { "kind": "package", "value": "langchainhub", "language": "python", "note": "Deprecated predecessor; its functions moved to the langsmith package." }
+      ],
+      "sources": [
+        { "url": "https://docs.langchain.com/langsmith/manage-prompts-programmatically", "title": "Manage prompts programmatically" }
+      ],
+      "checked": "2026-11-27"
+    },
+    "keys-and-secrets": {
+      "rating": "native",
+      "what": "Environment variables and secrets for a LangSmith Agent Server are added when the deployment is created in the LangSmith UI, or set in the `env` key of `langgraph.json` (a path to a `.env` file or an inline mapping). LangSmith workspace secrets hold the model provider and tool API keys that LangSmith features such as the Playground, evaluators, Fleet and the LLM Gateway use.",
+      "portability": {
+        "level": "mixed",
+        "standards": [],
+        "note": "The values are stored in LangSmith, but the agent reads them as ordinary environment variables, so the code that reads them does not depend on the platform. The cited pages do not describe an integration with an external secret manager or an API for workspace secrets."
+      },
+      "evidence": [
+        { "kind": "config", "value": "env", "language": "any", "note": "Key in langgraph.json: a path such as \"./.env\" or an inline mapping." },
+        { "kind": "file", "value": ".env", "language": "any" },
+        { "kind": "not-in-code", "value": "Deployment environment variables and secrets", "note": "Entered in the LangSmith UI when creating the Agent Server deployment; workspace secrets are added in the workspace's Secrets settings." }
+      ],
+      "sources": [
+        { "url": "https://docs.langchain.com/langsmith/deploy-to-cloud", "title": "Create an Agent Server" },
+        { "url": "https://docs.langchain.com/langsmith/application-structure", "title": "Application structure" },
+        { "url": "https://docs.langchain.com/langsmith/workspace-secrets", "title": "Workspace secrets" }
+      ],
+      "checked": "2026-11-27"
+    },
+    "memory-and-state": {
+      "rating": "native",
+      "what": "LangGraph persistence saves graph state as checkpoints per thread (`thread_id`) through a checkpointer such as `InMemorySaver`, `SqliteSaver` or `PostgresSaver`, and keeps long-term memory across threads in a store such as `InMemoryStore`. On LangSmith Agent Server, checkpoints and the store are handled by the server and backed by PostgreSQL by default.",
+      "portability": {
+        "level": "open-source",
+        "standards": [],
+        "note": "Checkpointers and stores are part of the open-source LangGraph library and use LangGraph's own data format, which can be self-hosted on SQLite or PostgreSQL. On Agent Server the `checkpointer` and `store` keys in `langgraph.json` configure the managed persistence."
+      },
+      "evidence": [
+        { "kind": "import", "value": "from langgraph.checkpoint.memory import InMemorySaver", "language": "python" },
+        { "kind": "import", "value": "from langgraph.checkpoint.postgres import PostgresSaver", "language": "python" },
+        { "kind": "call", "value": "SqliteSaver", "language": "python" },
+        { "kind": "import", "value": "from langgraph.store.memory import InMemoryStore", "language": "python" },
+        { "kind": "config", "value": "thread_id", "language": "any", "note": "Passed in the graph config under \"configurable\"." },
+        { "kind": "config", "value": "checkpointer", "language": "any", "note": "Key in langgraph.json for Agent Server deployments." }
+      ],
+      "sources": [
+        { "url": "https://docs.langchain.com/oss/python/langgraph/persistence", "title": "Persistence" },
+        { "url": "https://docs.langchain.com/langsmith/agent-server", "title": "LangSmith Agent Server" },
+        { "url": "https://docs.langchain.com/langsmith/cli", "title": "LangGraph CLI" }
+      ],
+      "checked": "2026-11-27"
+    },
+    "human-approval": {
+      "rating": "native",
+      "what": "LangGraph `interrupt` pauses a graph and `Command(resume=...)` continues it on the same thread, which needs a checkpointer. LangChain's `HumanInTheLoopMiddleware` for `create_agent` pauses the tool calls named in `interrupt_on` for an approve, edit, reject or respond decision.",
+      "portability": {
+        "level": "open-source",
+        "standards": [],
+        "note": "Interrupts are part of the open-source LangGraph and LangChain libraries and are saved through the checkpointer, so they work wherever the graph runs, with or without Agent Server. The interface is LangGraph's own; the cited pages name no open standard for approval steps."
+      },
+      "evidence": [
+        { "kind": "import", "value": "from langgraph.types import interrupt", "language": "python" },
+        { "kind": "import", "value": "from langgraph.types import Command", "language": "python" },
+        { "kind": "call", "value": "Command(resume=", "language": "python" },
+        { "kind": "import", "value": "from langchain.agents.middleware import HumanInTheLoopMiddleware", "language": "python" },
+        { "kind": "call", "value": "HumanInTheLoopMiddleware", "language": "python" }
+      ],
+      "sources": [
+        { "url": "https://docs.langchain.com/oss/python/langgraph/interrupts", "title": "Interrupts" },
+        { "url": "https://docs.langchain.com/oss/python/langchain/human-in-the-loop", "title": "Human-in-the-loop" }
+      ],
+      "checked": "2026-11-27"
+    },
+    "deployment": {
+      "rating": "native",
+      "what": "LangSmith Agent Server (formerly LangSmith Deployment) runs the graphs listed in `langgraph.json` as a service whose API servers and queue workers scale separately, on LangSmith Cloud, in a Hybrid setup, self-hosted with a control plane, or as a standalone server. The LangGraph CLI runs it locally (`langgraph dev`), builds its Docker image (`langgraph build`) and deploys it (`langgraph deploy`).",
+      "portability": {
+        "level": "mixed",
+        "standards": ["OCI image"],
+        "note": "The Agent Server runtime and its API are LangChain's own, while the graphs are open-source LangGraph code. `langgraph build` produces a Docker image that can run as a standalone server with Docker, Compose or Kubernetes on your own PostgreSQL and Redis; self-hosting with a control plane requires an Enterprise plan."
+      },
+      "evidence": [
+        { "kind": "file", "value": "langgraph.json", "language": "any" },
+        { "kind": "cli", "value": "langgraph dev", "language": "any" },
+        { "kind": "cli", "value": "langgraph build", "language": "any" },
+        { "kind": "cli", "value": "langgraph deploy", "language": "any" },
+        { "kind": "package", "value": "langgraph-cli", "language": "python" },
+        { "kind": "cli", "value": "npx @langchain/langgraph-cli", "language": "javascript" }
+      ],
+      "sources": [
+        { "url": "https://docs.langchain.com/langsmith/deployment", "title": "Deploy agents" },
+        { "url": "https://docs.langchain.com/langsmith/agent-server", "title": "LangSmith Agent Server" },
+        { "url": "https://docs.langchain.com/langsmith/cli", "title": "LangGraph CLI" }
+      ],
+      "checked": "2026-11-27"
+    },
+    "sandboxes": {
+      "rating": "native",
+      "what": "LangSmith Sandboxes are isolated environments for running code, generally available in all LangSmith Cloud regions and used through `SandboxClient` in the `langsmith` SDK. Deep Agents uses sandboxes as backends that give the agent an `execute` tool, with `LangSmithSandbox` and integrations for providers such as Daytona, E2B, Modal, Runloop and Vercel.",
+      "portability": {
+        "level": "mixed",
+        "standards": [],
+        "note": "LangSmith Sandboxes are a LangChain-hosted service. The Deep Agents sandbox backend interface is open source and has documented integrations for third-party providers (AgentCore, Databricks, Daytona, E2B, Modal, NVIDIA OpenShell, Runloop, Vercel), so the provider can be changed; no open standard is named."
+      },
+      "evidence": [
+        { "kind": "import", "value": "from langsmith.sandbox import SandboxClient", "language": "python" },
+        { "kind": "import", "value": "import { SandboxClient } from \"langsmith/sandbox\";", "language": "typescript" },
+        { "kind": "import", "value": "from deepagents.backends import LangSmithSandbox", "language": "python" },
+        { "kind": "import", "value": "from langchain_daytona import DaytonaSandbox", "language": "python" },
+        { "kind": "package", "value": "langchain-e2b", "language": "python" },
+        { "kind": "package", "value": "langchain-modal", "language": "python" }
+      ],
+      "sources": [
+        { "url": "https://docs.langchain.com/langsmith/sandboxes", "title": "LangSmith Sandboxes" },
+        { "url": "https://docs.langchain.com/oss/python/deepagents/sandboxes", "title": "Sandboxes" }
+      ],
+      "checked": "2026-11-27"
+    },
+    "tool-connections": {
+      "rating": "standard",
+      "what": "LangChain connects agents to MCP servers through `MCPAdapter`: in Python from `langchain.mcp` (beta, requires `langchain[mcp]>=1.4.0`, replacing `langchain-mcp-adapters` and its `MultiServerMCPClient`), and in TypeScript from `@langchain/mcp-adapters`. LangSmith Agent Server also exposes each deployed agent as a tool at a `/mcp` endpoint (Streamable HTTP, stateless, tools only).",
+      "portability": {
+        "level": "open-standard",
+        "standards": ["MCP"],
+        "note": "Both directions follow MCP: LangChain agents call MCP servers from any vendor, and any MCP client can call agents deployed on Agent Server. The cited pages cover MCP tools; they do not cover MCP resources or prompts."
+      },
+      "evidence": [
+        { "kind": "import", "value": "from langchain.mcp import MCPAdapter", "language": "python" },
+        { "kind": "import", "value": "from langchain_mcp_adapters.client import MultiServerMCPClient", "language": "python", "note": "Older client, replaced by langchain.mcp in langchain 1.4.0." },
+        { "kind": "package", "value": "langchain-mcp-adapters", "language": "python" },
+        { "kind": "import", "value": "import { MCPAdapter } from \"@langchain/mcp-adapters\";", "language": "typescript" },
+        { "kind": "config", "value": "disable_mcp", "language": "any", "note": "Under \"http\" in langgraph.json; turns off the Agent Server /mcp endpoint." }
+      ],
+      "sources": [
+        { "url": "https://docs.langchain.com/oss/python/migrate/langchain-mcp-adapters", "title": "Migrate from langchain-mcp-adapters" },
+        { "url": "https://docs.langchain.com/oss/javascript/langchain/mcp", "title": "Model Context Protocol (MCP)" },
+        { "url": "https://docs.langchain.com/langsmith/server-mcp", "title": "MCP endpoint in Agent Server" }
+      ],
+      "checked": "2026-11-27"
+    },
+    "agent-to-agent": {
+      "rating": "partial",
+      "what": "LangSmith Agent Server serves each assistant over A2A at `/a2a/{assistant_id}` with an agent card, accepting A2A v1.0 and v0.3 method names but not `SubscribeToTask` or the push notification methods. The docs describe no A2A client for calling remote agents; `RemoteGraph` calls other deployments over the Agent Server's own API.",
+      "portability": {
+        "level": "mixed",
+        "standards": ["A2A"],
+        "note": "Serving follows A2A, so any A2A client can call a deployed agent. Calling out goes through `RemoteGraph`, LangGraph's own client for Agent Server deployments, or hand-written JSON-RPC requests like the docs' example."
+      },
+      "evidence": [
+        { "kind": "not-in-code", "value": "A2A endpoint in Agent Server", "note": "Available for graphs deployed to Agent Server unless turned off in langgraph.json; per-assistant A2A metadata is patched after deploy." },
+        { "kind": "config", "value": "disable_a2a", "language": "any", "note": "Under \"http\" in langgraph.json." },
+        { "kind": "env", "value": "DEFAULT_A2A_ASSISTANT_ID", "language": "any" },
+        { "kind": "import", "value": "from langgraph.pregel.remote import RemoteGraph", "language": "python" },
+        { "kind": "import", "value": "import { RemoteGraph } from \"@langchain/langgraph/remote\";", "language": "typescript" }
+      ],
+      "sources": [
+        { "url": "https://docs.langchain.com/langsmith/server-a2a", "title": "A2A endpoint in Agent Server" },
+        { "url": "https://docs.langchain.com/langsmith/use-remote-graph", "title": "How to interact with a deployment using RemoteGraph" }
+      ],
+      "checked": "2026-11-27"
+    },
+    "identity-and-access": {
+      "rating": "native",
+      "what": "LangSmith Agent Server accepts LangSmith API keys in the `x-api-key` header by default, and custom auth adds an `Auth` object from `langgraph_sdk` whose `@auth.authenticate` and `@auth.on` handlers check callers and control access to threads, assistants, crons and the store. Self-hosted deployments have no default authentication.",
+      "portability": {
+        "level": "mixed",
+        "standards": ["OAuth 2.0", "JWT", "OAuth 2.1"],
+        "note": "The handler interface is LangGraph's own, and the handlers can validate tokens from any OAuth2 provider; the docs' example validates JWTs from Supabase. For signing in to MCP servers, `langchain.mcp` supports bearer tokens and the OAuth 2.1 flow through FastMCP."
+      },
+      "evidence": [
+        { "kind": "import", "value": "from langgraph_sdk import Auth", "language": "python" },
+        { "kind": "call", "value": "@auth.authenticate", "language": "python" },
+        { "kind": "call", "value": "@auth.on", "language": "python" },
+        { "kind": "config", "value": "auth", "language": "any", "note": "Key in langgraph.json, for example \"auth\": {\"path\": \"src/security/auth.py:auth\"}." },
+        { "kind": "config", "value": "allow_langsmith_api_keys", "language": "any", "note": "Under \"auth\" in langgraph.json." }
+      ],
+      "sources": [
+        { "url": "https://docs.langchain.com/langsmith/auth", "title": "Authentication & access control" },
+        { "url": "https://docs.langchain.com/langsmith/add-auth-server", "title": "Connect an authentication provider" },
+        { "url": "https://docs.langchain.com/oss/python/langchain/mcp/auth", "title": "Authentication" }
+      ],
+      "checked": "2026-11-27"
+    },
+    "packaging": {
+      "rating": "standard",
+      "what": "Deep Agents loads skills that follow the Agent Skills specification (folders with a `SKILL.md`) through the `skills` argument of `create_deep_agent`, and LangGraph applications are described by their own `langgraph.json` configuration file. The docs do not mention Agent Plugins 1.0.0; Deep Agents Code reads plugin manifests at `.claude-plugin/plugin.json` or `.codex-plugin/plugin.json`.",
+      "portability": {
+        "level": "mixed",
+        "standards": ["Agent Skills"],
+        "note": "Skills follow the Agent Skills specification, so the same skill folders work in other tools that read it. `langgraph.json` is LangChain's own configuration format for the Agent Server."
+      },
+      "evidence": [
+        { "kind": "file", "value": "SKILL.md", "language": "any" },
+        { "kind": "call", "value": "create_deep_agent", "language": "python", "note": "With the skills argument, for example skills=[\"./my-project/skills/\"]." },
+        { "kind": "package", "value": "deepagents", "language": "python" },
+        { "kind": "file", "value": "langgraph.json", "language": "any" },
+        { "kind": "file", "value": ".claude-plugin/plugin.json", "language": "any" },
+        { "kind": "cli", "value": "dcode plugin install", "language": "any" }
+      ],
+      "sources": [
+        { "url": "https://docs.langchain.com/oss/python/deepagents/skills", "title": "Skills" },
+        { "url": "https://docs.langchain.com/oss/deepagents/code/plugins", "title": "Plugins and marketplaces" },
+        { "url": "https://docs.langchain.com/langsmith/application-structure", "title": "Application structure" }
+      ],
+      "checked": "2026-11-27"
+    }
+  }
+}

@@ -36,9 +36,26 @@ export const estimateTokens = (text) => Math.ceil(String(text ?? "").length / 3)
 
 /** The kinds of fact each of the first two calls reads when all of them do not fit. */
 export const KINDS_FOR = {
-  first: ["skill", "part", "own-code", "entry", "how-it-runs", "model", "model-client", "memory", "human-step", "setting", "setup-doc", "example-setting", "sdk", "address", "handed-address", "framework", "language", "tool", "publisher", "plugin-manifest", "plugin", "slash-command", "sub-agent", "rule", "hook", "mcp-server", "user-config"],
+  first: ["platform", "platform-use", "standard-use", "skill", "part", "own-code", "entry", "how-it-runs", "model", "model-client", "memory", "human-step", "setting", "setup-doc", "example-setting", "sdk", "address", "handed-address", "framework", "language", "tool", "publisher", "plugin-manifest", "plugin", "slash-command", "sub-agent", "rule", "hook", "mcp-server", "user-config"],
   second: ["tool", "capability", "human-step", "command", "address", "handed-address", "setting", "sdk", "credential-shape", "install-script", "link", "refused-path", "vulnerability", "test-file", "test-command", "memory", "license", "repository-license", "model", "skill", "hook", "mcp-server", "user-config", "slash-command", "sub-agent"],
 };
+
+/** The facts of what the code uses of its platform (0.6.0): only the first
+ *  call reads them, for what each outside service is really needed for; the
+ *  second call's facts are what they were before. */
+export const PORTABILITY_KINDS = new Set(["platform", "platform-use", "standard-use"]);
+
+/** What the agent really needs of each outside service it uses (0.6.0):
+ *  asked of the first call only when the reading lists one. */
+export function portabilityAsk(reading) {
+  const rows = (reading?.uses ?? []).filter((r) => r.outside);
+  if (!rows.length) return [];
+  const facts = (r) => [...new Set(r.sources.flatMap((s) => s.evidence.map((e) => e.fact)).filter(Boolean))].slice(0, 10);
+  return [
+    `Also answer "portability". The scripts found that the agent reaches these outside services, each a category with the facts that show it: ${rows.map((r) => `${r.category}, ${r.title.toLowerCase()} from ${[...new Set(r.sources.map((s) => s.vendor ?? s.standard).filter(Boolean))].join(" and ")} (${facts(r).join(", ")})`).join("; ")}.`,
+    'For each, one entry with "category" its key; "needs", what the agent really needs from that service, in a few plain words, from what its code does with it (such as A sandbox that can run a browser and encode media); "choices", what the code already offers in its place, in a few plain words, or "" when it offers nothing else (such as Docker, picked by a setting); and "based_on", the ids of the facts that show both. Write both for an architect, as facts: no advice, no verdict, and nothing about how easy it is to change, which the report says by rule.',
+  ];
+}
 
 /** How a title and its words are written (0.2.6): for a manager, never with
  *  code in them. checks.mjs notPlain holds back a judgment that breaks it. */
@@ -82,7 +99,7 @@ export const COUNTS_RULE = "Never say how many skills, commands, sub-agents, hoo
 export const HOOK_WORDS = 'Also answer "hooks": one entry for each hook fact, with "hook" its fact id and "does" one plain sentence on what it does for the person or to their session (such as Adds the plugin\'s own instructions to every new session), written for a manager, from the hook fact and the facts of the files it runs.';
 
 /** The prompt of the first call. */
-export function firstPrompt(factText, { repo, subject = null }) {
+export function firstPrompt(factText, { repo, subject = null, portability = null }) {
   const plugin = Boolean(subject);
   return [
     `The agent: ${repo}. The facts, one to a line (id, kind, file:line or the call it came from, the line's text, then data):`,
@@ -101,7 +118,8 @@ export function firstPrompt(factText, { repo, subject = null }) {
     "Write at most 40 findings in all, the most telling first, each in at most three sentences.",
     SKILL_NAMES,
     ...(plugin ? [HOOK_WORDS] : []),
-    `Answer: ${SHAPE.replace(/\}$/, `, "skills": [{"skill": "F0012", "title": "<three to eight plain words>", "does": "<one or two plain sentences>"}]${plugin ? ', "hooks": [{"hook": "F0040", "does": "<one plain sentence>"}]' : ""}}`)}`,
+    ...portabilityAsk(portability),
+    `Answer: ${SHAPE.replace(/\}$/, `, "skills": [{"skill": "F0012", "title": "<three to eight plain words>", "does": "<one or two plain sentences>"}]${plugin ? ', "hooks": [{"hook": "F0040", "does": "<one plain sentence>"}]' : ""}${portabilityAsk(portability).length ? ', "portability": [{"category": "sandboxes", "needs": "<a few plain words>", "choices": "<a few plain words, or empty>", "based_on": ["F0101"]}]' : ""}}`)}`,
   ].join("\n");
 }
 
@@ -146,21 +164,23 @@ const fits = (prompt) => estimateTokens(prompt) + estimateTokens(SYSTEM) <= CALL
 
 /** What one of the first two calls reads: every fact when the whole list
  *  fits, else the kinds its sections rest on. {facts, prompt, fits}. */
-function chosen(facts, which, make, repo, subject = null) {
-  const whole = make(facts.map(factLine).join("\n"), { repo, subject });
+function chosen(all, which, make, repo, subject = null, portability = null) {
+  // 0.6.0: the second call never reads what the code uses of its platform.
+  const facts = which === "second" ? all.filter((f) => !PORTABILITY_KINDS.has(f.kind)) : all;
+  const whole = make(facts.map(factLine).join("\n"), { repo, subject, portability });
   if (fits(whole)) return { facts, prompt: whole, fits: true };
   const part = facts.filter((f) => KINDS_FOR[which].includes(f.kind));
-  const prompt = make(part.map(factLine).join("\n"), { repo, subject });
+  const prompt = make(part.map(factLine).join("\n"), { repo, subject, portability });
   return { facts: part, prompt, fits: fits(prompt) };
 }
 
 /** The facts the first two calls would read, in order: what the screening
  *  must see before either is made (0.4.6). A call too big to be made reads
  *  nothing, so nothing of it is screened. */
-export function factsRead(facts, repo, subject = null) {
+export function factsRead(facts, repo, subject = null, portability = null) {
   const read = new Set();
   for (const [which, make] of [["first", firstPrompt], ["second", secondPrompt]]) {
-    const c = chosen(facts, which, make, repo, subject);
+    const c = chosen(facts, which, make, repo, subject, portability);
     if (c.fits) for (const f of c.facts) read.add(f);
   }
   return facts.filter((f) => read.has(f));
@@ -174,13 +194,13 @@ export function factsRead(facts, repo, subject = null) {
  * call reads what it would have read, less those, so which calls are made
  * is decided on every fact and never changes because some were held.
  */
-export async function judge({ facts, withheld = new Set(), repo, subject = null, ask = (prompt, o) => callModel(prompt, o), onStatus = () => {}, onCall = async () => {} } = {}) {
+export async function judge({ facts, withheld = new Set(), repo, subject = null, portability = null, ask = (prompt, o) => callModel(prompt, o), onStatus = () => {}, onCall = async () => {} } = {}) {
   const usage = { model_calls: 0, tokens_in: 0, tokens_out: 0 };
   const notMade = [];
   const promptFor = (which, make) => {
-    const c = chosen(facts, which, make, repo, subject);
+    const c = chosen(facts, which, make, repo, subject, portability);
     if (!c.fits || !withheld.size) return c.prompt;
-    return make(c.facts.filter((f) => !withheld.has(f.id)).map(factLine).join("\n"), { repo, subject });
+    return make(c.facts.filter((f) => !withheld.has(f.id)).map(factLine).join("\n"), { repo, subject, portability });
   };
   async function one(which, prompt, budget, sections) {
     const est = estimateTokens(prompt) + estimateTokens(SYSTEM);
@@ -203,7 +223,7 @@ export async function judge({ facts, withheld = new Set(), repo, subject = null,
     }
   }
   const draftsOf = (r) => (Array.isArray(r?.doc?.findings) ? r.doc.findings : []);
-  const answerOf = (r) => (r.failed ? { failed: r.failed } : { drafts: draftsOf(r), ...(Array.isArray(r?.doc?.skills) ? { skills: r.doc.skills } : {}), ...(subject && Array.isArray(r?.doc?.hooks) ? { hooks: r.doc.hooks } : {}) });
+  const answerOf = (r) => (r.failed ? { failed: r.failed } : { drafts: draftsOf(r), ...(Array.isArray(r?.doc?.skills) ? { skills: r.doc.skills } : {}), ...(subject && Array.isArray(r?.doc?.hooks) ? { hooks: r.doc.hooks } : {}), ...(Array.isArray(r?.doc?.portability) ? { portability: r.doc.portability } : {}) });
   // Each call's answer is handed on the moment it lands (onCall), so its
   // findings are checked and posted while the next call is still running.
   onStatus(stepLine(3, "Judging what it does and the systems it uses"));

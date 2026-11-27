@@ -1,0 +1,327 @@
+{
+  "$schema": "../platform.schema.json",
+  "id": "google",
+  "vendor": "Google",
+  "name": "Agent Development Kit and Gemini Enterprise Agent Platform",
+  "summary": "Google's open-source Agent Development Kit (ADK) together with Gemini Enterprise Agent Platform (formerly Vertex AI), whose Agent Runtime (formerly Vertex AI Agent Engine), Sessions, Memory Bank, Code Execution, evaluation, prompt management and Agent Identity work with ADK agents. The entry also covers the Google Cloud services these rely on, such as Cloud Trace, Secret Manager and IAM.",
+  "products": [
+    {
+      "name": "Agent Development Kit (ADK)",
+      "kind": "framework",
+      "license": "Apache-2.0",
+      "languages": ["python", "typescript", "go", "java", "kotlin"],
+      "docs": "https://adk.dev/"
+    },
+    {
+      "name": "Gemini Enterprise Agent Platform (formerly Vertex AI), including Agent Runtime (formerly Vertex AI Agent Engine), Sessions, Memory Bank and Code Execution",
+      "kind": "hosted-service",
+      "license": "proprietary",
+      "docs": "https://docs.cloud.google.com/gemini-enterprise-agent-platform/overview"
+    },
+    {
+      "name": "Google Gemini Enterprise Agent Platform SDK for Python (google-cloud-aiplatform, imported as vertexai; and google-cloud-agentplatform, imported as agentplatform)",
+      "kind": "framework",
+      "license": "Apache-2.0",
+      "languages": ["python"],
+      "docs": "https://github.com/googleapis/python-aiplatform"
+    },
+    {
+      "name": "Cloud Trace",
+      "kind": "hosted-service",
+      "license": "proprietary",
+      "docs": "https://docs.cloud.google.com/trace/docs"
+    },
+    {
+      "name": "Secret Manager",
+      "kind": "hosted-service",
+      "license": "proprietary",
+      "docs": "https://docs.cloud.google.com/secret-manager/docs"
+    },
+    {
+      "name": "Identity and Access Management (IAM)",
+      "kind": "hosted-service",
+      "license": "proprietary",
+      "docs": "https://docs.cloud.google.com/iam/docs"
+    }
+  ],
+  "documentation": [
+    "https://adk.dev/",
+    "https://google.github.io/adk-docs/",
+    "https://docs.cloud.google.com/",
+    "https://cloud.google.com/",
+    "https://github.com/google/",
+    "https://github.com/googleapis/"
+  ],
+  "checked": "2026-11-27",
+  "categories": {
+    "tracing": {
+      "rating": "standard",
+      "what": "ADK records agent runs, model calls and tool calls as OpenTelemetry spans that follow the OpenTelemetry semantic conventions for generative AI, and exports them over OTLP to any OpenTelemetry backend or to Cloud Trace. On Agent Runtime, the GOOGLE_CLOUD_AGENT_ENGINE_ENABLE_TELEMETRY environment variable turns on traces, logs and metrics for deployed ADK agents.",
+      "portability": {
+        "level": "open-standard",
+        "standards": ["OpenTelemetry", "OTLP", "OpenTelemetry semantic conventions for generative AI"],
+        "note": "Spans use the OpenTelemetry data model and generative AI semantic conventions, so any OTLP backend can receive them; the ADK docs name Cloud Trace, Jaeger, Grafana Tempo and Datadog. Cloud Trace is Google's own backend and is optional."
+      },
+      "evidence": [
+        { "kind": "import", "value": "from google.adk.telemetry.setup import maybe_set_otel_providers", "language": "python" },
+        { "kind": "call", "value": "get_gcp_exporters", "language": "python" },
+        { "kind": "cli", "value": "adk web --otel_to_cloud" },
+        { "kind": "env", "value": "OTEL_EXPORTER_OTLP_TRACES_ENDPOINT", "language": "any" },
+        { "kind": "env", "value": "GOOGLE_CLOUD_AGENT_ENGINE_ENABLE_TELEMETRY", "language": "any" },
+        { "kind": "env", "value": "OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT", "language": "any" }
+      ],
+      "sources": [
+        { "url": "https://adk.dev/observability/traces/", "title": "Traces - Agent Development Kit (ADK)" },
+        { "url": "https://docs.cloud.google.com/gemini-enterprise-agent-platform/scale/runtime/tracing", "title": "Set up tracing" },
+        { "url": "https://docs.cloud.google.com/gemini-enterprise-agent-platform/optimize/observability/overview", "title": "Observability overview" }
+      ],
+      "checked": "2026-11-27"
+    },
+    "evaluations": {
+      "rating": "native",
+      "what": "ADK evaluation scores an agent's tool-call trajectory and responses against test files (.test.json) or evalsets (.evalset.json), run with adk eval, the Eval tab in adk web, or AgentEvaluator.evaluate in pytest, and is documented for ADK Python. Gemini Enterprise Agent Platform also evaluates agents with rubric metrics through the GenAI Client in the Agent Platform SDK, which is labelled Preview.",
+      "portability": {
+        "level": "mixed",
+        "standards": [],
+        "note": "ADK's eval file formats and criteria are ADK's own and open source (Apache-2.0), and run locally. The Agent Platform evaluation service is a hosted Google Cloud service with its own API; the docs name no open evaluation standard."
+      },
+      "evidence": [
+        { "kind": "cli", "value": "adk eval" },
+        { "kind": "file", "value": ".evalset.json" },
+        { "kind": "file", "value": ".test.json" },
+        { "kind": "call", "value": "AgentEvaluator.evaluate", "language": "python" },
+        { "kind": "call", "value": "client.evals.run_inference", "language": "python" },
+        { "kind": "call", "value": "client.evals.create_evaluation_run", "language": "python" }
+      ],
+      "sources": [
+        { "url": "https://adk.dev/evaluate/", "title": "Why evaluate agents - Agent Development Kit (ADK)" },
+        { "url": "https://docs.cloud.google.com/gemini-enterprise-agent-platform/models/evaluation-agents-client", "title": "Evaluate generative AI agents using the GenAI Client in Agent Platform SDK" }
+      ],
+      "checked": "2026-11-27"
+    },
+    "prompt-management": {
+      "rating": "native",
+      "what": "Prompt management in the Agent Platform SDK stores prompts as versioned resources in a Google Cloud project, created and read with client.prompts methods such as create, create_version, get and list_versions. The page shows saved prompts used with a model directly and does not describe use from ADK agents.",
+      "portability": {
+        "level": "proprietary",
+        "standards": [],
+        "note": "Prompts are stored through Google's own API and data format (types.Prompt) in Gemini Enterprise Agent Platform; no open prompt format or export path is documented."
+      },
+      "evidence": [
+        { "kind": "call", "value": "client.prompts.create", "language": "python" },
+        { "kind": "call", "value": "client.prompts.create_version", "language": "python" },
+        { "kind": "call", "value": "client.prompts.get", "language": "python" },
+        { "kind": "call", "value": "types.Prompt", "language": "python" }
+      ],
+      "sources": [
+        { "url": "https://docs.cloud.google.com/gemini-enterprise-agent-platform/reference/models/prompt-classes", "title": "Prompt management" }
+      ],
+      "checked": "2026-11-27"
+    },
+    "keys-and-secrets": {
+      "rating": "native",
+      "what": "ADK reads model credentials from environment variables, usually from a local .env file: GOOGLE_API_KEY for the Gemini API, or GOOGLE_GENAI_USE_ENTERPRISE (or the older, equivalent GOOGLE_GENAI_USE_VERTEXAI) with application default credentials for Agent Platform. On Agent Runtime, an env_vars entry can reference a Secret Manager secret by ID and version, which the agent reads as an environment variable; the ADK docs recommend Secret Manager or Agent Identity over committed keys.",
+      "portability": {
+        "level": "mixed",
+        "standards": [],
+        "note": "Agent code reads plain environment variables, which work on any host. Keeping the values in Secret Manager and binding them at deploy time is specific to Google Cloud."
+      },
+      "evidence": [
+        { "kind": "env", "value": "GOOGLE_API_KEY", "language": "any" },
+        { "kind": "env", "value": "GOOGLE_GENAI_USE_ENTERPRISE", "language": "any" },
+        { "kind": "env", "value": "GOOGLE_GENAI_USE_VERTEXAI", "language": "any" },
+        { "kind": "cli", "value": "gcloud auth application-default login" },
+        { "kind": "file", "value": ".env" },
+        { "kind": "config", "value": "env_vars", "language": "python", "note": "On Agent Runtime, an env_vars entry of the form {\"secret\": SECRET_ID, \"version\": SECRET_VERSION_ID} maps a Secret Manager secret to an environment variable." }
+      ],
+      "sources": [
+        { "url": "https://adk.dev/get-started/google-cloud/", "title": "Connect to Google Cloud and Agent Platform" },
+        { "url": "https://adk.dev/agents/models/google-gemini/", "title": "Google Gemini models for ADK agents" },
+        { "url": "https://docs.cloud.google.com/gemini-enterprise-agent-platform/scale/runtime/deploy-an-agent", "title": "Deploy an agent" }
+      ],
+      "checked": "2026-11-27"
+    },
+    "memory-and-state": {
+      "rating": "native",
+      "what": "ADK keeps conversation state in a SessionService (InMemorySessionService, DatabaseSessionService for your own relational database, or VertexAiSessionService for managed storage on Google Cloud) and long-term memory in a MemoryService such as VertexAiMemoryBankService, backed by Agent Platform Memory Bank. DatabaseSessionService is documented for Python and Go only, and VertexAiSessionService is not listed for TypeScript.",
+      "portability": {
+        "level": "mixed",
+        "standards": [],
+        "note": "DatabaseSessionService and the in-memory services are open source and run anywhere, storing data in ADK's own layout. Agent Platform Sessions and Memory Bank are hosted Google Cloud services reached through Google's own API."
+      },
+      "evidence": [
+        { "kind": "import", "value": "from google.adk.sessions import DatabaseSessionService", "language": "python" },
+        { "kind": "call", "value": "VertexAiSessionService", "language": "any" },
+        { "kind": "call", "value": "VertexAiMemoryBankService", "language": "any" },
+        { "kind": "import", "value": "from google.adk.tools import load_memory", "language": "python" },
+        { "kind": "cli", "value": "--memory_service_uri" },
+        { "kind": "package", "value": "google-adk[gcp]", "language": "python" }
+      ],
+      "sources": [
+        { "url": "https://adk.dev/sessions/session/", "title": "Session: Tracking individual conversations" },
+        { "url": "https://adk.dev/sessions/memory/", "title": "Memory: Long-term knowledge with MemoryService" },
+        { "url": "https://docs.cloud.google.com/gemini-enterprise-agent-platform/scale/memory-bank", "title": "Agent Platform Memory Bank" }
+      ],
+      "checked": "2026-11-27"
+    },
+    "human-approval": {
+      "rating": "native",
+      "what": "ADK Tool Confirmation pauses a tool call for a person's yes or no or a structured answer (require_confirmation=True or tool_context.request_confirmation) and resumes on an adk_request_confirmation response; LongRunningFunctionTool and Resume (ResumabilityConfig) cover longer waits. Tool Confirmation is experimental in ADK TypeScript, Go and Kotlin, and its page lists DatabaseSessionService and VertexAiSessionService as not supported.",
+      "portability": {
+        "level": "open-source",
+        "standards": [],
+        "note": "The confirmation and resume mechanisms are ADK's own API and event format, open source under Apache-2.0 and runnable on any host; no open standard is involved."
+      },
+      "evidence": [
+        { "kind": "call", "value": "require_confirmation=True", "language": "python" },
+        { "kind": "call", "value": "tool_context.request_confirmation", "language": "python" },
+        { "kind": "call", "value": "adk_request_confirmation", "language": "any" },
+        { "kind": "import", "value": "from google.adk.tools import LongRunningFunctionTool", "language": "python" },
+        { "kind": "call", "value": "ResumabilityConfig", "language": "python" },
+        { "kind": "call", "value": "is_resumable=True", "language": "python" }
+      ],
+      "sources": [
+        { "url": "https://adk.dev/tools-custom/confirmation/", "title": "Action Confirmations for ADK Tools" },
+        { "url": "https://adk.dev/runtime/resume/", "title": "Resume stopped agents" },
+        { "url": "https://adk.dev/tools-custom/function-tools/", "title": "Function tools" }
+      ],
+      "checked": "2026-11-27"
+    },
+    "deployment": {
+      "rating": "native",
+      "what": "Agent Runtime on Gemini Enterprise Agent Platform (formerly Vertex AI Agent Engine) runs agents as a managed, autoscaling service, deployed with adk deploy agent_engine or client.runtimes.create and sized with settings such as min_instances and max_instances. ADK agents can also be containerized and deployed to Cloud Run (adk deploy cloud_run) or other container hosts.",
+      "portability": {
+        "level": "mixed",
+        "standards": ["OCI image"],
+        "note": "Agent Runtime is a Google-hosted service with its own deployment API. ADK agents also run as ordinary container images on Cloud Run, GKE or any container host."
+      },
+      "evidence": [
+        { "kind": "cli", "value": "adk deploy agent_engine" },
+        { "kind": "cli", "value": "adkgo deploy agentengine" },
+        { "kind": "call", "value": "client.runtimes.create", "language": "python" },
+        { "kind": "import", "value": "from vertexai.agent_engines import AdkApp", "language": "python", "note": "Shown in the Agent Platform SDK for Python README." },
+        { "kind": "import", "value": "from agentplatform.frameworks import AdkApp", "language": "python", "note": "Shown on the Agent Platform page Use Agent Identity with Agent Runtime." },
+        { "kind": "cli", "value": "adk deploy cloud_run", "note": "Shown on the ADK page Deploy to Cloud Run; a self-hosted container path rather than Agent Runtime." }
+      ],
+      "sources": [
+        { "url": "https://adk.dev/deploy/agent-runtime/deploy/", "title": "Standard deployment - Agent Development Kit (ADK)" },
+        { "url": "https://docs.cloud.google.com/gemini-enterprise-agent-platform/scale/runtime/deploy-an-agent", "title": "Deploy an agent" },
+        { "url": "https://github.com/google/adk-python", "title": "google/adk-python README" }
+      ],
+      "checked": "2026-11-27"
+    },
+    "sandboxes": {
+      "rating": "native",
+      "what": "Code Execution on Gemini Enterprise Agent Platform runs agent-written Python or JavaScript in managed sandboxes that keep their state for up to 14 days, used from ADK Python through AgentEngineSandboxCodeExecutor or directly through client.sandboxes. ADK's BuiltInCodeExecutor instead uses the Gemini API's own code execution tool.",
+      "portability": {
+        "level": "proprietary",
+        "standards": [],
+        "note": "Both are Google-hosted and reached through Google's own APIs; the docs name no open sandbox standard. Code Execution can be used without deploying the agent to Agent Runtime."
+      },
+      "evidence": [
+        { "kind": "import", "value": "from google.adk.code_executors.agent_engine_sandbox_code_executor import AgentEngineSandboxCodeExecutor", "language": "python" },
+        { "kind": "config", "value": "sandbox_resource_name", "language": "python" },
+        { "kind": "call", "value": "client.sandboxes.create", "language": "python" },
+        { "kind": "call", "value": "client.sandboxes.execute_code", "language": "python" },
+        { "kind": "package", "value": "google-cloud-agentplatform", "language": "python" },
+        { "kind": "import", "value": "from google.adk.code_executors import BuiltInCodeExecutor", "language": "python", "note": "Shown on the ADK page Gemini API Code Execution tool for ADK." }
+      ],
+      "sources": [
+        { "url": "https://docs.cloud.google.com/gemini-enterprise-agent-platform/scale/sandbox/code-execution-overview", "title": "Code Execution" },
+        { "url": "https://docs.cloud.google.com/gemini-enterprise-agent-platform/scale/sandbox/code-execution-quickstart", "title": "Code Execution quickstart" },
+        { "url": "https://adk.dev/integrations/code-exec-agent-runtime/", "title": "Agent Runtime Code Execution tool for ADK" }
+      ],
+      "checked": "2026-11-27"
+    },
+    "tool-connections": {
+      "rating": "standard",
+      "what": "ADK connects agents to MCP servers over stdio, Streamable HTTP or SSE with McpToolset (MCPToolset in TypeScript, mcptoolset in Go), in all five ADK languages, and can expose ADK tools as an MCP server with to_mcp_server. Agent Registry on Gemini Enterprise Agent Platform catalogs agents, tools and MCP servers.",
+      "portability": {
+        "level": "open-standard",
+        "standards": ["MCP"],
+        "note": "Tool connections use the Model Context Protocol, so the same MCP servers work with other MCP clients. ADK's function tools are ADK's own interface."
+      },
+      "evidence": [
+        { "kind": "import", "value": "from google.adk.tools.mcp_tool import McpToolset", "language": "python" },
+        { "kind": "call", "value": "StreamableHTTPConnectionParams", "language": "python" },
+        { "kind": "call", "value": "StdioConnectionParams", "language": "python" },
+        { "kind": "call", "value": "MCPToolset", "language": "typescript" },
+        { "kind": "import", "value": "google.golang.org/adk/v2/tool/mcptoolset", "language": "go" },
+        { "kind": "call", "value": "to_mcp_server" }
+      ],
+      "sources": [
+        { "url": "https://adk.dev/tools-custom/mcp-tools/", "title": "Model Context Protocol tools" },
+        { "url": "https://docs.cloud.google.com/gemini-enterprise-agent-platform/overview", "title": "Agent Platform overview" }
+      ],
+      "checked": "2026-11-27"
+    },
+    "agent-to-agent": {
+      "rating": "standard",
+      "what": "ADK exposes an agent as an A2A server with to_a2a or adk api_server --a2a and calls remote A2A agents with RemoteA2aAgent; Agent Runtime can host A2A agents through the A2aAgent template, which is labelled Preview. The ADK docs cover exposing agents in Python, Go and Java and consuming them in Python, Go, Java and Kotlin.",
+      "portability": {
+        "level": "open-standard",
+        "standards": ["A2A"],
+        "note": "Agents publish an A2A agent card at /.well-known/agent-card.json and use the A2A protocol, so they can call and be called by A2A agents on other platforms."
+      },
+      "evidence": [
+        { "kind": "import", "value": "from google.adk.a2a.utils.agent_to_a2a import to_a2a", "language": "python" },
+        { "kind": "import", "value": "from google.adk.agents.remote_a2a_agent import RemoteA2aAgent", "language": "python" },
+        { "kind": "cli", "value": "adk api_server --a2a" },
+        { "kind": "package", "value": "google-adk[a2a]", "language": "python" },
+        { "kind": "import", "value": "from vertexai.agent_engines.templates.a2a import A2aAgent", "language": "python" },
+        { "kind": "file", "value": "agent.json" }
+      ],
+      "sources": [
+        { "url": "https://adk.dev/a2a/quickstart-exposing/", "title": "Quickstart: Exposing a remote agent via A2A" },
+        { "url": "https://adk.dev/a2a/quickstart-consuming/", "title": "Quickstart: Consuming a remote agent via A2A" },
+        { "url": "https://docs.cloud.google.com/gemini-enterprise-agent-platform/build/runtime/create-an-a2a-agent", "title": "Create an Agent2Agent agent" }
+      ],
+      "checked": "2026-11-27"
+    },
+    "identity-and-access": {
+      "rating": "native",
+      "what": "Agent Identity gives each agent on Agent Runtime its own SPIFFE-based IAM principal with a Google-managed X.509 certificate, set with identity_type AGENT_IDENTITY; agents can instead run as a service account, and IAM roles control who may call or manage them. For calls to other systems, ADK tool authentication supports API keys, service accounts, OAuth 2.0 and OpenID Connect.",
+      "portability": {
+        "level": "mixed",
+        "standards": ["OAuth 2.0", "OpenID Connect", "SPIFFE", "X.509"],
+        "note": "Agent Identity and IAM are Google Cloud's own access model, though the identity follows the SPIFFE format and uses X.509 certificates. ADK tool authentication uses standard OAuth 2.0 and OpenID Connect flows."
+      },
+      "evidence": [
+        { "kind": "config", "value": "identity_type", "language": "python" },
+        { "kind": "call", "value": "types.IdentityType.AGENT_IDENTITY", "language": "python" },
+        { "kind": "file", "value": ".agent_engine_config.json", "note": "ADK users can set {\"identity_type\": \"AGENT_IDENTITY\"} in this file." },
+        { "kind": "call", "value": "AuthCredential", "language": "python" },
+        { "kind": "call", "value": "OAuth2Auth", "language": "python" },
+        { "kind": "call", "value": "OpenIdConnectWithConfig", "language": "python" }
+      ],
+      "sources": [
+        { "url": "https://docs.cloud.google.com/gemini-enterprise-agent-platform/scale/runtime/agent-identity", "title": "Use Agent Identity with Agent Runtime" },
+        { "url": "https://adk.dev/tools-custom/authentication/", "title": "Authentication - Agent Development Kit (ADK)" }
+      ],
+      "checked": "2026-11-27"
+    },
+    "packaging": {
+      "rating": "standard",
+      "what": "ADK Skills load folders in the Agent Skills format (skills/<name>/SKILL.md with name and description frontmatter) through SkillToolset in Python, TypeScript, Go and Kotlin, experimental in TypeScript and Kotlin. ADK's own formats are the agent project folder (agent.py exposing root_agent, with .env) and Agent Config (root_agent.yaml); the docs do not mention Agent Plugins.",
+      "portability": {
+        "level": "mixed",
+        "standards": ["Agent Skills"],
+        "note": "Skills follow the Agent Skills specification, which the ADK docs link, so they can move to other tools that read SKILL.md. The project layout and Agent Config YAML are ADK's own open-source formats."
+      },
+      "evidence": [
+        { "kind": "call", "value": "SkillToolset", "language": "any" },
+        { "kind": "import", "value": "from google.adk.skills import load_skill_from_dir", "language": "python" },
+        { "kind": "file", "value": "SKILL.md" },
+        { "kind": "file", "value": "root_agent.yaml" },
+        { "kind": "cli", "value": "adk create --type=config" },
+        { "kind": "import", "value": "from google.adk.tools import skill_toolset", "language": "python" }
+      ],
+      "sources": [
+        { "url": "https://adk.dev/skills/", "title": "Skills for ADK agents" },
+        { "url": "https://adk.dev/agents/config/", "title": "Build agents with Agent Config" },
+        { "url": "https://adk.dev/get-started/python/", "title": "Python Quickstart for ADK" }
+      ],
+      "checked": "2026-11-27"
+    }
+  }
+}

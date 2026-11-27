@@ -14,7 +14,10 @@
 // scripts' findings (report.mjs); have AgentMesh's screening pass every
 // line the model would read, and fail closed (screen.mjs, 0.4.6); ask the model for the judgments in up to
 // three calls (judge.mjs) and keep only those that check (checks.mjs); write
-// section 1 last; write the report. Every finding passes the one emitter
+// section 1 last; write the report. 0.6.0: from AgentMesh's agent platforms
+// database (platforms.mjs), what it is built on, how tied it is in each
+// category it uses and what moving it elsewhere would take, by rule, with
+// what each outside service is really needed for from the first call. Every finding passes the one emitter
 // (emit.mjs). Nothing from the repository is ever run, and the unpacked copy
 // is removed when the job ends.
 //
@@ -44,14 +47,15 @@ import { collectFacts, factLine } from "./collect.mjs";
 import { addUvLock, checkWithOsv, lineOfComponent } from "./deps.mjs";
 import { createEmitter, liveUpdates } from "./emit.mjs";
 import { factsRead, glanceLine, judge } from "./judge.mjs";
-import { checkDescription, checkDrafts, checkGlance, checkHookWords, checkSkillNames, foldIntoHooks, withoutCounts } from "./checks.mjs";
+import { checkDescription, checkDrafts, checkGlance, checkHookWords, checkPortability, checkSkillNames, foldIntoHooks, withoutCounts } from "./checks.mjs";
 import { buildReport, markdownOf, notJudged, replyOf, screeningFindings, scriptFindings, SCREENING_SOURCE } from "./report.mjs";
 import { screenLines } from "./screen.mjs";
 import { stepLine } from "./lists.mjs";
 import { admit, askerOf } from "./limits.mjs";
 import { loadedSkills, pickPlugin, pluginFacts, scopeOf, shapeOf, subjectOf } from "./plugin-facts.mjs";
+import { loadDatabase, platformUses, readingOf } from "./platforms.mjs";
 
-export const VERSION = "0.5.8";
+export const VERSION = "0.6.0";
 const DAY_MS = 24 * 60 * 60 * 1000;
 
 /**
@@ -123,7 +127,8 @@ export async function inspect({ text, workDir, env = process.env, fetchImpl = fe
       const loaded = picked.plugin ? loadedSkills(files, picked.plugin) : null;
       if (loaded) for (const f of facts) if (f.kind === "skill" && !f.data?.for_coding_assistants && !loaded.has(f.data?.folder)) f.data.not_loaded = true;
     }
-    onStart({ owner, name, url, sha, checked: archive.commit === sha, date: facts.find((f) => f.kind === "commit")?.data?.date ?? null, version: VERSION, started_at: startedAt, ...(subject ? { subject } : {}) });
+    const about = { owner, name, url, sha, checked: archive.commit === sha, date: facts.find((f) => f.kind === "commit")?.data?.date ?? null, version: VERSION, started_at: startedAt, ...(subject ? { subject } : {}) };
+    onStart(about);
 
     // The dependency list, and OSV.
     const made = makeSbom({ files, read, repository: url, commit: sha, tool: { name: "inspect", version: VERSION } });
@@ -138,6 +143,27 @@ export async function inspect({ text, workDir, env = process.env, fetchImpl = fe
     }
     for (const n of osv.not_checked) add("not-checked", lineOfComponent(n.component, read), { purl: n.component.purl ?? n.component["bom-ref"], why: n.why });
     for (const id of osv.unread) add("vulnerability-unread", { source: { system: "vulnerability-database", call: "GET /v1/vulns/{id}", field: id } }, { id });
+
+    // 0.6.0: how tied it is to its platform, from the agent platforms
+    // database: each place the code shows a platform, a feature of it or an
+    // open standard is a fact at its file and line, and the reading is made
+    // from those alone.
+    const db = loadDatabase();
+    const frameworkFacts = facts.filter((f) => f.kind === "framework");
+    const found = platformUses({ files, read, db, frameworks: frameworkFacts.map((f) => ({ ...f.data, file: f.file, line: f.line })) });
+    for (const [id, list] of found.present) for (const x of list) {
+      x.fact = x.how === "framework" ? frameworkFacts.find((f) => f.file === x.file && f.line === x.line)?.id : add("platform", { file: x.file, line: x.line }, { platform: id, shown_by: x.how, value: x.value }).id;
+    }
+    for (const u of found.uses) u.fact = add("platform-use", { file: u.file, line: u.line }, { platform: u.platform, category: u.category, evidence: u.kind, value: u.value }).id;
+    for (const s of found.standards) s.fact = add("standard-use", { file: s.file, line: s.line }, { standard: s.standard, category: s.category, evidence: s.kind, value: s.value }).id;
+    const portability = readingOf({
+      found, db, frameworks: frameworkFacts.map((f) => f.data), subject,
+      ownCode: facts.find((f) => f.kind === "own-code")?.data ?? null,
+      languages: facts.filter((f) => f.kind === "language").map((f) => f.data),
+      pluginParts: subject ? { hooks: facts.filter((f) => f.kind === "hook"), commands: facts.filter((f) => f.kind === "slash-command" || f.kind === "sub-agent") } : {},
+    });
+    about.portability = portability;
+    onStart(about);
     for (const f of facts) if (!byId.has(f.id)) byId.set(f.id, f);
 
     const ctx = contextFor({ files, read });
@@ -169,7 +195,7 @@ export async function inspect({ text, workDir, env = process.env, fetchImpl = fe
     let toRead = [], first = null;
     if (textFiles) {
       onStatus(stepLine(3, "Having the code's text screened before the model reads it"));
-      toRead = factsRead(facts, repoWords, subject);
+      toRead = factsRead(facts, repoWords, subject, portability);
       first = await screened(toRead.map(factLine));
       if (!first.ok) for (const [sections, words] of ALL_CALLS) for (const f of notJudged(sections, first.why, words, SCREENING_SOURCE)) emitter.emitFinding(f);
       else {
@@ -222,6 +248,17 @@ export async function inspect({ text, workDir, env = process.env, fetchImpl = fe
           }
           held.push(...s.held);
         }
+        // 0.6.0: what each outside service is really needed for, on its row
+        // of the reading, and the working copy posted again with it.
+        if (r.portability) {
+          const p = checkPortability(r.portability, portability, byId);
+          for (const row of portability.uses) {
+            const k = p.kept.get(row.category);
+            if (k) Object.assign(row, { needs: k.needs, choices: k.choices || null, needs_based_on: k.based_on });
+          }
+          held.push(...p.held);
+          if (p.kept.size) onStart(about);
+        }
         // 0.5.0: each hook's plain words go on the scripts' risk for it.
         if (r.hooks) {
           const h = checkHookWords(r.hooks, byId);
@@ -233,7 +270,7 @@ export async function inspect({ text, workDir, env = process.env, fetchImpl = fe
           held.push(...h.held);
         }
       };
-      const j = await judge({ facts, withheld, repo: repoWords, subject, ...(ask ? { ask } : {}), onStatus, onCall });
+      const j = await judge({ facts, withheld, repo: repoWords, subject, portability, ...(ask ? { ask } : {}), onStatus, onCall });
       // The last call reads the findings, and a script's finding can carry the
       // code's own words, so they are screened too, and only those that pass
       // are read.
@@ -257,7 +294,7 @@ export async function inspect({ text, workDir, env = process.env, fetchImpl = fe
     const commitFact = facts.find((f) => f.kind === "commit");
     const report = deepScrub(buildReport({
       owner, name, url, sha, checked: archive.commit === sha, date: commitFact?.data?.date ?? null, version: VERSION, now: now().toISOString(),
-      findings: emitter.findings(), held, facts, bom, osv, usage, subject,
+      findings: emitter.findings(), held, facts, bom, osv, usage, subject, portability,
     }));
     onStatus(stepLine(5, "Finishing the report"));
     return { code: 0, reply: deepScrub(replyOf(report, { notes })), report, bom };
