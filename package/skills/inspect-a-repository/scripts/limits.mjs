@@ -17,6 +17,7 @@
 //   needs: node >= 22. Reads and writes one file in the records folder.
 //   import { admit, askerOf, PER_ASKER, PER_DAY, COUNTS_FILE } from "./limits.mjs"
 import { createHash } from "node:crypto";
+import { randomBytes } from "node:crypto";
 import { existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 
@@ -51,12 +52,26 @@ export function askerOf(jobDir) {
  * the counts taken, or {ok: false, refusal} in words. A folder or file that
  * cannot be read or written refuses too: a cap that cannot count is no cap.
  */
-export function admit({ recordsDir, asker, now = new Date(), perAsker = PER_ASKER, perDay = PER_DAY } = {}) {
+/** The file calls admit makes, handed in by a test. */
+const FS = { existsSync, mkdirSync, readFileSync, renameSync, writeFileSync };
+/** A stale handle on the mounted bucket (ESTALE, -116): the object changed
+ *  under the host's cache. Tried again after a short wait, at most twice (0.5.2). */
+const stale = (e) => e?.code === "ESTALE" || e?.errno === -116 || /\b-116\b|ESTALE/.test(String(e?.message ?? ""));
+function again(fn, tries = 3) {
+  for (let i = 1; ; i += 1) {
+    try { return fn(); } catch (e) {
+      if (!stale(e) || i >= tries) throw e;
+      Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 300 * i);
+    }
+  }
+}
+
+export function admit({ recordsDir, asker, now = new Date(), perAsker = PER_ASKER, perDay = PER_DAY, fs = FS } = {}) {
   const file = join(recordsDir, COUNTS_FILE);
   let c = { day: day(now), total: 0, by: {} };
   try {
-    if (existsSync(file)) {
-      const read = JSON.parse(readFileSync(file, "utf8"));
+    if (fs.existsSync(file)) {
+      const read = JSON.parse(again(() => fs.readFileSync(file, "utf8")));
       if (read?.day === day(now)) c = { day: read.day, total: Number(read.total) || 0, by: read.by && typeof read.by === "object" ? read.by : {} };
     }
   } catch (e) {
@@ -69,10 +84,13 @@ export function admit({ recordsDir, asker, now = new Date(), perAsker = PER_ASKE
   c.total += 1;
   c.by[who] = mine + 1;
   try {
-    mkdirSync(recordsDir, { recursive: true });
-    const tmp = `${file}.${process.pid}.tmp`;
-    writeFileSync(tmp, `${JSON.stringify(c)}\n`);
-    renameSync(tmp, file);
+    fs.mkdirSync(recordsDir, { recursive: true });
+    // 0.5.2: a name no other job writes. Job containers share a process id,
+    // so a name made of it alone was one object for jobs started together,
+    // and the mounted bucket answered ESTALE to all but one.
+    const tmp = `${file}.${process.pid}.${randomBytes(6).toString("hex")}.tmp`;
+    again(() => fs.writeFileSync(tmp, `${JSON.stringify(c)}\n`));
+    again(() => fs.renameSync(tmp, file));
   } catch (e) {
     return { ok: false, refusal: `Inspect cannot keep today's count of its inspections here (${String(e?.message ?? e)}), so it did not start one; try again later.` };
   }
