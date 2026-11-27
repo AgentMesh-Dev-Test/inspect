@@ -677,3 +677,17 @@ test("[F5.A7] What it does lists a plugin's commands and sub-agents, measured; S
     for (const re of [...NEVER, /\.mjs\b/, /\.json\b/, /\.sh\b/, /CLAUDE_PLUGIN_ROOT/, /docs-header-value/]) assert.doesNotMatch(words, re, `${name}: ${re}`);
   }
 });
+
+test("[F5.A7] the model's judgment of a service an MCP server reaches opens on that server's card, never a card of its own; the line saying what a plugin is gives way to the description (0.5.3)", async () => {
+  const r = await pluginReport();
+  const mcpFinding = r.findings.find((f) => f.kind === "mcp-server" && f.title === "Docs");
+  const sys = { id: "S5-090", section: 5, kind: "system", title: "Acme docs service", says: "It can read and write the team's documents.", by: "model", based_on: [...mcpFinding.based_on], evidence: mcpFinding.evidence, detail: { system: "Acme docs", need: "optional", supply: "Your Acme account" } };
+  const desc = { id: "S1-090", section: 1, kind: "description", title: "What it is", says: "Helper is Acme's plugin for Claude Code and Cursor.", by: "model", based_on: ["F0001"], evidence: mcpFinding.evidence };
+  const p = drawn({ ...r, findings: [desc, ...r.findings, sys] });
+  assert.equal(shownPanel(p.app).querySelector("p.kind-line"), null, "the description says what it is; the line does not say it again");
+  tabNamed(p.app, "Systems it uses").click();
+  const cards = shownPanel(p.app).querySelectorAll("li.row");
+  assert.ok(!cards.some((c) => /Acme docs service/.test(c.textContent)), "no second card");
+  rowOf(p.app, mcpFinding.id).querySelector(".toggle").click();
+  assert.match(rowOf(p.app, mcpFinding.id).textContent, /What it reaches.*It can read and write the team's documents\./s);
+});

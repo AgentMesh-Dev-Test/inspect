@@ -190,6 +190,9 @@ export function checkHookWords(entries, byId) {
     if (kept.has(id)) continue;
     if (!does || does.split(/(?<=[.!?])\s+/).filter(Boolean).length > 1 || does.length > 240) { hold("its words are not one plain sentence"); continue; }
     if (/^(?:use|invoke|run this|call|trigger)\b|\b(?:use (?:this|it) (?:when|for)|route by)\b/i.test(does)) { hold("its words are written for a model, not a person"); continue; }
+    // 0.5.3: words that only say what starts it, or that it runs a script, say what its row says.
+    const when = trim(fact.data?.trigger).replace(/^(?:when|before|after|each time|on)\s+/i, "").toLowerCase();
+    if ((when && does.toLowerCase().includes(when)) || /^runs?\b/i.test(does)) { hold("its words say what starts it or that it runs, which its row says"); continue; }
     const p = notPlain(does);
     if (p) { hold(plainWhy(p)); continue; }
     const v = VERDICT.exec(unquoted(does));

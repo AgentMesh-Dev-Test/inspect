@@ -51,7 +51,7 @@ import { stepLine } from "./lists.mjs";
 import { admit, askerOf } from "./limits.mjs";
 import { loadedSkills, pickPlugin, pluginFacts, scopeOf, shapeOf, subjectOf } from "./plugin-facts.mjs";
 
-export const VERSION = "0.5.2";
+export const VERSION = "0.5.3";
 const DAY_MS = 24 * 60 * 60 * 1000;
 
 /**
@@ -198,7 +198,8 @@ export async function inspect({ text, workDir, env = process.env, fetchImpl = fe
         if (r.skills) {
           const s = checkSkillNames(r.skills, byId);
           for (const f of emitter.findings()) {
-            const id = f.kind === "skill" ? f.based_on?.find((x) => s.kept.has(x)) : null;
+            // 0.5.3: the finding that only counts the skills (detail.own) is none of them.
+            const id = f.kind === "skill" && !(f.detail && "own" in f.detail) ? f.based_on?.find((x) => s.kept.has(x)) : null;
             if (!id) continue;
             const { title, does } = s.kept.get(id);
             f.detail = { ...(f.detail ?? {}), plain: true, does, ...(f.title !== title ? { title_by_scripts: f.title } : {}) };
