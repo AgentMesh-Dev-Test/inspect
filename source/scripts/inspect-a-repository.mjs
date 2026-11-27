@@ -51,7 +51,7 @@ import { stepLine } from "./lists.mjs";
 import { admit, askerOf } from "./limits.mjs";
 import { loadedSkills, pickPlugin, pluginFacts, scopeOf, shapeOf, subjectOf } from "./plugin-facts.mjs";
 
-export const VERSION = "0.5.7";
+export const VERSION = "0.5.8";
 const DAY_MS = 24 * 60 * 60 * 1000;
 
 /**

@@ -705,3 +705,15 @@ test("[F5.A8] a hook's row says what else its code does, once; that finding has 
   assert.match(opened, /Also in its code.*Usage reports sent to Acme\. It sends the skills used and an install id\./s);
   assert.match(opened, /To make it safe.*Turn usage reports off\./s);
 });
+
+test("[F5.A8] for a plugin, Risks lists risks only: a system the Overview's few findings point to is not listed again there (0.5.8)", async () => {
+  const r = await pluginReport();
+  const sys = { id: "S5-091", section: 5, kind: "system", title: "Acme usage reporting service", says: "It receives usage reports.", by: "model", based_on: ["F0001"], evidence: [{ file: "README.md", line: 1 }], detail: { system: "Acme", need: "optional" } };
+  const glance = { id: "S1-091", section: 1, kind: "glance", title: sys.title, says: "Usage reports go to Acme.", by: "model", based_on: ["F0001"], repeats: sys.id, evidence: sys.evidence };
+  const p = drawn({ ...r, findings: [glance, ...r.findings, sys] });
+  tabNamed(p.app, "Risks").click();
+  assert.ok(!readable(shownPanel(p.app)).includes("Acme usage reporting service"));
+  const agent = drawn(report());
+  tabNamed(agent.app, "Risks").click();
+  assert.ok(readable(shownPanel(agent.app)).includes("Which tools run without an OK"), "an agent's Risks are as before");
+});

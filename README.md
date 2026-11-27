@@ -2,6 +2,6 @@
 
 Inspect reads an outside agent's code, or a plugin or skills for a person's coding tool (Claude Code, Cursor, Codex and others), in a public GitHub repository, at its newest commit or one you name, without running any of it, and hands back an inspection report on what it does, what it touches and how safe it is. The package AgentMesh installs is under package/; what it was built from, with its spec, record, tests and code, is under source/.
 
-Version 0.5.7. Since 0.5.0 it reads plugin and skill repositories as well as agents: what each adds to the person's tools, what each hook runs on their machine, what each MCP server reaches, and their risks.
+Version 0.5.8. Since 0.5.0 it reads plugin and skill repositories as well as agents: what each adds to the person's tools, what each hook runs on their machine, what each MCP server reaches, and their risks.
 
 Since 0.4.6 every line its model reads has passed AgentMesh's screening first, and a screening that cannot answer means a report with no judgment, never one made on text that was not screened.
