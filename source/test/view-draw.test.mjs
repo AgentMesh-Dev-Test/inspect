@@ -216,7 +216,7 @@ const SHAPE_OF = Object.fromEntries([...script.matchAll(/\n    (critical|high|me
 
 // ── 0.3.0: a report shaped like the design-agent one, with what the new tabs draw ──
 const SKILL_TEXT = [
-  "# Brand lint", "", "Checks a draft against the brand pack.", "", "## Steps", "",
+  "# Brand lint", "<!-- Sourced from the brand skill: an editor's note, never drawn (0.5.6) -->", "", "Checks a draft against the brand pack.", "", "## Steps", "",
   "- Read the [brand pack](https://example.com/brand) first", "- Run the check on the draft", "",
   "```bash", "node lint.mjs <file>", "```", "", "<b>bold?</b> ![logo](https://example.com/logo.png) and **strong** words",
 ].join("\n");
