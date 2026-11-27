@@ -1187,7 +1187,10 @@ button { font: inherit; color: inherit; cursor: pointer; }
   const keeps = (f, level) => level === "all" || (level === "unrated" ? !levelOf(f) : levelOf(f) === level);
   function riskRows(d) {
     const firsts = new Set(ofSection(d, 1).map((f) => f.repeats).filter(Boolean));
-    return ordered(d.findings.filter((f) => f.section !== 1 && (levelOf(f) || (f.section === RISKS && f.kind !== "not-judged" && !SAFELY.includes(f.kind)) || firsts.has(f.id))));
+    // 0.5.8: for a plugin, Risks holds risks only; a system or a tool the
+    // Overview's few findings point to is said on its own tab, not again here.
+    const pointed = (f) => firsts.has(f.id) && (!pluginOf(d) || f.section === RISKS);
+    return ordered(d.findings.filter((f) => f.section !== 1 && (levelOf(f) || (f.section === RISKS && f.kind !== "not-judged" && !SAFELY.includes(f.kind)) || pointed(f))));
   }
   function drawRisks(d, pending) {
     const risks = riskRows(d);
