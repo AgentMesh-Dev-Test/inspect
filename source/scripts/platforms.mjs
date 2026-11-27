@@ -86,6 +86,54 @@ export function isAgentFile(f, { forCommands = false } = {}) {
   return true;
 }
 
+/** A file's lines with its comments and docstrings blanked, so a name a
+ *  comment mentions is never read as code: Python's # and triple-quoted
+ *  strings, JavaScript's, C#'s, Go's and Java's line and block comments, and
+ *  the # comments of YAML, TOML, shell and settings files. The lines stay
+ *  where they were, so every line number holds. */
+export function codeOnly(file, lines) {
+  const e = ext(file);
+  if (PY.has(e)) {
+    const out = [];
+    let quote = null;
+    for (const l of lines) {
+      let s = ""; let i = 0;
+      while (i < l.length) {
+        if (quote) { const j = l.indexOf(quote, i); if (j < 0) { i = l.length; break; } i = j + 3; quote = null; continue; }
+        const m = /("""|'''|#)/.exec(l.slice(i));
+        if (!m) { s += l.slice(i); break; }
+        s += l.slice(i, i + m.index);
+        if (m[1] === "#") break;
+        quote = m[1]; i += m.index + 3;
+      }
+      out.push(s);
+    }
+    return out;
+  }
+  if (JS.has(e) || [".cs", ".go", ".java", ".kt"].includes(e)) {
+    const out = [];
+    let block = false;
+    for (const l of lines) {
+      let s = ""; let i = 0;
+      while (i < l.length) {
+        if (block) { const j = l.indexOf("*/", i); if (j < 0) { i = l.length; break; } i = j + 2; block = false; continue; }
+        const m = /(\/\*|\/\/)/.exec(l.slice(i));
+        if (!m) { s += l.slice(i); break; }
+        // Inside a string, such as an address, it is no comment.
+        const before = l.slice(0, i + m.index);
+        if (/^(?:[^"'`]|"[^"]*"|'[^']*'|`[^`]*`)*["'`][^"'`]*$/.test(before)) { s += l.slice(i, i + m.index + 2); i += m.index + 2; continue; }
+        s += l.slice(i, i + m.index);
+        if (m[1] === "//") break;
+        block = true; i += m.index + 2;
+      }
+      out.push(s);
+    }
+    return out;
+  }
+  if (CONFIG_EXT.has(e) || isEnvFile(file) || isDocker(file) || [".sh", ".bash", ".zsh"].includes(e) || /^(Makefile|makefile|justfile|Procfile)$/.test(base(file))) return lines.map((l) => (/^\s*#/.test(l) ? "" : l));
+  return lines;
+}
+
 /** Every import of one Python file: [{module, names, line, star}]. A
  *  parenthesised list over several lines is one import. */
 export function pythonImports(text) {
@@ -260,9 +308,23 @@ const STANDARD_ROOT = (root, lang) => STANDARD_LIBRARIES.some((s) => (lang === "
  *  (its Agent class), which show no one feature. */
 const EVERY_AGENT = new Set(["Agent", "Runner", "Crew", "Task", "Mastra", "Tool", "tool", "function_tool"]);
 
+/** The classes and functions a cell's words name: in backquotes, or a word
+ *  with two capitals or more (InMemorySaver), never a common word. */
+export function namedIn(what) {
+  const t = String(what ?? "");
+  const out = new Set();
+  for (const m of t.matchAll(/`([A-Za-z_][\w]*)(?:\(\))?`/g)) out.add(m[1]);
+  for (const m of t.matchAll(/\b([A-Z][a-z0-9]+(?:[A-Z][A-Za-z0-9]*)+)\b/g)) out.add(m[1]);
+  return [...out].filter((n) => !EVERY_AGENT.has(n) && n.length > 3);
+}
+
 /** The database's file names that more than one platform could hold, or any
  *  repository might, which never show a platform on their own. */
 const ANY_REPOSITORY = new Set([".env", ".env.example", "Dockerfile", "SKILL.md", "uv.lock", "plugin.json", "mcp.json", ".mcp.json", "agent.json", "evals/", ".test.json", "config/agents.yaml", ".claude/skills/"]);
+
+/** A file of the database that shows a platform on its own: a config file
+ *  only that platform names, never a Markdown file a coding assistant reads. */
+const ANCHOR_FILE = /\.(jsonc?|ya?ml|toml)$/;
 
 function fileMatches(value, files) {
   const v = trim(value);
@@ -314,7 +376,7 @@ export function platformUses({ files, read, db, frameworks = [] }) {
   const textCache = new Map();
   const text = (f) => { if (!textCache.has(f)) { const t = read(f); textCache.set(f, typeof t === "string" && t.length <= 2_000_000 ? t : null); } return textCache.get(f); };
   const lineCache = new Map();
-  const linesIn = (f) => { if (!lineCache.has(f)) lineCache.set(f, text(f) === null ? null : linesOf(text(f))); return lineCache.get(f); };
+  const linesIn = (f) => { if (!lineCache.has(f)) lineCache.set(f, text(f) === null ? null : codeOnly(f, linesOf(text(f)))); return lineCache.get(f); };
   const code = agent.filter((f) => ALL_CODE.has(ext(f)));
   const config = agent.filter((f) => isConfig(f));
   const importCache = new Map();
@@ -362,7 +424,7 @@ export function platformUses({ files, read, db, frameworks = [] }) {
       }
     }
     // A file only this platform names.
-    for (const [value, owners] of dbFiles) if (owners.size === 1 && owners.has(p.id) && !ANY_REPOSITORY.has(value)) for (const at of fileMatches(value, agent).slice(0, 1)) note(p.id, "file", value, at);
+    for (const [value, owners] of dbFiles) if (owners.size === 1 && owners.has(p.id) && !ANY_REPOSITORY.has(value) && ANCHOR_FILE.test(value)) for (const at of fileMatches(value, agent).slice(0, 1)) note(p.id, "file", value, at);
     // Its frameworks, by the names the dependencies give them.
     const products = p.products.map((x) => x.name.toLowerCase().replace(/[^a-z0-9]/g, ""));
     for (const fw of frameworks) {
@@ -380,7 +442,7 @@ export function platformUses({ files, read, db, frameworks = [] }) {
       const cell = p.categories[category];
       if (!cell || cell.rating === "none" || cell.rating === "unknown") continue;
       for (const e of cell.evidence ?? []) {
-        const places = matchEvidence(e, { p, deps, agent, code, config, commandFiles, imports, linesIn, langOf, local, importsPlatform });
+        const places = matchEvidence(e, { p, cell, deps, agent, code, config, commandFiles, imports, linesIn, langOf, local, importsPlatform });
         for (const at of places.slice(0, PLACES)) uses.push({ platform: p.id, category, kind: e.kind, value: e.value, language: e.language ?? "any", file: at.file, line: at.line, files: new Set(places.map((x) => x.file)).size });
       }
     }
@@ -408,7 +470,7 @@ export function platformUses({ files, read, db, frameworks = [] }) {
 
 /** Where one evidence item is found: [{file, line}]. */
 function matchEvidence(e, ctx) {
-  const { p, deps, agent, code, config, commandFiles, imports, linesIn, langOf, local, importsPlatform } = ctx;
+  const { p, cell, deps, agent, code, config, commandFiles, imports, linesIn, langOf, local, importsPlatform } = ctx;
   const lang = e.language ?? "any";
   const inLang = (f) => lang === "any" || (LANG_EXT[lang] ?? new Set()).has(ext(f));
   const out = [];
@@ -428,7 +490,11 @@ function matchEvidence(e, ctx) {
     }
     case "import": {
       const ev = evidenceImport(e.value, lang);
-      const wanted = ev.names.length > 1 ? ev.names.filter((n) => !EVERY_AGENT.has(n)) : ev.names;
+      // The names the line gives, and the classes and functions the cell's
+      // own words name beside them (InMemorySessionService beside
+      // DatabaseSessionService), from the same module only.
+      const said = namedIn(cell?.what);
+      const wanted = [...new Set([...(ev.names.length > 1 ? ev.names.filter((n) => !EVERY_AGENT.has(n)) : ev.names), ...(ev.names.length ? said : [])])];
       for (const f of code) {
         const fl = langOf(f);
         if ((ev.lang === "python") !== (fl === "python") || (ev.lang === "js" && fl !== "js") || (ev.lang === "csharp" && fl !== "csharp") || (ev.lang === "go" && fl !== "go")) continue;
@@ -487,6 +553,9 @@ export const LEVEL_ORDER = ["proprietary", "mixed", "open-source", "open-standar
 /** How a destination's cell stands against what the agent uses, the worst first. */
 export const RATING_ORDER = ["none", "partial", "unknown", "native", "standard"];
 const KIND_WEIGHT = { import: 0, call: 0, package: 1, config: 2, env: 3, file: 4, cli: 5 };
+/** Categories that are the runtime itself, a format or a protocol, never an
+ *  outside service the agent reaches: they are not swapped one by one. */
+export const NOT_A_SERVICE = ["deployment", "packaging", "tool-connections", "agent-to-agent"];
 /** The categories that are about a plugin or skills at all (0.6.0): what they
  *  are packaged as and the MCP servers they connect to. The rest are about an
  *  agent that runs on its own. */
@@ -508,7 +577,12 @@ const filesWord = (n) => (n === 1 ? "one file" : `${n.toLocaleString("en-US")} f
 export function readingOf({ found, db, frameworks = [], ownCode = null, languages = [], subject = null, pluginParts = {} }) {
   const byId = new Map(db.platforms.map((p) => [p.id, p]));
   const title = (key) => db.categories.find((c) => c.key === key)?.title ?? key;
-  const mainLanguage = languages.filter((l) => ["Python", "TypeScript", "JavaScript", "C#", "Go", "Java"].includes(l.language))[0]?.language ?? null;
+  // The agent's language: that of the files that import the platform it is
+  // built on, else the language most of its files are in.
+  const langOfFile = (f) => (PY.has(ext(f)) ? "Python" : [".ts", ".tsx", ".mts", ".cts"].includes(ext(f)) ? "TypeScript" : JS.has(ext(f)) ? "JavaScript" : ext(f) === ".cs" ? "C#" : ext(f) === ".go" ? "Go" : ext(f) === ".java" ? "Java" : null);
+  const anchored = [...found.present.values()].flat().filter((x) => x.how === "import").map((x) => langOfFile(x.file)).filter(Boolean);
+  const most = (xs) => [...xs.reduce((m, x) => m.set(x, (m.get(x) ?? 0) + 1), new Map())].sort((a, b) => b[1] - a[1])[0]?.[0] ?? null;
+  const mainLanguage = most(anchored) ?? languages.filter((l) => ["Python", "TypeScript", "JavaScript", "C#", "Go", "Java"].includes(l.language))[0]?.language ?? null;
   const family = (l) => { const t = String(l ?? "").toLowerCase(); return t === "typescript" || t === "javascript" ? "javascript" : t === "c#" ? "csharp" : t; };
 
   // Built on: the platforms the code shows, the one with the most categories first.
@@ -530,7 +604,7 @@ export function readingOf({ found, db, frameworks = [], ownCode = null, language
       const codeFiles = new Set(places.filter((u) => u.kind === "import" || u.kind === "call" || (u.kind === "config" && ALL_CODE.has(ext(u.file)))).map((u) => u.file));
       sources.push({
         platform: b.id, vendor: byId.get(b.id).vendor, name: byId.get(b.id).name, rating: cell.rating, level: cell.portability.level, standards: cell.portability.standards ?? [],
-        what: firstSentence(cell.what), note: cell.portability.note,
+        what: trim(cell.what), note: cell.portability.note,
         reach: { code_files: codeFiles.size, settings_only: codeFiles.size === 0 && places.every((u) => ["env", "config", "file", "cli", "package"].includes(u.kind)) },
         evidence: places.map((u) => ({ file: u.file, line: u.line, kind: u.kind, value: u.value, ...(u.fact ? { fact: u.fact } : {}) })),
       });
@@ -545,7 +619,7 @@ export function readingOf({ found, db, frameworks = [], ownCode = null, language
     const tied = sources.find((s) => s.level === level);
     // An outside dependency: a vendor's own or partly open feature, which
     // moves only by being swapped. The runtime itself is said under Moving it.
-    const outside = (level === "proprietary" || level === "mixed") && key !== "deployment";
+    const outside = (level === "proprietary" || level === "mixed") && !NOT_A_SERVICE.includes(key);
     const reach = tied.reach;
     const swap = level === "open-standard" ? "standard" : level === "open-source" ? "library" : key === "deployment" ? "runtime" : reach.settings_only ? "settings" : reach.code_files <= 1 ? "one-file" : "files";
     rows.push({ category: key, title: title(key), level, outside, swap, code_files: reach.code_files, sources, needs: null, choices: null });
@@ -572,7 +646,7 @@ export function readingOf({ found, db, frameworks = [], ownCode = null, language
     const fits = !mainLanguage || subject ? true : langs.has(family(mainLanguage));
     const cells = rows.filter((r) => !r.plugin_part).map((r) => {
       const cell = p.categories[r.category];
-      return { category: r.category, title: r.title, rating: cell.rating, what: cell.rating === "none" || cell.rating === "unknown" ? firstSentence(cell.what) : firstSentence(cell.what), level: cell.portability.level, outside: r.outside, swap: r.swap };
+      return { category: r.category, title: r.title, rating: cell.rating, what: trim(cell.what), level: cell.portability.level, outside: r.outside, swap: r.swap };
     });
     const count = (rating) => cells.filter((c) => c.rating === rating).length;
     const deployment = p.categories.deployment;
@@ -580,7 +654,7 @@ export function readingOf({ found, db, frameworks = [], ownCode = null, language
       platform: p.id, name: p.name, vendor: p.vendor, also_used: on.has(p.id), language_fits: fits,
       runtime: subject ? null : {
         frameworks: names, own_files: ownCode?.files ?? null, own_lines: ownCode?.lines ?? null, language: mainLanguage,
-        deployment: { rating: deployment.rating, what: firstSentence(deployment.what) },
+        deployment: { rating: deployment.rating, what: trim(deployment.what) },
       },
       swaps: cells.filter((c) => c.outside).map((c) => c.category),
       loses: cells.filter((c) => c.rating === "none").map((c) => c.category),
