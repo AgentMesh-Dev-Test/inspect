@@ -8,6 +8,9 @@
 // names no commit (0.4.0) asks for the newest one: commit is null, and
 // Inspect reads the newest commit on the repository's default branch.
 //
+// A `plugin:` line (0.5.0) names the plugin to inspect in a repository that
+// holds several; without it the first is inspected and the rest are listed.
+//
 // Two asks are noticed and never acted on: to run, install, build or test the
 // code (Inspect only reads it), and for a verdict or a fit with a plan
 // (Inspect gives neither). The reply says so, and the inspection goes ahead.
@@ -20,6 +23,8 @@ const trim = (s) => String(s ?? "").trim();
 export const OWNER = /^[A-Za-z0-9](?:[A-Za-z0-9-]{0,38})$/;
 export const NAME = /^[A-Za-z0-9._-]{1,100}$/;
 export const DIGEST = /^[0-9a-fA-F]{7,40}$/;
+/** A plugin's name as a manifest or a marketplace writes it (0.5.0). */
+export const PLUGIN = /^[A-Za-z0-9][A-Za-z0-9 ._:@/-]{0,99}$/;
 
 /** What the reply says when it is asked to run the code. */
 export const RUN_REFUSAL = "Inspect only reads the code: it runs, installs, builds and tests nothing from the repository, so it did not do that part.";
@@ -68,5 +73,8 @@ export function readRequest(text) {
   if (commit && !DIGEST.test(commit)) {
     return { ok: false, refusal: `Inspect reads one commit, named by its digest (7 to 40 hexadecimal characters), and ${JSON.stringify(commit)} is not one. A branch or a tag can move, so give the commit's digest, or leave the commit out to inspect the newest one; nothing was inspected.` };
   }
-  return { ok: true, owner, name, commit: commit ? commit.toLowerCase() : null, asks_to_run: RUN_ASK.test(words), asks_verdict: VERDICT_ASK.test(words) };
+  // 0.5.0: a repository with several plugins has one inspected in full, the
+  // one a plugin: line names, else the first (plugin-facts.mjs pickPlugin).
+  const plugin = lineValue(words, "plugin").replace(/^["'`]|["'`]$/g, "").trim();
+  return { ok: true, owner, name, commit: commit ? commit.toLowerCase() : null, plugin: plugin && PLUGIN.test(plugin) ? plugin : null, asks_to_run: RUN_ASK.test(words), asks_verdict: VERDICT_ASK.test(words) };
 }

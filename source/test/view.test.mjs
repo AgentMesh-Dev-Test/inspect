@@ -91,7 +91,7 @@ test("[F5.R9] the descriptor's words for a person: a name, one short sentence, a
 
 test("[F5.R9] the repository is declared as an address (kind url), so the Next app links the job's subject to it, and its words ask for the address only; the commit is a name; the summary names no commit", () => {
   const inputs = d.offerings[0].inputs;
-  assert.deepEqual(inputs.map((i) => [i.name, i.kind]), [["repository", "url"], ["commit", "identifier"]]);
+  assert.deepEqual(inputs.map((i) => [i.name, i.kind]), [["repository", "url"], ["commit", "identifier"], ["plugin", "identifier"]]);
   assert.equal(inputs[0].about, "The public GitHub repository's address, such as https://github.com/langchain-ai/design-agent.");
   assert.doesNotMatch(inputs[0].about, /owner and name/, "the form asks for the address only");
   assert.doesNotMatch(d.summary, /at one commit/, "the commit is optional, so the summary names none");

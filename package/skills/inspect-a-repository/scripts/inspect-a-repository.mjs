@@ -4,7 +4,10 @@
 // The steps, in order: read the request (request.mjs); read GitHub's records
 // of the repository and the commit, its recent commits and the archive at the
 // commit (github.mjs, GET only); unpack the archive inside the job's own work
-// folder, writing no link (untar.mjs); read every fact by rule (collect.mjs,
+// folder, writing no link (untar.mjs); tell whether it holds an agent, a
+// plugin or skills alone, and of several plugins keep only the files of the
+// one named, else the first, with what each plugin adds as facts
+// (plugin-facts.mjs, 0.5.0); read every fact by rule (collect.mjs,
 // over the reverse engineer's and the security reviewer's carried scripts and
 // Inspect's own patterns); make the CycloneDX list (the reverse engineer's
 // sbom.mjs, with uv.lock added by deps.mjs) and ask OSV about it; write the
@@ -41,13 +44,14 @@ import { collectFacts, factLine } from "./collect.mjs";
 import { addUvLock, checkWithOsv, lineOfComponent } from "./deps.mjs";
 import { createEmitter, liveUpdates } from "./emit.mjs";
 import { factsRead, glanceLine, judge } from "./judge.mjs";
-import { checkDescription, checkDrafts, checkGlance, checkSkillNames } from "./checks.mjs";
+import { checkDescription, checkDrafts, checkGlance, checkHookWords, checkSkillNames } from "./checks.mjs";
 import { buildReport, markdownOf, notJudged, replyOf, screeningFindings, scriptFindings, SCREENING_SOURCE } from "./report.mjs";
 import { screenLines } from "./screen.mjs";
 import { stepLine } from "./lists.mjs";
 import { admit, askerOf } from "./limits.mjs";
+import { loadedSkills, pickPlugin, pluginFacts, scopeOf, shapeOf, subjectOf } from "./plugin-facts.mjs";
 
-export const VERSION = "0.4.6";
+export const VERSION = "0.5.0";
 const DAY_MS = 24 * 60 * 60 * 1000;
 
 /**
@@ -96,15 +100,30 @@ export async function inspect({ text, workDir, env = process.env, fetchImpl = fe
     const sha = String(commitRec.sha ?? "").toLowerCase();
     const archive = untar(bytes, dir);
     if (!archive.ok) return { code: 1, reply: [...notes, archive.said].join("\n\n") };
-    const files = walk(dir);
+    const all = walk(dir);
     const read = (f) => readInside(dir, f);
     const bytesOf = (f) => { try { return readFileSync(join(dir, f)); } catch { return null; } };
+    // 0.5.0: an agent, a plugin (or several) or skills alone; of several
+    // plugins, the one the request names, else the first, and only its files.
+    const shape = shapeOf(all, read);
+    const picked = pickPlugin(shape, req.plugin, `${owner}/${name}`);
+    if (!picked.ok) return { code: 0, reply: [...notes, picked.refusal].join("\n\n") };
+    if (picked.note) notes.push(picked.note);
+    const files = scopeOf(all, shape, picked.plugin);
+    const subject = subjectOf(shape, picked, files, all);
     const textFiles = files.filter((f) => { const b = bytesOf(f); return b && looksLikeText(b); }).length;
     const url = String(repository.html_url ?? `https://github.com/${owner}/${name}`);
     onStatus(stepLine(2, "Reading the code"));
     const collected = collectFacts({ files, read, bytesOf, archive, github: { repository, commit: commitRec, recent, newest_on: newestOn }, owner, name, sha });
     const { facts, byId, add } = collected;
-    onStart({ owner, name, url, sha, checked: archive.commit === sha, date: facts.find((f) => f.kind === "commit")?.data?.date ?? null, version: VERSION, started_at: startedAt });
+    if (subject) {
+      // What a plugin adds to the person's tools, and what its scripts touch.
+      for (const f of pluginFacts(files, read, shape, picked.plugin, all)) add(f.kind, { file: f.file, line: f.line }, f.data);
+      // A SKILL.md the plugin's tools never load (one inside another skill) is no skill of it.
+      const loaded = picked.plugin ? loadedSkills(files, picked.plugin) : null;
+      if (loaded) for (const f of facts) if (f.kind === "skill" && !f.data?.for_coding_assistants && !loaded.has(f.data?.folder)) f.data.not_loaded = true;
+    }
+    onStart({ owner, name, url, sha, checked: archive.commit === sha, date: facts.find((f) => f.kind === "commit")?.data?.date ?? null, version: VERSION, started_at: startedAt, ...(subject ? { subject } : {}) });
 
     // The dependency list, and OSV.
     const made = makeSbom({ files, read, repository: url, commit: sha, tool: { name: "inspect", version: VERSION } });
@@ -124,7 +143,7 @@ export async function inspect({ text, workDir, env = process.env, fetchImpl = fe
     const ctx = contextFor({ files, read });
     const emitter = createEmitter({ onFinding });
     onStatus(stepLine(2, "Writing what the code shows"));
-    for (const f of scriptFindings({ facts, ctx, owner, name, sha, repoUrl: url, osv, bomGaps: gaps, files, textFiles, skillTexts: collected.skillTexts, cased: collected.cased })) emitter.emitFinding(f);
+    for (const f of scriptFindings({ facts, ctx, owner, name, sha, repoUrl: url, osv, bomGaps: gaps, files, textFiles, skillTexts: collected.skillTexts, cased: collected.cased, subject, read })) emitter.emitFinding(f);
 
     // The judgments.
     const held = [];
@@ -150,7 +169,7 @@ export async function inspect({ text, workDir, env = process.env, fetchImpl = fe
     let toRead = [], first = null;
     if (textFiles) {
       onStatus(stepLine(3, "Having the code's text screened before the model reads it"));
-      toRead = factsRead(facts, repoWords);
+      toRead = factsRead(facts, repoWords, subject);
       first = await screened(toRead.map(factLine));
       if (!first.ok) for (const [sections, words] of ALL_CALLS) for (const f of notJudged(sections, first.why, words, SCREENING_SOURCE)) emitter.emitFinding(f);
       else {
@@ -188,8 +207,18 @@ export async function inspect({ text, workDir, env = process.env, fetchImpl = fe
           }
           held.push(...s.held);
         }
+        // 0.5.0: each hook's plain words go on the scripts' risk for it.
+        if (r.hooks) {
+          const h = checkHookWords(r.hooks, byId);
+          for (const f of emitter.findings()) {
+            if (!f.detail?.hook) continue;
+            const does = [...new Set((f.based_on ?? []).map((id) => h.kept.get(id)).filter(Boolean))];
+            if (does.length) f.detail = { ...f.detail, hook: { ...f.detail.hook, does } };
+          }
+          held.push(...h.held);
+        }
       };
-      const j = await judge({ facts, withheld, repo: repoWords, ...(ask ? { ask } : {}), onStatus, onCall });
+      const j = await judge({ facts, withheld, repo: repoWords, subject, ...(ask ? { ask } : {}), onStatus, onCall });
       // The last call reads the findings, and a script's finding can carry the
       // code's own words, so they are screened too, and only those that pass
       // are read.
@@ -213,7 +242,7 @@ export async function inspect({ text, workDir, env = process.env, fetchImpl = fe
     const commitFact = facts.find((f) => f.kind === "commit");
     const report = deepScrub(buildReport({
       owner, name, url, sha, checked: archive.commit === sha, date: commitFact?.data?.date ?? null, version: VERSION, now: now().toISOString(),
-      findings: emitter.findings(), held, facts, bom, osv, usage,
+      findings: emitter.findings(), held, facts, bom, osv, usage, subject,
     }));
     onStatus(stepLine(5, "Finishing the report"));
     return { code: 0, reply: deepScrub(replyOf(report, { notes })), report, bom };

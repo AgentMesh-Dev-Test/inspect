@@ -1,8 +1,8 @@
 {
   "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
   "name": "inspect",
-  "version": "0.4.6",
-  "description": "Inspect reads an outside agent's code in a public GitHub repository, at its newest commit or one you name, without running any of it, and hands back an inspection report on what the agent does and how safe it is: a list of findings in eight sections, each citing a file and line at the commit. Scripts read the code by rule; a model writes only the judgments, and each judgment cites the lines it rests on. It gives no verdict on bringing the agent in and judges no fit with anyone's plan.",
+  "version": "0.5.0",
+  "description": "Inspect reads an outside agent's code, or a plugin or skill for a person's coding tool (Claude Code, Cursor, Codex and others), in a public GitHub repository, at its newest commit or one you name, without running any of it, and hands back an inspection report on what it does and how safe it is: a list of findings in eight sections, each citing a file and line at the commit. For a plugin it says what it adds to the person's tools, what each hook runs on their machine, what each MCP server reaches, and its risks. Scripts read the code by rule; a model writes only the judgments, and each judgment cites the lines it rests on. It gives no verdict on bringing it in and judges no fit with anyone's plan.",
   "author": {
     "name": "Agent Builder"
   },
@@ -26,6 +26,7 @@
               "scripts/untar.mjs",
               "scripts/collect.mjs",
               "scripts/agent-facts.mjs",
+              "scripts/plugin-facts.mjs",
               "scripts/deps.mjs",
               "scripts/judge.mjs",
               "scripts/checks.mjs",
@@ -48,7 +49,7 @@
       },
       "descriptor": {
         "path": "agent-descriptor.json",
-        "sha256": "9f12fe1804ed58b2066bdab2bb04afe31c3779d87c7c9f592c48c35e0b3db6f9"
+        "sha256": "a74ce4ca5962baed947534a95ebfe37d29c35f1ffa0a90fc6ba9ee5a31f1f587"
       },
       "runtime_requirements": {
         "path": "agent-runtime-requirements.json",

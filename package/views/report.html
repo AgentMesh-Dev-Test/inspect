@@ -31,6 +31,12 @@
   - Tests and gaps (0.4.0): a document, every item's words shown, under
     What Inspect couldn't tell, Gaps in the tests and Tests; each test with
     how many tests, of what kind, and whether they run offline.
+  A plugin or skills (0.5.0): what it is and the tools it installs into,
+  under the description; tiles for its commands, sub-agents, hooks and MCP
+  servers; the plugins of a repository that holds several, this one marked;
+  its commands and sub-agents measured on What it does, with Read it; its MCP
+  servers first on Systems it uses, each running on the machine or
+  connecting out, with what the person supplies; its hooks first on Risks.
   While the job runs (0.4.0), one status under the tabs says which step it is
   on, and every field and list still to come shows a loading placeholder,
   never a blank value.
@@ -157,6 +163,14 @@ button { font: inherit; color: inherit; cursor: pointer; }
 .size-tiles .ico { grid-area: i; color: var(--muted); }
 .size-tiles .v { grid-area: v; font-size: 1.45em; font-weight: 700; line-height: 1.15; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
 .size-tiles .k { grid-area: k; color: var(--muted); font-size: 0.94em; line-height: 1.35; }
+/* 0.5.0: what a plugin is, under the description; the plugins of a repository that holds several */
+.kind-line { margin: calc(var(--s) * -1.25) 0 calc(var(--s) * 2.25); font-size: 1em; }
+.kind-word { font-weight: 650; }
+.plugin-list { list-style: none; margin: 0; padding: 0; border-top: 1px solid var(--border); max-width: 80ch; }
+.plugin-list li { border-bottom: 1px solid var(--border); padding: calc(var(--s) * 1.1) calc(var(--s) * 0.5); display: grid; gap: 0.2em; }
+.pl-name { font-weight: 650; display: flex; flex-wrap: wrap; gap: 0.3em 0.75em; align-items: center; overflow-wrap: anywhere; }
+.pl-this { display: inline-flex; align-items: center; gap: 0.35em; font-size: 0.94em; font-weight: 600; color: var(--accent); }
+.pl-what { color: var(--muted); font-size: 0.94em; overflow-wrap: anywhere; }
 .facts { display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: calc(var(--s) * 0.6) calc(var(--s) * 2.5); margin: 0; align-items: baseline; }
 .facts dt { color: var(--muted); }
 .facts dd { margin: 0; min-width: 0; overflow-wrap: anywhere; }
@@ -439,6 +453,10 @@ button { font: inherit; color: inherit; cursor: pointer; }
     low: '<circle cx="8" cy="8" r="5.6" fill="none" stroke="currentColor" stroke-width="2.4"/>',
     none: '<rect x="2" y="6.8" width="12" height="2.4" fill="currentColor"/>',
     unrated: '<rect x="2.6" y="2.6" width="10.8" height="10.8" rx="1" fill="none" stroke="currentColor" stroke-width="1.8"/>',
+    // 0.5.0: an MCP server is a program on the person's machine (a screen) or
+    // a service it connects to (a globe).
+    machine: '<rect x="1.8" y="2.6" width="12.4" height="8.4" rx="1.2" fill="none" stroke="currentColor" stroke-width="1.8"/><rect x="5" y="12.4" width="6" height="2" rx="0.6" fill="currentColor"/>',
+    remote: '<circle cx="8" cy="8" r="5.9" fill="none" stroke="currentColor" stroke-width="1.7"/><path d="M2.4 8h11.2M8 2.2c1.6 1.6 2.4 3.6 2.4 5.8s-.8 4.2-2.4 5.8C6.4 12.2 5.6 10.2 5.6 8S6.4 3.8 8 2.2z" fill="none" stroke="currentColor" stroke-width="1.3"/>',
   };
   const shape = (level, size = 13) => svgOf(SHAPES[level] ?? SHAPES.unrated, { size, cls: "" });
   // The page's own icons, drawn in lines on a 24-unit grid (0.4.0).
@@ -450,6 +468,11 @@ button { font: inherit; color: inherit; cursor: pointer; }
     systems: '<path d="M9 2.8v4.4M15 2.8v4.4M5.8 7.2h12.4v3.6a6.2 6.2 0 0 1-12.4 0z"/><path d="M12 17v4.2"/>',
     key: '<circle cx="7.6" cy="15.6" r="4.2"/><path d="m10.6 12.6 8.6-8.6M16.4 6.8l2.8 2.8M13.8 9.4l2 2"/>',
     globe: '<circle cx="12" cy="12" r="8.8"/><path d="M3.2 12h17.6M12 3.2c2.6 2.6 3.8 5.6 3.8 8.8s-1.2 6.2-3.8 8.8c-2.6-2.6-3.8-5.6-3.8-8.8s1.2-6.2 3.8-8.8z"/>',
+    // 0.5.0: what a plugin adds to a person's tools.
+    commands: '<rect x="3" y="4.5" width="18" height="15" rx="2"/><path d="m7.5 10 3 2.5-3 2.5M12.5 15.5h4"/>',
+    agents: '<circle cx="9" cy="8.5" r="3.2"/><path d="M3.6 19.6c.6-3.3 2.8-5.1 5.4-5.1s4.8 1.8 5.4 5.1"/><circle cx="16.6" cy="9.6" r="2.6"/><path d="M15.8 14.7c2.4.1 4.1 1.8 4.7 4.9"/>',
+    hooks: '<path d="M13.2 2.8 5.6 13.2h5.6L10 21.2l8.4-10.6h-5.6z"/>',
+    rules: '<path d="M9 6.5h11M9 12h11M9 17.5h11"/><path d="m3.6 6.5 1.2 1.2 2-2.2M3.6 12l1.2 1.2 2-2.2M3.6 17.5l1.2 1.2 2-2.2"/>',
   };
   const icon = (name, size = 20) => svgOf(ICONS[name], { size, box: 24, stroke: true });
   // The marks of the systems an agent most often uses, from Simple Icons
@@ -714,10 +737,12 @@ button { font: inherit; color: inherit; cursor: pointer; }
   function measureOf(f) {
     const z = f.detail?.size;
     if (!z) return f.detail?.instructions_only ? "Instructions only" : null;
+    // 0.5.0: a plugin's skill without scripts is measured by its instructions.
+    if (!z.scripts && z.instruction_lines) return `${num(z.instruction_lines)} ${z.instruction_lines === 1 ? "line" : "lines"} of instructions${z.tests?.cases ? " · tested" : ""}`;
     if (!z.scripts) return `Instructions only${z.tests?.cases ? " · tested" : ""}`;
     return [plural(z.scripts, "script"), `${num(z.lines)} lines`, z.tests?.cases ? "tested" : null].filter(Boolean).join(" · ");
   }
-  const linesOf = (f) => Number(f.detail?.size?.lines ?? f.detail?.lines) || 0;
+  const linesOf = (f) => Number(f.detail?.size?.lines ?? f.detail?.lines) || (f.detail?.size && !f.detail.size.scripts ? Number(f.detail.size.instruction_lines) || 0 : 0);
   // A thin bar for lines of code, so sizes compare at a glance; the words
   // beside it carry the same, so it is hidden from assistive technology.
   function bar(lines, most) {
@@ -736,32 +761,66 @@ button { font: inherit; color: inherit; cursor: pointer; }
     const own = skills.filter((s) => !s.detail.for_coding_assistants);
     const tiles = [];
     if (own.length) tiles.push({ icon: "skills", v: num(own.length), k: own.length === 1 ? "Skill" : "Skills" });
+    // 0.5.0: what a plugin adds to a person's tools, each its own tile.
+    if (pluginOf(d)) {
+      const count = (kind) => d.findings.filter((f) => f.kind === kind).length;
+      const hooks = d.findings.reduce((n, f) => n + (Number(f.detail?.hook?.hooks) || (f.detail?.hook ? 1 : 0)), 0);
+      for (const [kind, icon, one, many] of [["slash-command", "commands", "Command", "Commands"], ["sub-agent", "agents", "Sub-agent", "Sub-agents"], ["rule", "rules", "Rule", "Rules"]]) {
+        const n = count(kind);
+        if (n) tiles.push({ icon, v: num(n), k: n === 1 ? one : many });
+      }
+      if (hooks) tiles.push({ icon: "hooks", v: num(hooks), k: hooks === 1 ? "Hook that runs on its own" : "Hooks that run on their own" });
+      const mcp = count("mcp-server");
+      if (mcp) tiles.push({ icon: "systems", v: num(mcp), k: mcp === 1 ? "MCP server" : "MCP servers" });
+    }
     const scripts = own.reduce((n, s) => n + (Number(s.detail.size?.scripts) || 0), 0);
-    const lines = own.reduce((n, s) => n + linesOf(s), 0);
+    const lines = own.reduce((n, s) => n + (Number(s.detail.size?.lines ?? s.detail.lines) || 0), 0);
     if (scripts) tiles.push({ icon: "scripts", v: num(scripts), k: `${scripts === 1 ? "Script" : "Scripts"} in its skills, ${num(lines)} lines` });
     const code = d.findings.find((f) => f.kind === "code" && f.by === "script");
-    if (code?.detail?.lines) tiles.push({ icon: "code", v: num(code.detail.lines), k: "Lines of its own code" });
+    if (code?.detail?.lines) tiles.push({ icon: "code", v: num(code.detail.lines), k: pluginOf(d) ? "Lines of code outside its skills" : "Lines of its own code" });
     const tests = d.findings.find((f) => f.section === 8 && f.kind === "test" && f.by === "script" && f.detail?.cases !== undefined);
     if (tests) {
       const live = Number(tests.detail.live) || 0; const cases = Number(tests.detail.cases) || 0;
       tiles.push({ icon: "tests", v: num(cases), k: `${cases === 1 ? "Test" : "Tests"}${cases ? (live ? `, ${num(cases - live)} run offline` : ", all run offline") : ""}` });
     }
-    const systems = systemsOf(d);
+    // A plugin's MCP servers are counted above; the systems its code reaches
+    // need nothing of the person to install it, so it shows no "required" tile.
+    const systems = systemsOf(d).filter((x) => !x.mcp);
+    if (pluginOf(d)) return tiles;
     if (pending.has(5)) tiles.push({ icon: "systems", v: null, k: "Systems required" });
     else if (systems.length) tiles.push({ icon: "systems", v: `${num(systems.filter((x) => x.need === "required").length)} of ${num(systems.length)}`, k: "Systems required" });
     return tiles;
+  }
+  // 0.5.0: the report's subject when it is a plugin or skills alone; an agent's report has none.
+  const pluginOf = (d) => (d?.subject && (d.subject.kind === "plugin" || d.subject.kind === "skills") ? d.subject : null);
+  const andList = (xs) => (xs.length < 2 ? xs.join("") : `${xs.slice(0, -1).join(", ")} and ${xs.at(-1)}`);
+  const toolList = (s) => andList((s?.tools ?? []).map((t) => (t === "Agent Plugins" ? "tools that read Agent Plugins" : t)));
+  // What it is, in a line: "Plugin for Claude Code and Cursor, made by Vercel".
+  function whatItIs(s) {
+    if (s.kind === "skills") return `${s.skills === 1 ? "A skill" : "Skills"} on ${s.skills === 1 ? "its" : "their"} own, for Claude Code, Cursor, Codex and other tools that read skills`;
+    return `Plugin for ${toolList(s) || "coding tools"}${s.author ? `, made by ${one(s.author)}` : ""}`;
   }
   function drawOverview(d, pending) {
     const out = [];
     const desc = d.findings.find((f) => f.section === 1 && f.kind === "description");
     if (desc?.says) out.push(el("p", { class: "lead" }, prose(desc.says)));
     else if (pending.has(1)) out.push(skLead());
+    // 0.5.0: what a plugin is and where it runs, under the description.
+    const s = pluginOf(d);
+    if (s) out.push(el("p", { class: "kind-line" }, el("span", { class: "kind-word", text: whatItIs(s) }), s.also_for?.length ? el("span", { class: "muted", text: ` · also packaged for ${andList(s.also_for)}` }) : null));
     const tiles = sizeOf(d, pending);
     // 0.4.4: until the first of the scripts' facts arrive, all five tiles
     // are placeholders, never one wide tile alone.
     const known = tiles.some((t) => t.v !== null);
     if (tiles.length && (known || !(pending.has(2) || pending.has(3)))) out.push(el("ul", { class: "size-tiles" }, tiles.map((t) => el("li", {}, icon(t.icon, 22), el("span", { class: "v" }, t.v === null ? skInline() : t.v), el("span", { class: "k", text: t.k }), t.v === null ? el("span", { class: "sr", text: SOON }) : null))));
     else if (pending.has(2) || pending.has(3)) out.push(el("ul", { class: "size-tiles", role: "img", "aria-label": SOON }, ["skills", "scripts", "code", "tests", "systems"].map((k) => el("li", {}, icon(k, 22), el("span", { class: "v" }, skInline()), el("span", { class: "k" }, sk("70%"))))));
+    // 0.5.0: a repository of several plugins lists them all, the one this
+    // report is marked in words and a shape; another is inspected by name.
+    if (s?.plugins?.length) {
+      out.push(el("h2", { text: "Plugins in this repository" }), el("ul", { class: "plugin-list" }, s.plugins.map((p) => el("li", { class: p.inspected ? "this" : "" },
+        el("span", { class: "pl-name" }, one(p.name), p.inspected ? el("span", { class: "pl-this" }, svgOf(SHAPES.required, { size: 12, cls: "" }), "This report") : null),
+        el("span", { class: "pl-what" }, [p.elsewhere ? "Kept in another repository" : plural(Number(p.skills) || 0, "skill"), one(p.description)].filter(Boolean).join(" · "))))));
+    }
     const rows = inspected(d);
     if (rows.length) out.push(el("h2", { text: "What was inspected" }), el("dl", { class: "facts" }, rows.flatMap(([k, v]) => [el("dt", { text: k }), el("dd", {}, v)])));
     else if (pending.has(2)) out.push(el("h2", { text: "What was inspected" }), el("dl", { class: "facts" }, ["Commit", "License", "Built on", "Kept up"].flatMap((k) => [el("dt", { text: k }), el("dd", {}, skInline(), el("span", { class: "sr", text: SOON }))])));
@@ -795,7 +854,8 @@ button { font: inherit; color: inherit; cursor: pointer; }
       if (value) rows.push(["Kept up", value]);
     }
     // No publisher row (0.4.0): the host's header names the repository and
-    // its owner, and the description says who it is from.
+    // its owner, and the description says who it is from. A plugin's maker
+    // is in its line under the description (0.5.0).
     return rows;
   }
   async function copyLink(url) {
@@ -868,6 +928,14 @@ button { font: inherit; color: inherit; cursor: pointer; }
     return out;
   }
   const pairsOf = (pairs) => el("dl", {}, pairs.flatMap(([k, v]) => [el("dt", { text: k }), el("dd", {}, v)]));
+  // A hook, opened: what starts it and what it runs, then what each of its
+  // programs does in the model's plain words, how to make it safe, its category.
+  function hookDetail(d, f) {
+    const does = Array.isArray(f.detail?.hook?.does) ? f.detail.hook.does.map(one).filter(Boolean) : [];
+    const out = plainDetail(d, f);
+    if (does.length) out.splice(1, 0, pairsOf([["What it does", does.length === 1 ? prose(does[0]) : el("ul", { class: "advisories" }, does.map((w) => el("li", {}, prose(w))))]]));
+    return out;
+  }
   // A list of findings in the order drawn: the highest level first, else the
   // report's order.
   const ordered = (list) => list.map((f, i) => [f, i]).sort((a, b) => rank(a[0]) - rank(b[0]) || a[1] - b[1]).map(([f]) => f);
@@ -906,6 +974,16 @@ button { font: inherit; color: inherit; cursor: pointer; }
     const most = Math.max(0, ...mine.map(linesOf));
     const bySize = (list) => list.map((f, i) => [f, i]).sort((a, b) => linesOf(b[0]) - linesOf(a[0]) || (Number(b[0].detail?.size?.instructions_chars) || 0) - (Number(a[0].detail?.size?.instructions_chars) || 0) || a[1] - b[1]).map(([f]) => f);
     if (mine.length) out.push(el("h3", { text: "Skills" }), drawRows(d, bySize(mine), { measured: true, per: (f) => ({ side: measureOf(f) ? el("span", { class: "measure" }, el("span", { class: "words", text: measureOf(f) }), bar(linesOf(f), most)) : null }), detail: (f) => skillDetail(d, f) }));
+    // 0.5.0: what else a plugin adds to the person's tools, each measured
+    // by its instructions' length, the longest first; opened, its words, the
+    // tools it works in and may use, and its instructions in the dialog.
+    for (const [kind, heading] of [["slash-command", "Commands"], ["sub-agent", "Sub-agents"], ["rule", "Rules"]]) {
+      const list = three.filter((f) => f.kind === kind);
+      if (!list.length) continue;
+      const longest = Math.max(0, ...list.map(partLines));
+      const sorted = list.map((f, i) => [f, i]).sort((a, b) => partLines(b[0]) - partLines(a[0]) || a[1] - b[1]).map(([f]) => f);
+      out.push(el("h3", { text: heading }), drawRows(d, sorted, { measured: true, per: (f) => ({ side: el("span", { class: "measure" }, el("span", { class: "words", text: partMeasure(f) }), bar(partLines(f), longest)) }), detail: (f) => partDetail(d, f) }));
+    }
     const code = three.find((f) => f.kind === "code" && f.by === "script");
     const covers = three.find((f) => f.kind === "code" && f.by === "model");
     if (code || covers) {
@@ -913,7 +991,7 @@ button { font: inherit; color: inherit; cursor: pointer; }
       const row = covers ?? code;
       out.push(el("h3", { text: "Its own code" }), drawRows(d, [row], { measured: true, per: () => ({ title: covers ? displayTitle(covers) : "Code outside its skills", side: lines ? el("span", { class: "measure" }, el("span", { class: "words", text: `${num(lines)} lines` }), bar(lines, Math.max(most, lines))) : null }), detail: () => [el("p", {}, prose(covers?.says ?? code.says))] }));
     }
-    const rest = three.filter((f) => !["job", "not-judged", "input", "output", "skill", "code", "part"].includes(f.kind));
+    const rest = three.filter((f) => !["job", "not-judged", "input", "output", "skill", "code", "part", "slash-command", "sub-agent", "rule"].includes(f.kind));
     if (rest.length) out.push(drawRows(d, rest));
     if (four.length || coming) {
       out.push(el("h2", { text: titleOf(d, 4) || "How it works" }));
@@ -921,6 +999,23 @@ button { font: inherit; color: inherit; cursor: pointer; }
       if (coming) out.push(skRows(2));
     }
     return out;
+  }
+  // A command, sub-agent or rule: its lines of instructions, and whether it
+  // may run shell commands, said in words.
+  const partLines = (f) => Number(f.detail?.size?.lines) || 0;
+  const partMeasure = (f) => [`${num(partLines(f))} ${partLines(f) === 1 ? "line" : "lines"}`, f.detail?.shell ? "can run shell commands" : f.kind === "rule" && f.detail?.always ? "always on" : null].filter(Boolean).join(" · ");
+  const READ_WORD = { "slash-command": "Read the command", "sub-agent": "Read the sub-agent", rule: "Read the rule" };
+  function partDetail(d, f) {
+    const pairs = [];
+    const tools = Array.isArray(f.detail?.tools) ? f.detail.tools : [];
+    if (tools.length && (pluginOf(d)?.tools?.length ?? 0) + (pluginOf(d)?.also_for?.length ?? 0) > 1) pairs.push(["Works in", andList(tools)]);
+    if (Array.isArray(f.detail?.may_use) && f.detail.may_use.length) pairs.push(["May use", andList(f.detail.may_use.map((t) => one(t).replace(/\(.*\)$/, "")).filter(Boolean).slice(0, 12))]);
+    const words = one(f.says).replace(/\s*(?:It may run shell commands\.|It applies to every request\.|For [^.]+\.)\s*/g, " ").trim();
+    return [
+      words ? el("p", {}, prose(words)) : null,
+      pairs.length ? pairsOf(pairs) : null,
+      typeof f.detail?.instructions === "string" && f.detail.instructions ? el("button", { class: "btn", type: "button", "data-k": `read:${f.id}`, onclick: (e) => openViewer(f.id, e.currentTarget) }, READ_WORD[f.kind] ?? "Read it") : null,
+    ];
   }
   function skillDetail(d, f) {
     const { skillsOf } = indexOf(d);
@@ -945,7 +1040,7 @@ button { font: inherit; color: inherit; cursor: pointer; }
   // for, what the person supplies, and required or optional as a word and a
   // shape. A credential no system names is a system of its own. Required
   // systems first.
-  const NEED_WORD = { required: "Required", optional: "Optional", unclear: "Not clear from the code", none: "Nothing to set up" };
+  const NEED_WORD = { required: "Required", optional: "Optional", unclear: "Not clear from the code", none: "Nothing to set up", machine: "Runs on the machine", remote: "Connects out" };
   function systemsOf(d) {
     const sys = d.findings.filter((f) => f.section === 5 && f.kind === "system");
     const { facts } = indexOf(d);
@@ -968,10 +1063,14 @@ button { font: inherit; color: inherit; cursor: pointer; }
       const rest = i > 0 ? cap(t.slice(i + 1)) : "";
       return { name, purpose: rest && rest.toLowerCase() !== name.toLowerCase() ? rest : "" };
     };
+    // 0.5.0: a plugin's MCP servers, first: a program it starts on the
+    // machine, or a service it connects to, with what the person supplies.
+    const mcp = d.findings.filter((f) => f.section === 5 && f.kind === "mcp-server").map((f) => ({ finding: f, mcp: true, name: displayTitle(f), purpose: one(f.says).split(/(?<=\.)\s/)[0].replace(/\.$/, ""), need: f.detail?.local ? "machine" : "remote", supply: one(f.detail?.supply) }));
     return [
+      ...mcp,
       ...sys.map((f) => ({ finding: f, ...split(f), need: order.includes(f.detail?.need) ? f.detail.need : "unclear", supply: one(f.detail?.supply) })),
       ...[...byName].map(([name, group]) => ({ finding: group[0], group, name, purpose: "", need: order.find((n) => group.some((f) => needOfCred(f) === n)), supply: `Your ${and(group.map((f) => displayTitle(f)))}` })),
-    ].map((x, i) => ({ ...x, i })).sort((a, b) => order.indexOf(a.need) - order.indexOf(b.need) || a.i - b.i);
+    ].map((x, i) => ({ ...x, i })).sort((a, b) => Number(!a.mcp) - Number(!b.mcp) || order.indexOf(a.need) - order.indexOf(b.need) || a.i - b.i);
   }
   function needBadge(need) {
     return el("span", { class: `need ${need}` }, shape(need === "none" ? "nothing" : need), el("span", { class: "word", text: NEED_WORD[need] }));
@@ -984,9 +1083,13 @@ button { font: inherit; color: inherit; cursor: pointer; }
     else if (!five.length && !six.length) return [el("p", { class: "quiet", text: "None found." })];
     const { skillsOf } = indexOf(d);
     const systems = pending.has(5) ? [] : systemsOf(d);
-    if (systems.length) {
-      const byFinding = new Map(systems.map((x) => [x.finding, x]));
-      out.push(drawRows(d, systems.map((x) => x.finding), { listCls: "systems", cls: "system", per: (f) => {
+    // 0.5.0: a plugin's MCP servers under their own heading, then the other systems its code reaches.
+    const split = pluginOf(d) && systems.some((x) => x.mcp) ? [["MCP servers", systems.filter((x) => x.mcp)], ["Other systems it uses", systems.filter((x) => !x.mcp)]] : [[null, systems]];
+    for (const [heading, list] of split) {
+      if (!list.length) continue;
+      if (heading) out.push(el("h3", { text: heading }));
+      const byFinding = new Map(list.map((x) => [x.finding, x]));
+      out.push(drawRows(d, list.map((x) => x.finding), { listCls: "systems", cls: "system", per: (f) => {
         const x = byFinding.get(f);
         return {
           title: x.name, lead: systemIcon(x.name),
@@ -998,6 +1101,13 @@ button { font: inherit; color: inherit; cursor: pointer; }
         };
       }, detail: (f) => {
         const x = byFinding.get(f);
+        if (x.mcp) {
+          // Its card says where it runs and what it needs; opened, what else it says, and the tools it works in.
+          const rest = one(f.says).split(/(?<=\.)\s/).slice(1).filter((w) => !/^For [^.]+\.$/.test(w)).join(" ");
+          const tools = Array.isArray(f.detail?.tools) ? f.detail.tools : [];
+          const pairs = tools.length ? [["Works in", andList(tools)]] : [];
+          return [rest ? el("p", {}, prose(rest)) : null, pairs.length ? pairsOf(pairs) : null];
+        }
         const users = [...new Set((x.group ?? [f]).flatMap((c) => skillsOf(c)))];
         const pairs = [];
         if (users.length) pairs.push(["Used by", refs(users.map((s) => skillButton(s, "used-by")))]);
@@ -1080,7 +1190,17 @@ button { font: inherit; color: inherit; cursor: pointer; }
         el("span", { class: "n", text: num(c) }),
         el("span", { class: "w" }, el("span", { class: `lv ${l}` }, shape(l)), el("span", { text: l === "unrated" || l === "none" ? word : `${word} ${c === 1 ? "risk" : "risks"}` })));
     })), el("p", { class: "save" }, el("button", { class: "btn", type: "button", "data-k": "save", onclick: () => doSave(d), text: "Save a summary for security" }))];
-    if (risks.length) out.push(drawRows(d, risks.filter((f) => keeps(f, state.level)), { rated: true }));
+    if (risks.length) {
+      // 0.5.0: a plugin's hooks first, under their own heading: each runs on
+      // the person's machine at its event, without asking.
+      const shown = risks.filter((f) => keeps(f, state.level));
+      const hooks = pluginOf(d) ? shown.filter((f) => f.detail?.hook) : [];
+      if (hooks.length) {
+        out.push(el("h3", { text: "Hooks" }), drawRows(d, hooks, { rated: true, detail: (f) => hookDetail(d, f) }));
+        const rest = shown.filter((f) => !f.detail?.hook);
+        if (rest.length) out.push(el("h3", { text: "Other risks" }), drawRows(d, rest, { rated: true }));
+      } else out.push(drawRows(d, shown, { rated: true }));
+    }
     if (coming) out.push(skRows(3));
     if (safely.length && state.level === "all") out.push(el("h2", { text: "To run it safely" }), drawRows(d, safely));
     return out;
@@ -1222,11 +1342,11 @@ button { font: inherit; color: inherit; cursor: pointer; }
         el("div", { class: "dlg-head" },
           el("h2", { id: "viewer-title" }, prose(displayTitle(f))),
           el("button", { class: "btn", type: "button", "data-k": "viewer-close", onclick: closeViewer }, "Close")),
-        el("div", { class: "dlg-body", tabindex: "0", "aria-label": "The skill's instructions", "data-k": "viewer-body" },
+        el("div", { class: "dlg-body", tabindex: "0", "aria-label": "Its instructions", "data-k": "viewer-body" },
           one(f.detail?.description) ? el("p", { class: "own" }, prose(one(f.detail.description))) : null,
           el("div", { class: "md" }, text ? markdown(text) : el("p", { class: "muted", text: "This report does not carry its instructions." })),
           f.detail?.instructions_cut && f.detail?.instructions_address
-            ? el("p", { class: "cut" }, "The rest is longer than the report carries. ", el("button", { class: "copy-link", type: "button", "data-k": "viewer-copy", onclick: () => copyLink(f.detail.instructions_address) }, "Copy the link to the whole skill"))
+            ? el("p", { class: "cut" }, "The rest is longer than the report carries. ", el("button", { class: "copy-link", type: "button", "data-k": "viewer-copy", onclick: () => copyLink(f.detail.instructions_address) }, "Copy the link to the whole text"))
             : null)));
     layer.style.height = `${pageHeight()}px`;
   }
@@ -1386,8 +1506,11 @@ button { font: inherit; color: inherit; cursor: pointer; }
     const where = stop ? `${stop} This summary is of the findings it made.` : running(p, d) ? `Still running (${stepOf(d).words.toLowerCase()}); this summary is of the findings so far.` : null;
     const lines = [
       `Security summary: ${repoName(d)} at commit ${short(d.commit?.sha)}`, "",
-      `Inspect read the code of ${repoName(d)} at commit ${d.commit?.sha} without running any of it. It gives no verdict on bringing the agent in.`,
-      `Repository: ${one(d.repository?.url)}`, ...(where ? [where] : []), "",
+      `Inspect read the code of ${repoName(d)} at commit ${d.commit?.sha} without running any of it. It gives no verdict on ${pluginOf(d) ? "allowing it" : "bringing the agent in"}.`,
+      `Repository: ${one(d.repository?.url)}`,
+      // 0.5.0: what a plugin is, and which one of several this is.
+      ...(pluginOf(d) ? [`What it is: ${whatItIs(pluginOf(d))}${pluginOf(d).also_for?.length ? `, also packaged for ${andList(pluginOf(d).also_for)}` : ""}${pluginOf(d).plugins?.length ? `; this is the plugin ${one(pluginOf(d).name)}, one of ${pluginOf(d).plugins.length} in the repository` : ""}. It runs inside the person's own tool, on their machine, with their files and their credentials.`] : []),
+      ...(where ? [where] : []), "",
       "Risks by level", "",
       `${c.critical ?? 0} critical, ${c.high ?? 0} high, ${c.medium ?? 0} medium and ${c.low ?? 0} low.`, "",
       "Risks, highest first", "",
@@ -1405,6 +1528,7 @@ button { font: inherit; color: inherit; cursor: pointer; }
       for (const f of list) { lines.push(`- ${one(f.title)} (${f.id})${f.says ? `: ${one(f.says)}` : ""}`, ...places(f, "  ").slice(0, 1)); }
       lines.push("");
     };
+    group("MCP servers it brings", findings.filter((f) => f.kind === "mcp-server"));
     group("Credentials it reads", findings.filter((f) => f.kind === "credential"));
     group("What it can do on its own", findings.filter((f) => f.section === 6));
     group("What Inspect could not tell", findings.filter((f) => f.kind === "could-not-tell" || f.kind === "not-judged"));

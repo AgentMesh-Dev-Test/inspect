@@ -36,8 +36,8 @@ export const estimateTokens = (text) => Math.ceil(String(text ?? "").length / 3)
 
 /** The kinds of fact each of the first two calls reads when all of them do not fit. */
 export const KINDS_FOR = {
-  first: ["skill", "part", "own-code", "entry", "how-it-runs", "model", "model-client", "memory", "human-step", "setting", "setup-doc", "example-setting", "sdk", "address", "handed-address", "framework", "language", "tool", "publisher"],
-  second: ["tool", "capability", "human-step", "command", "address", "handed-address", "setting", "sdk", "credential-shape", "install-script", "link", "refused-path", "vulnerability", "test-file", "test-command", "memory", "license", "repository-license", "model", "skill"],
+  first: ["skill", "part", "own-code", "entry", "how-it-runs", "model", "model-client", "memory", "human-step", "setting", "setup-doc", "example-setting", "sdk", "address", "handed-address", "framework", "language", "tool", "publisher", "plugin-manifest", "plugin", "slash-command", "sub-agent", "rule", "hook", "mcp-server", "user-config"],
+  second: ["tool", "capability", "human-step", "command", "address", "handed-address", "setting", "sdk", "credential-shape", "install-script", "link", "refused-path", "vulnerability", "test-file", "test-command", "memory", "license", "repository-license", "model", "skill", "hook", "mcp-server", "user-config", "slash-command", "sub-agent"],
 };
 
 /** How a title and its words are written (0.2.6): for a manager, never with
@@ -63,31 +63,54 @@ const SYSTEM = [
 
 const SHAPE = '{"findings": [{"section": <number>, "kind": "<kind>", "title": "<a few words>", "says": "<one to three plain sentences>", "based_on": ["F0001"], "level": "<risks only>", "categories": ["<risks only: list ids>"], "detail": {<fields of the kind>}}]}';
 
+/** 0.5.0: what a plugin or a repository of skills is, for the model: where it
+ *  runs and with whose access. An agent's prompts carry nothing of this. */
+export function subjectLines(subject) {
+  if (!subject) return [];
+  const tools = (subject.tools ?? []).join(", ") || "a person's coding tool";
+  return [
+    subject.kind === "skills"
+      ? `What it is: skills on their own, in the Agent Skills format, which a person adds to their own coding tool (Claude Code, Cursor, Codex and others).`
+      : `What it is: a plugin for ${tools}${subject.also_for?.length ? `, also packaged for ${subject.also_for.join(", ")}` : ""}${subject.name ? `, named ${subject.name}` : ""}${subject.plugins?.length ? `, one of ${subject.plugins.length} plugins in this repository` : ""}.`,
+    "Once installed it runs inside the person's own tool, on their machine, with their files and their credentials: its skills, commands and sub-agents steer the person's assistant, its hooks run programs on their own at each event, and its MCP servers are programs it starts or services it connects to. Write for the person deciding whether employees may install it: what it adds to their tools, what it touches and runs on their machines, and what to put in place before allowing it.",
+  ];
+}
+/** 0.5.0: each hook said in plain words, for a plugin. */
+export const HOOK_WORDS = 'Also answer "hooks": one entry for each hook fact, with "hook" its fact id and "does" one plain sentence on what it does for the person or to their session (such as Adds the plugin\'s own instructions to every new session), written for a manager, from the hook fact and the facts of the files it runs.';
+
 /** The prompt of the first call. */
-export function firstPrompt(factText, { repo }) {
+export function firstPrompt(factText, { repo, subject = null }) {
+  const plugin = Boolean(subject);
   return [
     `The agent: ${repo}. The facts, one to a line (id, kind, file:line or the call it came from, the line's text, then data):`,
+    ...subjectLines(subject),
     factText,
     "",
-    "Write the findings of these sections. The scripts already list each skill and part, each model name, each credential and section 2; do not repeat a fact on its own, judge across them.",
-    `Section 3 "What it does": kind job (each job a caller can give it, in plain words, citing in based_on the skill facts of the skills that do it; detail {name, does}), kind input (what you give it; detail {name, kind}), kind output (what it hands back; detail {name, kind}), and one finding of kind code for the agent's own code outside its skills, from the own-code fact and the entry and how-it-runs facts: its title says in a few words what that code covers, such as "Slack app, tools and a sandbox runner".`,
+    `Write the findings of these sections. The scripts already list each skill and part, each model name, each credential and section 2${plugin ? ", and each command, sub-agent, rule, hook and MCP server" : ""}; do not repeat a fact on its own, judge across them.`,
+    plugin
+      ? `Section 3 "What it does": kind job (each thing it adds to the person's tools, in plain words: what the person or their assistant can do with it, citing in based_on the skill, slash-command or sub-agent facts that do it; detail {name, does}), kind input and kind output only where the code shows them, and one finding of kind code for its own code outside its skills, from the own-code fact: its title says in a few words what that code covers, such as "Hooks, a command-line tool and build scripts".`
+      : `Section 3 "What it does": kind job (each job a caller can give it, in plain words, citing in based_on the skill facts of the skills that do it; detail {name, does}), kind input (what you give it; detail {name, kind}), kind output (what it hands back; detail {name, kind}), and one finding of kind code for the agent's own code outside its skills, from the own-code fact and the entry and how-it-runs facts: its title says in a few words what that code covers, such as "Slack app, tools and a sandbox runner".`,
     `Section 4 "How it works": kind model (which models it calls and whether you can change them without changing the code; detail {models: [..], changeable: "yes" | "no" | "partly", how}), kind how-it-runs (how it runs: a server, a command, a container, a hosted graph), kind memory (what it remembers between jobs and where), kind human-step (each step where a person must step in; detail {where, what}). Say when the code shows no memory or no human step, citing what you looked at.`,
     `Section 5 "Systems it uses": kind system, one finding for each outside system it reaches, titled with the system's name and what it is used for. Every credential setting the code reads belongs to one system's finding, which cites all of its setting facts and names them in credentials: Inspect decides need by rule from those settings wherever they settle it, so a setting left out can change the answer. detail {system, product, need: "required" | "optional" | "unclear", supply: "<what the person supplies, in their words: Your ElevenLabs key, A Slack app and its two tokens, or Nothing to set up>", without: "<what happens without it: which feature is off, or that the agent won't start>", sends: "<what goes to the system, in plain words>", access: "read" | "write" | "read-write" | "unknown", credentials: ["ENV_NAME"]}. Judge need from the facts and cite them: a setting fact's data.how is "fails" when the code stops without the setting, "guard" when it skips a feature without it, "default" when the code has a default; a setup-doc fact says what the setup docs say of it (required, optional or only mentioned); an example-setting fact says the example settings file lists it. Your need is used only where the settings, and whether only its skills reach it, don't settle it: then need is "required" only when the agent can't do its main job without the system, "optional" when only some of its features use it, and "unclear" when the code doesn't show which. Then kind spend (what it spends per run: model calls, paid services; detail {what, per}).`,
+    ...(plugin ? ["For a plugin, section 5's systems are the outside services its MCP servers reach and the sites its scripts call; the scripts list each MCP server already, so a system finding says what the service reaches in the person's accounts and what the person needs (a key, an account), citing the mcp-server and address facts."] : []),
     "",
     SAY_ONCE,
     "Write at most 40 findings in all, the most telling first, each in at most three sentences.",
     SKILL_NAMES,
-    `Answer: ${SHAPE.replace(/\}$/, ", \"skills\": [{\"skill\": \"F0012\", \"title\": \"<three to eight plain words>\", \"does\": \"<one or two plain sentences>\"}]}")}`,
+    ...(plugin ? [HOOK_WORDS] : []),
+    `Answer: ${SHAPE.replace(/\}$/, `, "skills": [{"skill": "F0012", "title": "<three to eight plain words>", "does": "<one or two plain sentences>"}]${plugin ? ', "hooks": [{"hook": "F0040", "does": "<one plain sentence>"}]' : ""}}`)}`,
   ].join("\n");
 }
 
 /** The prompt of the second call. */
-export function secondPrompt(factText, { repo }) {
+export function secondPrompt(factText, { repo, subject = null }) {
   return [
     `The agent: ${repo}. The facts, one to a line (id, kind, file:line or the call it came from, the line's text, then data):`,
+    ...subjectLines(subject),
     factText,
     "",
     "Write the findings of these sections, with the security reviewer's words: what it may reach, what it may spend, and what it must never do.",
+    ...(subject ? ["The scripts already rate each hook, each MCP server that fetches its newest version each time, and each script that reads stored credentials, so write no risk that rests only on hook facts. Judge the rest, as code that runs with the person's own access on their machine: where text from outside (a web page, a file, a tool's answer) can reach an action the assistant takes, scripts that can run shell commands, scripts that work in the home folder or read the whole environment, network calls and what they send, installs that update themselves, and what its MCP servers can change in the person's accounts. In section 6, its tools are the ones it gives the person's assistant (its MCP servers', and those its commands and sub-agents may use), and what runs on its own includes its hooks."] : []),
     `Section 6 "What it can do on its own": kind tool (each tool it gives its model; detail {name, does: "shell" | "file-write" | "browser" | "send-message" | "network" | "other", needs_ok: "yes" | "no" | "unknown"}), kind autonomy (which tools run without a person's OK).`,
     `Section 7 "Risks, and what it needs to run safely": kind risk, for where outside content can reach an action (the prompt-injection path), where data leaves, scripts that run at install, committed secrets, known vulnerabilities in dependencies that have no level yet, and license obligations. Every risk has "level", one of ${LEVELS.join(", ")} (the CVSS v4.0 qualitative words), and "categories", one or more of: ${Object.keys(LLM_TOP_10).map((k) => `${k} ${LLM_TOP_10[k]}`).join("; ")}; ${Object.keys(AGENTIC_TOP_10).map((k) => `${k} ${AGENTIC_TOP_10[k]}`).join("; ")}; or, for a license obligation, the license's SPDX identifier, or for a dependency, its package URL or OSV id. Every risk also has detail {safe: "<how to make it safe, in one or two plain sentences: the least access it needs, or what to put behind a person's OK>"}, so a risk and its fix are one finding.`,
     `Section 8 "Tests, and what Inspect couldn't tell": kind test (what its tests cover, citing the test-file facts it rests on), kind test-gap (what they miss), kind could-not-tell (what could not be settled without running it, ending with the question to ask the publisher, so a gap and its question are one finding).`,
@@ -102,13 +125,15 @@ export function secondPrompt(factText, { repo }) {
 export const glanceLine = (f) => `${f.id} [section ${f.section}, ${f.kind}${f.level ? `, ${f.level}` : ""}] ${f.title}: ${f.says}`;
 
 /** The prompt of the last call: section 1 from the findings delivered. */
-export function glancePrompt(findings) {
+export function glancePrompt(findings, subject = null) {
   const lines = findings.map(glanceLine);
   return [
     "These are the checked findings of an inspection report, one to a line:",
     ...lines,
     "",
-    'Section 1 "At a glance" opens with the description of the agent: two to four plain sentences that say what the agent is, what it does, who it is for and how it runs, from the findings of sections 3 to 5. Then it holds the few findings that matter most to the person deciding whether to bring the agent in, most important first, at most 5. For each, name the finding it repeats and say it again in one plain sentence. Give no verdict.',
+    subject
+      ? `Section 1 "At a glance" opens with the description of the ${subject.kind === "skills" ? "skills" : "plugin"}: two to four plain sentences that say what it is, what it adds to the person's tools (${(subject.tools ?? []).join(", ") || "their coding tool"}), who made it, and that it runs on the person's own machine with their access, from the findings of sections 2 to 5. Then it holds the few findings that matter most to the person deciding whether employees may install it, most important first, at most 5. For each, name the finding it repeats and say it again in one plain sentence. Give no verdict.`
+      : 'Section 1 "At a glance" opens with the description of the agent: two to four plain sentences that say what the agent is, what it does, who it is for and how it runs, from the findings of sections 3 to 5. Then it holds the few findings that matter most to the person deciding whether to bring the agent in, most important first, at most 5. For each, name the finding it repeats and say it again in one plain sentence. Give no verdict.',
     PLAIN_RULE,
     'Answer: {"description": "<two to four sentences>", "glance": [{"repeats": "S7-001", "says": "<one sentence>"}]}',
   ].join("\n");
@@ -118,21 +143,21 @@ const fits = (prompt) => estimateTokens(prompt) + estimateTokens(SYSTEM) <= CALL
 
 /** What one of the first two calls reads: every fact when the whole list
  *  fits, else the kinds its sections rest on. {facts, prompt, fits}. */
-function chosen(facts, which, make, repo) {
-  const whole = make(facts.map(factLine).join("\n"), { repo });
+function chosen(facts, which, make, repo, subject = null) {
+  const whole = make(facts.map(factLine).join("\n"), { repo, subject });
   if (fits(whole)) return { facts, prompt: whole, fits: true };
   const part = facts.filter((f) => KINDS_FOR[which].includes(f.kind));
-  const prompt = make(part.map(factLine).join("\n"), { repo });
+  const prompt = make(part.map(factLine).join("\n"), { repo, subject });
   return { facts: part, prompt, fits: fits(prompt) };
 }
 
 /** The facts the first two calls would read, in order: what the screening
  *  must see before either is made (0.4.6). A call too big to be made reads
  *  nothing, so nothing of it is screened. */
-export function factsRead(facts, repo) {
+export function factsRead(facts, repo, subject = null) {
   const read = new Set();
   for (const [which, make] of [["first", firstPrompt], ["second", secondPrompt]]) {
-    const c = chosen(facts, which, make, repo);
+    const c = chosen(facts, which, make, repo, subject);
     if (c.fits) for (const f of c.facts) read.add(f);
   }
   return facts.filter((f) => read.has(f));
@@ -146,13 +171,13 @@ export function factsRead(facts, repo) {
  * call reads what it would have read, less those, so which calls are made
  * is decided on every fact and never changes because some were held.
  */
-export async function judge({ facts, withheld = new Set(), repo, ask = (prompt, o) => callModel(prompt, o), onStatus = () => {}, onCall = async () => {} } = {}) {
+export async function judge({ facts, withheld = new Set(), repo, subject = null, ask = (prompt, o) => callModel(prompt, o), onStatus = () => {}, onCall = async () => {} } = {}) {
   const usage = { model_calls: 0, tokens_in: 0, tokens_out: 0 };
   const notMade = [];
   const promptFor = (which, make) => {
-    const c = chosen(facts, which, make, repo);
+    const c = chosen(facts, which, make, repo, subject);
     if (!c.fits || !withheld.size) return c.prompt;
-    return make(c.facts.filter((f) => !withheld.has(f.id)).map(factLine).join("\n"), { repo });
+    return make(c.facts.filter((f) => !withheld.has(f.id)).map(factLine).join("\n"), { repo, subject });
   };
   async function one(which, prompt, budget, sections) {
     const est = estimateTokens(prompt) + estimateTokens(SYSTEM);
@@ -175,7 +200,7 @@ export async function judge({ facts, withheld = new Set(), repo, ask = (prompt, 
     }
   }
   const draftsOf = (r) => (Array.isArray(r?.doc?.findings) ? r.doc.findings : []);
-  const answerOf = (r) => (r.failed ? { failed: r.failed } : { drafts: draftsOf(r), ...(Array.isArray(r?.doc?.skills) ? { skills: r.doc.skills } : {}) });
+  const answerOf = (r) => (r.failed ? { failed: r.failed } : { drafts: draftsOf(r), ...(Array.isArray(r?.doc?.skills) ? { skills: r.doc.skills } : {}), ...(subject && Array.isArray(r?.doc?.hooks) ? { hooks: r.doc.hooks } : {}) });
   // Each call's answer is handed on the moment it lands (onCall), so its
   // findings are checked and posted while the next call is still running.
   onStatus(stepLine(3, "Judging what it does and the systems it uses"));
@@ -190,7 +215,7 @@ export async function judge({ facts, withheld = new Set(), repo, ask = (prompt, 
     /** The last call, made once the findings it reads are checked. */
     async glance(findings) {
       onStatus(stepLine(5, "Writing the overview"));
-      const r = await one("glance", glancePrompt(findings), BUDGETS.glance, [1]);
+      const r = await one("glance", glancePrompt(findings, subject), BUDGETS.glance, [1]);
       return r.failed ? { failed: r.failed } : { drafts: Array.isArray(r.doc?.glance) ? r.doc.glance : [], description: typeof r.doc?.description === "string" ? r.doc.description : null };
     },
   };

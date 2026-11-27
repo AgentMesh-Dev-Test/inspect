@@ -26,7 +26,8 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import vm from "node:vm";
 import { buildReport, workingCopy } from "../scripts/report.mjs";
-import { ROOT, SHA, descriptor } from "./helpers.mjs";
+import { ROOT, SHA, descriptor, claudePlugin, ENV, inTemp, model, world } from "./helpers.mjs";
+import { inspect } from "../scripts/inspect-a-repository.mjs";
 
 const html = readFileSync(join(ROOT, "views", "report.html"), "utf8");
 const script = html.match(/<script>([\s\S]*?)<\/script>/)[1];
@@ -409,7 +410,7 @@ test("[F5.R9] Read the skill opens a dialog over the page, placed in the frame w
   rowOf(n.app, "S3-011").querySelector(".toggle").click();
   n.app.querySelector('button[data-k="read:S3-011"]').click();
   await ticks();
-  assert.match(n.layer.querySelector(".cut").textContent, /The rest is longer than the report carries\. Copy the link to the whole skill/);
+  assert.match(n.layer.querySelector(".cut").textContent, /The rest is longer than the report carries\. Copy the link to the whole text/);
   n.layer.querySelector('button[data-k="viewer-copy"]').click();
   await ticks();
   assert.equal(n.sent.filter((m) => m.method === "view/copy-text").at(-1).params.text, ADDRESS);
@@ -625,4 +626,54 @@ test("[F5.R9] at the first step, before any of the scripts' facts, the Overview'
   assert.equal(tiles.length, 5);
   assert.ok(tiles.every((t) => t.querySelector(".sk")), "each a placeholder");
   assert.ok(!/Systems required/.test(readable(shownPanel(p.app))), "no tile's words before its number");
+});
+
+// ── 0.5.0: a plugin's report ──
+const pluginReport = () => inTemp(async (at) => (await inspect({ text: "repository: acme/helper\ncommit: 86d8f66", workDir: at, env: ENV, fetchImpl: world({ files: claudePlugin() }).fetchImpl, ask: model().ask })).report);
+
+test("[F5.A7] a plugin's Overview says what it is and where it runs, and counts what it adds to the person's tools; an agent's says none of it", async () => {
+  const r = await pluginReport();
+  const p = drawn(r);
+  const panel = shownPanel(p.app);
+  assert.equal(panel.querySelector("p.kind-line").textContent, "Plugin for Claude Code and Cursor, made by Acme");
+  const tiles = panel.querySelector("ul.size-tiles").querySelectorAll("li").map((t) => `${t.querySelector(".v").textContent} ${t.querySelector(".k").textContent}`);
+  for (const want of ["1 Skill", "1 Command", "1 Sub-agent", "3 Hooks that run on their own", "2 MCP servers"]) assert.ok(tiles.includes(want), `${want} in ${tiles.join(" | ")}`);
+  assert.ok(!tiles.some((t) => /Systems required/.test(t)), "a plugin's MCP servers are counted; nothing is required to install it");
+  const agent = drawn(report());
+  assert.equal(shownPanel(agent.app).querySelector("p.kind-line"), null);
+});
+
+test("[F5.A7] What it does lists a plugin's commands and sub-agents, measured; Systems its MCP servers, where each runs and what the person supplies; Risks its hooks first", async () => {
+  const r = await pluginReport();
+  const p = drawn(r);
+  tabNamed(p.app, "What it does").click();
+  let panel = shownPanel(p.app);
+  const heads = panel.querySelectorAll("h3").map((h) => h.textContent);
+  assert.ok(heads.includes("Commands") && heads.includes("Sub-agents"), heads.join(", "));
+  const cmd = panel.querySelectorAll("li.row").find((row) => /Deploy the project to Acme/.test(row.textContent));
+  assert.match(cmd.querySelector(".measure").textContent, /lines · can run shell commands/);
+  cmd.querySelector(".toggle").click();
+  const opened = shownPanel(p.app).querySelectorAll("li.row").find((row) => /Deploy the project to Acme/.test(row.textContent));
+  assert.ok(opened.querySelectorAll("button").some((b) => b.textContent === "Read the command"));
+
+  tabNamed(p.app, "Systems it uses").click();
+  panel = shownPanel(p.app);
+  assert.equal(panel.querySelectorAll("h3")[0].textContent, "MCP servers");
+  const cards = panel.querySelectorAll("li.row").map((row) => row.textContent);
+  assert.ok(cards.some((c) => /Acme/.test(c) && /Runs on the machine/.test(c) && /Your API token/.test(c)), cards.join(" | "));
+  assert.ok(cards.some((c) => /Docs/.test(c) && /Connects to mcp\.acme\.test/.test(c) && /Connects out/.test(c)));
+
+  tabNamed(p.app, "Risks").click();
+  panel = shownPanel(p.app);
+  assert.equal(panel.querySelectorAll("h3")[0].textContent, "Hooks");
+  const hookRows = panel.querySelectorAll("ul.rows")[0].querySelectorAll("li.row").map((row) => row.textContent);
+  assert.equal(hookRows.length, 3);
+  assert.ok(hookRows.some((t) => /High/.test(t) && /Runs a JavaScript program when a session starts or resumes/.test(t)));
+  assert.equal(panel.querySelectorAll("h3")[1].textContent, "Other risks");
+  // Nothing on any tab names a file, a setting's value or a section code.
+  for (const name of TAB_NAMES) {
+    tabNamed(p.app, name).click();
+    const words = readable(shownPanel(p.app));
+    for (const re of [...NEVER, /\.mjs\b/, /\.json\b/, /\.sh\b/, /CLAUDE_PLUGIN_ROOT/, /docs-header-value/]) assert.doesNotMatch(words, re, `${name}: ${re}`);
+  }
 });

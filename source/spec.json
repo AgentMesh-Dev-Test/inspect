@@ -2,14 +2,18 @@
   "format": "spec-v1",
   "product": {
     "name": "inspect",
-    "version": "0.4.6",
+    "version": "0.5.0",
     "kind": "agent"
   },
-  "purpose": "Inspect takes a public GitHub repository address and a commit, reads the agent's code at that commit without running any of it, and hands back an inspection report on what the agent does and how safe it is. The report is a list of findings in eight sections, each finding standing on its own and citing a file and line at the commit. Its reader is the person in charge of a department's agents, deciding whether to bring in an outside agent before anything is installed or given a credential. It judges no fit with anyone's plan, matches the agent to no catalog role and gives no bring-it-in-or-not verdict.",
+  "purpose": "Inspect takes a public GitHub repository address and, optionally, a commit, reads the code at that commit without running any of it, and hands back an inspection report on what it does and how safe it is. The repository may hold an agent, or a plugin or skills for a person's own coding tool (Claude Code, Cursor, Codex and others), which runs on that person's machine with their files and their credentials. The report is a list of findings in eight sections, each finding standing on its own and citing a file and line at the commit. Its readers are the person in charge of a department's agents, deciding whether to bring in an outside agent, and an IT, security or team lead deciding whether employees may install a plugin, before anything is installed or given a credential. It judges no fit with anyone's plan, matches the agent to no catalog role and gives no bring-it-in-or-not verdict.",
   "users": [
     {
       "who": "The person in charge of a department's agents",
       "wants": "To know what an outside agent does and how safe it is before anything is installed or given a credential."
+    },
+    {
+      "who": "An IT, security or team lead",
+      "wants": "When an employee wants to add a plugin to Claude Code or Cursor, or one is found installed: what it adds to people's tools, what it touches and runs on their machines, whether to worry, and what to put in place before allowing it."
     },
     {
       "who": "A later agent, such as the future Roadmap agent",
@@ -38,6 +42,13 @@
           "name": "commit",
           "kind": "identifier",
           "about": "The commit's digest, 7 to 40 hexadecimal characters, on a line of the message (commit: ...), or as the last part of a https://github.com/<owner>/<name>/commit/<digest> or /tree/<digest> address that names the repository too; when the message names none, the newest commit on the repository's default branch.",
+          "required": false,
+          "given_by": "either"
+        },
+        {
+          "name": "plugin",
+          "kind": "identifier",
+          "about": "When the repository holds several plugins, the one to inspect, by the name its manifest or marketplace gives it, on a line of the message (plugin: ...); left blank, the first is inspected and the others are listed.",
           "required": false,
           "given_by": "either"
         }
@@ -162,6 +173,16 @@
           "source": {
             "said": "Bounded spend: a per-tenant quota and a global daily budget on model consumption, refused at the door (docs/platform-agents.md)."
           }
+        },
+        {
+          "id": "F1.R13",
+          "kind": "input",
+          "priority": "must",
+          "verify": "test",
+          "shall": "The agent shall take an optional plugin, by name, on a plugin: line. When the repository holds several plugins it shall inspect the one named, else the first listed, reading only that plugin's files (its folder less any other plugin's folder inside it, or the skills its marketplace entry lists, with the repository's license, readme, marketplaces and manifests), and shall list every plugin the repository holds with whether it is the one inspected. A plugin named that the repository does not hold shall be refused in words naming the ones it holds, and one it lists but keeps in another repository refused naming where; nothing is inspected.",
+          "source": {
+            "said": "Teach Inspect to read plugin and skill repositories (the owner, 2026-11-27): a directory with 600,000 open skills and one-line installers into Claude Code, Cursor and Codex means employees will install unvetted code into their tools every day; Inspect reads a plugin or skill repository the same way it reads an agent: what it does, what it touches, and its risks."
+          }
         }
       ],
       "acceptance": [
@@ -252,6 +273,13 @@
           "checks": [
             "F1.R12"
           ]
+        },
+        {
+          "id": "F1.A13",
+          "gherkin": "Scenario: One plugin of several\n  Given a repository whose marketplace lists the plugins one and two, kept in its own folders, and far, kept in another repository\n  When Inspect is sent the repository with no plugin\n  Then it inspects one, reading none of two's files but its manifest, and lists the three plugins, one as this report\n  When it is sent plugin: two\n  Then it inspects two\n  When it is sent plugin: nope\n  Then it says the repository holds one, two and far, and inspects nothing",
+          "checks": [
+            "F1.R13"
+          ]
         }
       ]
     },
@@ -330,6 +358,26 @@
           "source": {
             "said": "reads the agent's code"
           }
+        },
+        {
+          "id": "F2.R8",
+          "kind": "behavior",
+          "priority": "must",
+          "verify": "test",
+          "shall": "The agent shall tell by rule what the repository holds: a plugin, from a plugin manifest (Agent Plugins 1.0.0's plugin.json naming its 1.0.0 schema; .claude-plugin/plugin.json; .cursor-plugin/plugin.json; .codex-plugin/plugin.json; another tool's .<tool>-plugin/plugin.json; gemini-extension.json) or a marketplace (.claude-plugin/marketplace.json, .cursor-plugin/marketplace.json, .agents/plugins/marketplace.json); skills alone, when SKILL.md files stand with no manifest and no agent code of its own; else an agent, read exactly as before, a Common Agent package among them. Several manifests of one folder are one plugin, packaged for each of their tools.",
+          "source": {
+            "said": "Teach Inspect to read plugin and skill repositories (the owner, 2026-11-27): a directory with 600,000 open skills and one-line installers into Claude Code, Cursor and Codex means employees will install unvetted code into their tools every day; Inspect reads a plugin or skill repository the same way it reads an agent: what it does, what it touches, and its risks."
+          }
+        },
+        {
+          "id": "F2.R9",
+          "kind": "behavior",
+          "priority": "must",
+          "verify": "test",
+          "shall": "The agent shall keep as facts, for the plugin inspected, each of its manifests, each command and sub-agent (and each of Cursor's rules) with its size and the tools it may use, each hook with what starts it, what it runs and what the code it runs (followed through the files it imports) calls, starts and touches, each MCP server with how it runs (a program it starts, or an address it connects to), the package it fetches and whether that is pinned, how it signs in and the settings it names, each value the plugin asks the person for, and, in its scripts, reading the home folder, stored credentials or the whole environment and downloading code to run; it shall keep the names of settings and headers, never their values, and shall leave out a SKILL.md its tools never load.",
+          "source": {
+            "said": "Teach Inspect to read plugin and skill repositories (the owner, 2026-11-27): a directory with 600,000 open skills and one-line installers into Claude Code, Cursor and Codex means employees will install unvetted code into their tools every day; Inspect reads a plugin or skill repository the same way it reads an agent: what it does, what it touches, and its risks."
+          }
         }
       ],
       "acceptance": [
@@ -381,6 +429,20 @@
           "gherkin": "Scenario: Nothing to read\n  Given an archive whose only file is a picture\n  When Inspect writes the report\n  Then the report holds sections 2 and 8\n  And section 8 says there was no code to read",
           "checks": [
             "F2.R7"
+          ]
+        },
+        {
+          "id": "F2.A8",
+          "gherkin": "Scenario: Each shape by its own files\n  Given a Claude Code plugin also packaged for Cursor, an Agent Plugins 1.0.0 plugin, a Codex plugin, a Cursor plugin with a rule, two folders of skills alone, and an agent's repository with skills beside its own code\n  When Inspect reads each\n  Then each is told by its own files, the first as one plugin for Claude Code and Cursor, and the last as an agent",
+          "checks": [
+            "F2.R8"
+          ]
+        },
+        {
+          "id": "F2.A9",
+          "gherkin": "Scenario: What a plugin adds\n  Given a plugin with a command that may run shell commands, a sub-agent, a session-start hook whose program imports one that calls an outside address and reads the home folder, a hook that asks a model, a hook that sends events to an address, an MCP server fetched by npx with no version and one at an address with a key in a header, a key it asks for, and a script that reads stored AWS credentials\n  When Inspect reads the facts\n  Then each is a fact of its own kind with its file and line\n  And the hook says when a session starts or resumes, the files it runs and the address the imported file calls\n  And no fact or finding holds the header's value",
+          "checks": [
+            "F2.R9"
           ]
         }
       ]
@@ -596,6 +658,16 @@
           "source": {
             "said": "A malicious repository could steer Inspect's model into calling itself safe, so this must be fixed before prod (the coordinator, 2026-11-26)."
           }
+        },
+        {
+          "id": "F4.R12",
+          "kind": "behavior",
+          "priority": "must",
+          "verify": "test",
+          "shall": "The agent shall tell the model, for a plugin or skills, what it is and that it runs inside the person's own tool, on their machine, with their files and their credentials, ask it for each hook's plain words, and hold back a risk that rests only on hooks, whose risk is the scripts'; an agent's prompts shall be as before.",
+          "source": {
+            "said": "Teach Inspect to read plugin and skill repositories (the owner, 2026-11-27): a directory with 600,000 open skills and one-line installers into Claude Code, Cursor and Codex means employees will install unvetted code into their tools every day; Inspect reads a plugin or skill repository the same way it reads an agent: what it does, what it touches, and its risks."
+          }
         }
       ],
       "acceptance": [
@@ -670,6 +742,13 @@
           "gherkin": "Scenario: The screening cannot answer\n  Given AgentMesh's screening answers 503 for every request\n  When Inspect writes the report\n  Then no model call is made\n  And sections 1 and 3 to 8 each say the judgment was not made because the screening could not answer\n  And the scripts' findings are delivered",
           "checks": [
             "F4.R11"
+          ]
+        },
+        {
+          "id": "F4.A11",
+          "gherkin": "Scenario: The model told where a plugin runs\n  Given a plugin's facts\n  When Inspect asks the model\n  Then its prompts say what the plugin is and where it runs, and ask for each hook's words\n  And a risk the model writes on a hook alone is held back, and its words for the hook are on the scripts' risk\n  And an agent's prompts carry none of it",
+          "checks": [
+            "F4.R12"
           ]
         }
       ]
@@ -1494,6 +1573,16 @@
           "source": {
             "said": "The delivery never landed: the platform got the answer text but no job manifest and no pieces."
           }
+        },
+        {
+          "id": "F5.R11",
+          "kind": "output",
+          "priority": "must",
+          "verify": "test",
+          "shall": "The agent shall write, for a plugin or skills, the report's subject (what it is, the tools it installs into, its maker, and the plugins the repository holds) and a finding saying it as a fact: once installed it runs inside the person's own tool, on their machine, with their files and their credentials; a finding for each command, sub-agent and rule with its size and instructions, each MCP server with where it runs and what the person supplies, and each key it asks for; each group of hooks one event starts as a risk by rule (high when it sends the session's events to an address, or what it runs calls an outside address, reads stored credentials, or fetches code to run; medium when it runs a program on the machine; low when it only asks a model), saying in which tools it runs, how much code and what that code reaches, and how to make it safe; an MCP server fetched fresh each time as a medium risk; scripts that read stored credentials as a high risk; and what it could not read (plugins kept elsewhere, programs a hook runs that the plugin does not hold, what a remote MCP server offers). The view shall say what it is under the description, count what it adds, list its commands and sub-agents measured, its MCP servers first among its systems, and its hooks first among its risks.",
+          "source": {
+            "said": "Teach Inspect to read plugin and skill repositories (the owner, 2026-11-27): a directory with 600,000 open skills and one-line installers into Claude Code, Cursor and Codex means employees will install unvetted code into their tools every day; Inspect reads a plugin or skill repository the same way it reads an agent: what it does, what it touches, and its risks."
+          }
         }
       ],
       "acceptance": [
@@ -1539,6 +1628,13 @@
           "gherkin": "Scenario: Asked for a verdict\n  Given a message asking whether to bring acme/helper at 86d8f66 into the department\n  When Inspect replies\n  Then the reply says Inspect gives no verdict and judges no fit\n  And inspection.json is attached",
           "checks": [
             "F5.R7"
+          ]
+        },
+        {
+          "id": "F5.A7",
+          "gherkin": "Scenario: A plugin's report\n  Given the plugin of F2.A9\n  When Inspect writes the report\n  Then it fits its schema, its subject says a plugin for Claude Code and Cursor made by Acme, and a finding says it runs on the person's machine with their files and their credentials\n  And its session-start hook is a high risk by rule that names the outside address and no file\n  And the view's Overview says what it is and counts its command, sub-agent, hooks and MCP servers, and its Risks open on its hooks",
+          "checks": [
+            "F5.R11"
           ]
         }
       ]
