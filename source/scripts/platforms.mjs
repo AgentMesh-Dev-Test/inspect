@@ -671,7 +671,7 @@ export function readingOf({ found, db, frameworks = [], ownCode = null, language
       const parts = pluginParts[key] ?? [];
       if (!parts.length) continue;
       const tools = key === "manifests" ? [...new Set(parts.map((f) => f.data?.tool).filter(Boolean))] : toolsOfPlugin;
-      rows.push({ category: key, title: words, level: "proprietary", outside: false, swap: "tool", code_files: 0, plugin_part: true, sources: [{ platform: null, tools, rating: "native", level: "proprietary", standards: [], what: `${words} in ${and(tools) || "its tool"}'s own format.`, reach: { code_files: 0, settings_only: false }, evidence: parts.slice(0, PLACES).map((f) => ({ file: f.file, line: f.line, kind: "file", value: f.kind, ...(f.id ? { fact: f.id } : {}) })) }], needs: null, choices: null });
+      rows.push({ category: key, title: words, level: "proprietary", outside: false, swap: "tool", code_files: 0, plugin_part: true, sources: [{ platform: null, tools, rating: "native", level: "proprietary", standards: [], what: tools.length > 1 ? `${and(tools)} each read their own format.` : `${tools[0] ?? "Its tool"} reads its own format.`, reach: { code_files: 0, settings_only: false }, evidence: parts.slice(0, PLACES).map((f) => ({ file: f.file, line: f.line, kind: "file", value: f.kind, ...(f.id ? { fact: f.id } : {}) })) }], needs: null, choices: null });
     }
   }
   const used = new Set(rows.filter((r) => !r.plugin_part).map((r) => r.category));

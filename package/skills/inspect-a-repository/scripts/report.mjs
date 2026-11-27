@@ -774,7 +774,7 @@ export function portabilityMarkdown(r) {
   }
   const title = (k) => (p.uses.find((u) => u.category === k)?.title ?? k);
   if (p.not_applicable?.length) out.push(`- Does not apply to a ${b.kind === "skills" ? "repository of skills" : "plugin"}: ${p.not_applicable.map((k) => mdText(CATEGORY_TITLES[k] ?? k)).join(", ")}.`);
-  if (p.not_used?.length) out.push(`- Not used: ${p.not_used.map((k) => mdText(CATEGORY_TITLES[k] ?? k)).join(", ")}.`);
+  if (p.not_used?.length && p.uses.length) out.push(`- Not used: ${p.not_used.map((k) => mdText(CATEGORY_TITLES[k] ?? k)).join(", ")}.`);
   out.push("", "### Moving it", "");
   for (const d of p.destinations) {
     out.push(`#### ${mdText(d.name)}`, "");
