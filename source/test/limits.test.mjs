@@ -70,3 +70,26 @@ test("the command refuses over the cap before anything is read, and posts nothin
     assert.equal(existsSync(join(job, "updates.jsonl")), false, "nothing posted");
   });
 });
+
+test("jobs started together each keep the count: the write goes through a name no other job uses, and a stale handle on the mounted bucket is tried again (0.5.2)", async () => {
+  await inTemp(async (at) => {
+    const names = [];
+    let staleOnce = true;
+    const fs = {
+      existsSync, mkdirSync, readFileSync,
+      writeFileSync: (f, t) => { names.push(f); if (staleOnce) { staleOnce = false; const e = new Error("Unknown system error -116: Unknown system error -116, close"); e.errno = -116; throw e; } writeFileSync(f, t); },
+      renameSync: (a, b) => { writeFileSync(b, readFileSync(a, "utf8")); },
+    };
+    const first = admit({ recordsDir: at, asker: "a", fs });
+    assert.equal(first.ok, true, "a stale handle once is tried again, not refused");
+    const second = admit({ recordsDir: at, asker: "b", fs });
+    assert.equal(second.ok, true);
+    assert.equal(second.total, 2);
+    const tmps = names.filter((n) => n.endsWith(".tmp"));
+    assert.ok(tmps.every((n) => new RegExp(`${COUNTS_FILE.replace(".", "\.")}\.${process.pid}\.[0-9a-f]{12}\.tmp$`).test(n)), tmps.join(", "));
+    assert.notEqual(tmps.at(-1), tmps.at(-2), "each write its own name");
+    // One that stays stale still refuses: a cap that cannot count is no cap.
+    const always = { ...fs, writeFileSync: () => { const e = new Error("stale"); e.code = "ESTALE"; throw e; } };
+    assert.equal(admit({ recordsDir: at, asker: "c", fs: always }).ok, false);
+  });
+});
