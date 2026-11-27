@@ -129,7 +129,7 @@ test("[F6.A4] 0.7.0: Run it in: one reading per harness of the catalogue, never 
   const sdk = h.find((x) => x.harness === "langsmith-agent-server");
   assert.match(sdk.takes, /^Built for it/, "the runtime of the platform it is built on");
   const cc = h.find((x) => x.harness === "claude-code");
-  assert.match(cc.takes, /as a tool server Claude Code connects to/);
+  assert.match(cc.takes, /runs as a tool server/); assert.ok(!cc.takes.includes("Claude Code"), "the same work in words that name no harness");
   const bedrock = h.find((x) => x.harness === "bedrock-agentcore");
   assert.match(bedrock.takes, /^Re-hosting its own code/);
   const gained = h.filter((x) => x.lines.some((l) => l.state === "gained"));
@@ -181,6 +181,9 @@ test("[F6.A11] 0.7.0: the portability guidance's basics, by rule from the files:
   assert.equal(pinned("@example/files-mcp@1.4.2"), true);
   assert.equal(pinned("@example/files-mcp@latest"), false);
   assert.equal(pinned("mcp-server-git==0.6.2"), true);
+  // 0.7.1: a SKILL.md inside another skill's folder is part of it.
+  const nested = { ...files, "skills/draft/upstream/SKILL.md": "---\nname: up\ndescription: d\n---\n" };
+  assert.equal(guidanceOf({ all: Object.keys(nested), read: (f) => nested[f] ?? null, facts: [], portability: { uses: [] }, tags: null }).basics.find((x) => x.id === "skills").state, "followed");
 });
 
 test("[F6.A5] a plugin is read for what applies to it: how it is packaged, the MCP servers it connects to, and its tool's own hooks and commands; the rest is said not to apply", () => {
@@ -197,6 +200,11 @@ test("[F6.A5] a plugin is read for what applies to it: how it is packaged, the M
   for (const h of reading.harnesses) assert.ok(h.lines.every((l) => ["skills", "mcp", "plugins", "hooks"].includes(l.capability)), `${h.name}: only what a plugin uses`);
   assert.match(reading.harnesses.find((h) => h.harness === "claude-code").takes, /^Installs as it is, as a Claude Code plugin/);
   assert.match(reading.harnesses.find((h) => h.harness === "opencode").takes, /^Its skills load as they are; its Claude Code and Cursor manifest does not install there/);
+  // 0.7.1: its manifest and hooks are lost where the harness does not read its format.
+  const oc = Object.fromEntries(reading.harnesses.find((h) => h.harness === "opencode").lines.map((l) => [l.capability, l.state]));
+  assert.equal(oc.hooks, "lost"); assert.equal(oc.plugins, "lost"); assert.equal(oc.skills, "kept");
+  const cc = Object.fromEntries(reading.harnesses.find((h) => h.harness === "claude-code").lines.map((l) => [l.capability, l.state]));
+  assert.equal(cc.hooks, "kept");
 });
 
 test("[F6.A6] the model says only what each outside service is needed for: asked in the first call with the facts that show it, never in the second; its words are held to plain facts", () => {

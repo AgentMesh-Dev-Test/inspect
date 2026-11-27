@@ -103,7 +103,11 @@ export function guidanceOf({ all, root = "", read, facts = [], portability = nul
 
   // 2. Each skill in skills/<name>/SKILL.md with front matter.
   {
-    const skills = mine.filter((f) => base(f) === "SKILL.md" && !ASSISTANT_DIR.test(rel(f)));
+    // 0.7.1: a SKILL.md inside another skill's folder (vercel-plugin's
+    // skills/ai-sdk/upstream/SKILL.md) is part of that skill, not one of its own.
+    const all8 = mine.filter((f) => base(f) === "SKILL.md" && !ASSISTANT_DIR.test(rel(f)));
+    const dirs = all8.map((f) => posix.dirname(f));
+    const skills = all8.filter((f) => !dirs.some((d) => d !== posix.dirname(f) && posix.dirname(f).startsWith(`${d}/`)));
     if (!skills.length) item(basics, "skills", "Skills in skills/<name>/SKILL.md", "missing", "No skills");
     else {
       const placed = skills.filter((f) => /^skills\/[^/]+\/SKILL\.md$/.test(rel(f)));

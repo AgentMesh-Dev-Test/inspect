@@ -464,7 +464,7 @@ test("[F5.R9] 0.7.0: Tests and gaps answers first in one line, then Tests, Gaps 
   const { app } = drawn(report([...list, ...more], [{ section: 7, title: "One judgment", why: "it cites a fact the scripts did not find" }], facts));
   tabNamed(app, "Tests and gaps").click();
   const panel = shownPanel(app);
-  assert.match(panel.querySelector("p.answer").textContent, /^\d+ tests?, (all offline|some needing live keys|all needing live keys) · 1 gap · \d+ questions? for its author$/, "the answer first, in one line");
+  assert.match(panel.querySelector("p.answer").textContent, /^\d+ tests?, (all offline|some needing live keys|all needing live keys) · 1 gap · \d+ things? it couldn't tell$/, "the answer first, in one line");
   assert.deepEqual(panel.querySelectorAll("h2").map((h) => h.textContent), ["Tests", "Gaps in the tests", "What Inspect couldn't tell"]);
   const row = (id) => rowOf(app, id);
   assert.equal(row("S8-010").querySelector(".measure-word").textContent, "12 tests · unit · offline", "a test's measure on its line");
@@ -800,7 +800,7 @@ test("[F6.A9] 0.7.0: Run it in shows the organization's preferred harnesses, in 
   assert.deepEqual(cards().map((c) => c.querySelector("h3").textContent), ["opencode", "Claude Code"], "in the order picked; one not in the catalogue is left out");
   const house = cards()[0];
   assert.equal(house.querySelector(".tag").textContent, "Runs agents in AgentMesh's House Stack");
-  assert.match(house.querySelector(".takes").textContent, /\.$/);
+  assert.match((house.querySelector(".takes") ?? shownPanel(p.app).querySelector(".takes-all")).textContent, /\.$/, "what it takes, in the card or once above the cards");
   const caps = house.querySelectorAll("li").map((li) => li.querySelector("button.ref").textContent);
   assert.ok(caps.includes("Sandboxes"), "a line for each capability it uses");
   for (const li of house.querySelectorAll("li")) assert.ok(["Kept", "Gained", "Partly", "Lost", "Not known"].includes(li.querySelector(".mark").textContent));

@@ -56,7 +56,7 @@ import { loadedSkills, pickPlugin, pluginFacts, scopeOf, shapeOf, subjectOf } fr
 import { loadDatabase, platformUses, readingOf } from "./platforms.mjs";
 import { guidanceOf } from "./guidance.mjs";
 
-export const VERSION = "0.7.0";
+export const VERSION = "0.7.1";
 const DAY_MS = 24 * 60 * 60 * 1000;
 
 /**

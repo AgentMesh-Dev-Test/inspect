@@ -738,6 +738,7 @@ export function harnessReadings({ db, rows, builtOn = [], primary = null, subjec
   const fileWords = (n) => `${n.toLocaleString("en-US")} ${n === 1 ? "file" : "files"}`;
   const tools = subject?.tools ?? [];
   const family = (l) => { const t = String(l ?? "").toLowerCase(); return t === "typescript" || t === "javascript" ? "javascript" : t === "c#" ? "csharp" : t; };
+  const pluginFits = (h) => (h.plugin_formats ?? []).some((f) => tools.includes(f)) || ((h.plugin_formats ?? []).includes("Agent Plugins 1.0.0") && found.standards.some((x) => x.standard === "Agent Plugins 1.0.0"));
   const out = [];
   for (const h of db.harnesses ?? []) {
     const sup = (cap) => h.supports?.[cap]?.support ?? "unknown";
@@ -747,6 +748,13 @@ export function harnessReadings({ db, rows, builtOn = [], primary = null, subjec
       let state = STATE_OF[sup(cap)] ?? "unknown";
       const what = firstSentence(h.supports?.[cap]?.what ?? "");
       let says = what;
+      // 0.7.1: a plugin's own manifest and hooks run only where the harness
+      // reads its format; elsewhere they are lost, whatever plugins or hooks
+      // of its own format the harness runs.
+      if (subject?.kind === "plugin" && (cap === "plugins" || cap === "hooks") && sup(cap) !== "unknown" && !pluginFits(h)) {
+        state = "lost";
+        says = `${h.name} reads ${(h.plugin_formats ?? []).length ? `${and(h.plugin_formats)} plugins` : "no plugin format"}, not ${and(tools) || "this one's"}. ${what}`.trim();
+      }
       // Gained: today from its vendor's own service, there from the harness itself.
       const r = cap === "sandboxes" ? row("sandboxes") : null;
       if (r && r.outside && sup(cap) === "yes" && !(h.platform && r.sources.some((x) => x.platform === h.platform))) {
@@ -776,9 +784,10 @@ export function harnessReadings({ db, rows, builtOn = [], primary = null, subjec
       // A harness or an assistant runs skills and tool servers, not an agent's own program.
       const mcp = sup("mcp");
       const code = ownFiles ? `its own code (${fileWords(ownFiles)}) ` : "its own code ";
+      const Code = `${code.charAt(0).toUpperCase()}${code.slice(1)}`;
       if (!ownFiles && skillsUsed) takes = "Its skills load as they are";
-      else if (mcp === "yes" || mcp === "partial") takes = `Running ${code}as a tool server ${h.name} connects to${skillsUsed && sup("skills") === "yes" ? ", with its skills loaded as they are" : ""}`;
-      else takes = mcp === "no" ? `${code.charAt(0).toUpperCase()}${code.slice(1)}has no way in: ${h.name} runs no tool servers` : `Not known how ${code}would run there`;
+      else if (mcp === "yes" || mcp === "partial") takes = `${Code}runs as a tool server${skillsUsed && sup("skills") === "yes" ? "; its skills load as they are" : ""}`;
+      else takes = mcp === "no" ? `${Code}has no way in: no tool servers there` : `Not known how ${code}would run there`;
     }
     out.push({ harness: h.id, name: h.name, vendor: h.vendor, kind: h.kind, ...(h.house_stack ? { house_stack: true } : {}), ...(h.platform ? { platform: h.platform } : {}), checked: h.checked ?? null, takes, lines });
   }
