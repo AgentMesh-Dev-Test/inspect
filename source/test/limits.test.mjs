@@ -86,7 +86,7 @@ test("jobs started together each keep the count: the write goes through a name n
     assert.equal(second.ok, true);
     assert.equal(second.total, 2);
     const tmps = names.filter((n) => n.endsWith(".tmp"));
-    assert.ok(tmps.every((n) => new RegExp(`${COUNTS_FILE.replace(".", "\.")}\.${process.pid}\.[0-9a-f]{12}\.tmp$`).test(n)), tmps.join(", "));
+    assert.ok(tmps.every((n) => new RegExp(`${COUNTS_FILE.replace(".", "\\.")}\\.${process.pid}\\.[0-9a-f]{12}\\.tmp$`).test(n)), tmps.join(", "));
     assert.notEqual(tmps.at(-1), tmps.at(-2), "each write its own name");
     // One that stays stale still refuses: a cap that cannot count is no cap.
     const always = { ...fs, writeFileSync: () => { const e = new Error("stale"); e.code = "ESTALE"; throw e; } };

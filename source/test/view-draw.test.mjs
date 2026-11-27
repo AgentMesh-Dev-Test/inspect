@@ -691,3 +691,17 @@ test("[F5.A7] the model's judgment of a service an MCP server reaches opens on t
   rowOf(p.app, mcpFinding.id).querySelector(".toggle").click();
   assert.match(rowOf(p.app, mcpFinding.id).textContent, /What it reaches.*It can read and write the team's documents\./s);
 });
+
+test("[F5.A8] a hook's row says what else its code does, once; that finding has no row of its own (0.5.7)", async () => {
+  const r = await pluginReport();
+  const start = r.findings.find((f) => f.detail?.hook?.event === "SessionStart");
+  start.detail.hook.also = [{ title: "Usage reports sent to Acme", says: "It sends the skills used and an install id.", level: "low", safe: "Turn usage reports off." }];
+  const p = drawn(r);
+  tabNamed(p.app, "Risks").click();
+  const rows = shownPanel(p.app).querySelectorAll("li.row");
+  assert.equal(rows.filter((row) => /Usage reports sent to Acme/.test(row.textContent)).length, 0, "closed, no row carries it");
+  rowOf(p.app, start.id).querySelector(".toggle").click();
+  const opened = rowOf(p.app, start.id).textContent;
+  assert.match(opened, /Also in its code.*Usage reports sent to Acme\. It sends the skills used and an install id\./s);
+  assert.match(opened, /To make it safe.*Turn usage reports off\./s);
+});

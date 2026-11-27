@@ -935,7 +935,12 @@ button { font: inherit; color: inherit; cursor: pointer; }
     const does = Array.isArray(f.detail?.hook?.does) ? f.detail.hook.does.map(one).filter(Boolean) : [];
     const pairs = [];
     if (does.length) pairs.push(["What it does", does.length === 1 ? prose(does[0]) : el("ul", { class: "advisories" }, does.map((w) => el("li", {}, prose(w))))]);
-    if (one(f.detail?.safe)) pairs.push(["To make it safe", prose(f.detail.safe)]);
+    // 0.5.7: what the model found in this hook's own code, said here once,
+    // never as a row of its own (its telemetry, the programs it starts).
+    const also = Array.isArray(f.detail?.hook?.also) ? f.detail.hook.also.filter((a) => one(a?.title) || one(a?.says)) : [];
+    if (also.length) pairs.push(["Also in its code", el("ul", { class: "advisories" }, also.map((a) => el("li", {}, el("b", { text: cap(one(a.title)).replace(/[.:]$/, "") }), ". ", ...prose(one(a.says)))))]);
+    const safes = [one(f.detail?.safe), ...also.map((a) => one(a.safe))].filter(Boolean);
+    if (safes.length) pairs.push(["To make it safe", safes.length === 1 ? prose(safes[0]) : el("ul", { class: "advisories" }, safes.map((w) => el("li", {}, prose(w))))]);
     const cat = categoryWords(f);
     if (cat) pairs.push(["Category", cat]);
     return [f.says ? el("p", {}, prose(f.says)) : null, pairs.length ? pairsOf(pairs) : null];
@@ -1533,6 +1538,7 @@ button { font: inherit; color: inherit; cursor: pointer; }
     risks.forEach((f, i) => {
       lines.push(`${i + 1}. ${LEVEL_WORD[levelOf(f)]}: ${one(f.title)} (${f.id})`);
       if (f.says) lines.push(`   ${one(f.says)}`);
+      for (const a of Array.isArray(f.detail?.hook?.also) ? f.detail.hook.also : []) lines.push(`   Also in its code: ${one(a.title)}. ${one(a.says)}`);
       if (cat(f)) lines.push(`   Category: ${cat(f)}`);
       lines.push(...places(f, "   "), "");
     });

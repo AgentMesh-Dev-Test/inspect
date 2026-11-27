@@ -21,6 +21,7 @@ import { INFERRING, JUDGING, checkEvidence, unquoted } from "./evidence.mjs";
 import { KINDS, LEVELS, LIST_IDS, PRECISE, categoryOf } from "./lists.mjs";
 import { evidenceOf } from "./report.mjs";
 import { systemNeed } from "./collect.mjs";
+import { isTestFile } from "./facts.mjs";
 
 const trim = (s) => String(s ?? "").trim();
 
@@ -200,6 +201,51 @@ export function checkHookWords(entries, byId) {
     kept.set(id, `${does[0].toUpperCase()}${does.slice(1)}${/[.!?]$/.test(does) ? "" : "."}`);
   }
   return { kept, held };
+}
+
+// ── Counts are the report's, and each fact is said once (0.5.7) ──
+// A count of one is left as written: "1 command" without its number would need an article.
+const NUMBER = "(?:[2-9](?![\\d,.])|\\d{2,}[\\d,]*|[1-9][\\d,]{2,}|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|thirteen|fourteen|fifteen|sixteen|seventeen|eighteen|nineteen|twenty|thirty|forty|fifty|sixty|seventy|eighty|ninety|a hundred|hundreds of)(?:[- ](?:one|two|three|four|five|six|seven|eight|nine))?";
+const COUNTED = "(?:skills?|commands?|sub-?agents?|agents?|hooks?|(?:MCP )?servers?|tests?|scripts?|programs?|lines?|plugins?|rules?|files?|tools?|guides?)";
+const COUNT = new RegExp(`\\b(?:(?:about|around|roughly|some|over|nearly|almost|more than|at least|exactly|just|a set of|a total of)\\s+)?${NUMBER}\\s+(?=(?:[\\w'-]+\\s+){0,3}${COUNTED}\\b)`, "gi");
+/**
+ * A plugin's prose with the counts the report gives left out: "four slash
+ * commands" is "slash commands", "about forty guidance skills" is "guidance
+ * skills". The tiles and lists count them from the code, and a model's count
+ * can disagree with them (vercel-plugin's "four" commands beside its tile's 5).
+ */
+export function withoutCounts(text) {
+  return String(text ?? "").replace(COUNT, "").replace(/\s{2,}/g, " ").replace(/(^|[.!?]\s+)([a-z])/g, (m, a, b) => `${a}${b.toUpperCase()}`).trim();
+}
+
+/** A file a judgment about a hook's code may rest on: code, not a test or a document. */
+const codeFile = (f) => !!f && !isTestFile(f) && !/\.(?:md|mdx|rst|txt|json|ya?ml|toml|lock)$/i.test(f);
+const stem = (f) => String(f).split("/").pop().replace(/\.[^.]+$/, "");
+/**
+ * The model's risks that are about a hook's own code, folded into the
+ * scripts' row for that hook (0.5.7): {stay: [risk], folded: Map(hook
+ * finding → [risk])}. A risk is a hook's when it cites the hook's fact, or
+ * when every code file it cites is one the hook's code reaches (a source file
+ * of one, by its name, counts). Otherwise it stays a row of its own.
+ */
+export function foldIntoHooks(risks, hooks, byId) {
+  const stay = []; const folded = new Map();
+  const reachOf = new Map(hooks.map((h) => {
+    const facts = (h.based_on ?? []).map((id) => byId.get(id)).filter(Boolean);
+    const files = new Set(facts.flatMap((f) => [f.file, ...(f.data?.files ?? []), ...(f.data?.reach ?? [])]).filter(Boolean));
+    return [h, { ids: new Set(h.based_on ?? []), files, stems: new Set([...files].map(stem)) }];
+  }));
+  for (const r of risks) {
+    if (r.kind !== "risk" || r.by !== "model") { stay.push(r); continue; }
+    const cited = (r.based_on ?? []).map((id) => byId.get(id)).filter(Boolean);
+    let hook = hooks.find((h) => (r.based_on ?? []).some((id) => reachOf.get(h).ids.has(id)));
+    if (!hook) {
+      const code = [...new Set(cited.map((f) => f.file).filter(codeFile))];
+      if (code.length) hook = hooks.find((h) => { const x = reachOf.get(h); return code.every((f) => x.files.has(f) || x.stems.has(stem(f))); });
+    }
+    if (hook) folded.set(hook, [...(folded.get(hook) ?? []), r]); else stay.push(r);
+  }
+  return { stay, folded };
 }
 
 /** A category the draft names, resolved against the lists and the facts: {list, id, name} or null. */

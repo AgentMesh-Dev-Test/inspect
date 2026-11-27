@@ -246,3 +246,43 @@ test("[F2.A9] what a hook prints into the assistant's instructions is said only 
   assert.ok(!start.data.programs[0].touches.includes("adds-context"));
   assert.ok(!/added to the assistant's instructions/.test(out.report.findings.find((f) => f.detail?.hook?.event === "SessionStart").says));
 });
+
+test("[F4.A12] a plugin's counts are the report's: the model's prose states none (0.5.7)", async () => {
+  const { withoutCounts } = await import("../scripts/checks.mjs");
+  assert.equal(withoutCounts("It adds about forty guidance skills, four slash commands for deploying, and three specialist sub-agents."), "It adds guidance skills, slash commands for deploying, and specialist sub-agents.");
+  assert.equal(withoutCounts("Four Vercel slash commands"), "Vercel slash commands");
+  assert.equal(withoutCounts("It is at version 7.0.2, in two to four sentences."), "It is at version 7.0.2, in two to four sentences.", "a number that counts no part stays");
+  const id = (prompt, kind, file) => new RegExp(`\\b(F\\d{4,}) \\[${kind}\\] ${file.replace(/[.]/g, "\\.")}`).exec(prompt)?.[1];
+  const m = model([
+    (prompt) => ({ text: JSON.stringify({ findings: [{ section: 3, kind: "job", title: "Four deploy commands", says: "It adds four commands and two sub-agents for shipping.", based_on: [id(prompt, "slash-command", "commands/deploy.md")], detail: { name: "Deploy", does: "Ships" } }] }), tokens_in: 1, tokens_out: 1 }),
+    () => ({ text: JSON.stringify({ findings: [] }), tokens_in: 1, tokens_out: 1 }),
+    () => ({ text: JSON.stringify({ description: "Helper is Acme's plugin for Claude Code and Cursor. It adds 3 hooks and 1 command.", glance: [] }), tokens_in: 1, tokens_out: 1 }),
+  ]);
+  const out = await run(claudePlugin(), undefined, m.ask);
+  assert.ok(m.asked.slice(0, 2).every((a) => /Never say how many skills, commands/.test(a.prompt)), "the model is told");
+  const job = out.report.findings.find((f) => f.kind === "job");
+  assert.equal(job.title, "Deploy commands");
+  assert.equal(job.says, "It adds commands and sub-agents for shipping.");
+  assert.equal(out.report.findings.find((f) => f.kind === "description").says, "Helper is Acme's plugin for Claude Code and Cursor. It adds hooks and command.".replace("and command.", "and 1 command."), "one is never taken out: it reads as 'a'");
+});
+
+test("[F5.A8] a risk about a hook's own code is said on the hook's row, once; one about other code keeps its own row (0.5.7)", async () => {
+  const id = (prompt, kind, file) => new RegExp(`\\b(F\\d{4,}) \\[${kind}\\] ${file.replace(/[.]/g, "\\.")}`).exec(prompt)?.[1];
+  const risk = (title, ids, level = "low") => ({ section: 7, kind: "risk", title, says: "The code does this without asking.", based_on: ids, level, categories: ["LLM02:2025"], detail: { safe: `Turn off ${title.toLowerCase()}.` } });
+  const m = model([
+    () => ({ text: JSON.stringify({ findings: [] }), tokens_in: 1, tokens_out: 1 }),
+    (prompt) => ({ text: JSON.stringify({ findings: [
+      risk("Usage reports sent to Acme", [id(prompt, "address", "hooks/lib/telemetry.mjs")]),
+      risk("Start hook reads the home folder", [id(prompt, "hook", "hooks/hooks.json"), id(prompt, "address", "hooks/lib/telemetry.mjs")], "medium"),
+      risk("A script reads cloud keys", [id(prompt, "capability", "scripts/read-keys.sh")], "medium"),
+    ] }), tokens_in: 1, tokens_out: 1 }),
+  ]);
+  const out = await run(claudePlugin(), undefined, m.ask);
+  const rows = out.report.findings.filter((f) => f.section === 7);
+  assert.ok(!rows.some((f) => /Usage reports sent to Acme|Start hook reads the home folder/.test(f.title)), "no row of their own");
+  assert.ok(rows.some((f) => f.title === "A script reads cloud keys"), "a risk about other code keeps its row");
+  const start = rows.find((f) => f.detail?.hook?.event === "SessionStart");
+  assert.deepEqual(start.detail.hook.also.map((a) => a.title), ["Usage reports sent to Acme", "Start hook reads the home folder"]);
+  assert.equal(start.level, "high", "the hook's level by rule stands when it is the higher");
+  assert.match(markdownOf(out.report), /Also, usage reports sent to Acme: The code does this without asking\./);
+});
