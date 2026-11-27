@@ -758,12 +758,13 @@ test("[F6.A9] Could it move? comes after Systems it uses: what it is built on an
   const sand = byName["Sandboxes and code execution"];
   assert.equal(sand.querySelector(".lv .word").textContent, "Partly open");
   assert.equal(levelOf(sand.querySelector(".lv")).shape, SHAPE_OF.medium, "a shape with the word, never a color alone");
-  assert.match(sand.querySelector(".tie-need").textContent, /^NeedsA sandbox that can run a browserAlso offersDocker, picked by a setting$/);
+  // 0.6.5: one line a row; the database's words and what it needs open behind its name.
+  assert.equal(sand.querySelector(".tie-need"), null); assert.equal(sand.querySelector(".tie-what"), null);
   assert.equal(sand.querySelector(".tie-swap").textContent, "Light to swap: its code is in one file");
   const mem = byName["Memory and saved state"];
   assert.equal(mem.querySelector(".lv .word").textContent, "Open source");
-  assert.equal(mem.querySelector(".tie-swap"), null, "how it swaps is said only of an outside service");
-  assert.equal(mem.querySelector(".tie-need"), null);
+  assert.equal(mem.querySelector(".tie-swap").textContent, "Comes with its open-source code");
+  assert.equal(panel.querySelectorAll("p.ties")[1].textContent, "Moving it means swapping tracing and telemetry, evaluations, and sandboxes and code execution, and re-hosting its own code (3 files).", "what moving would take, before the detail");
   assert.match(panel.querySelector("p.not-used").textContent, /^Not used: .*Prompt management/);
   for (const b of panel.querySelectorAll(".lv")) assert.ok(/\bfact\b/.test(b.className), "its shapes are facts in the text's color, never a warning");
 });
@@ -777,14 +778,16 @@ test("[F6.A9] Moving it: AgentMesh and two more, the rest behind Every platform;
   assert.equal(dests().length, 3);
   assert.equal(dests()[0].querySelector("h3").textContent, "AgentMesh");
   const mesh = dests()[0];
-  assert.deepEqual(mesh.querySelectorAll("h4").map((h) => h.textContent), ["Swap part by part", "Re-host its own code3 files, 6 lines"]);
-  const swapCells = mesh.querySelectorAll(".work")[0].querySelectorAll("li");
+  // 0.6.5: what it would lose, a line each; what it offers in full, one line; the work is said once above.
+  assert.equal(mesh.querySelectorAll("h4").length, 0);
+  assert.ok(mesh.querySelector('button[data-k="host:agentmesh"]'), "how it hosts agents opens behind a link");
+  const swapCells = mesh.querySelector("ul.cells").querySelectorAll("li");
   const evalCell = swapCells.find((li) => li.querySelector("button.ref").textContent === "Evaluations");
   assert.ok(evalCell, "a service to swap is listed under Swap");
   assert.equal(evalCell.querySelector(".lv .word").textContent, "Not offered", "AgentMesh's none shows like anyone else's");
   assert.equal(levelOf(evalCell.querySelector(".lv")).shape, SHAPE_OF.high);
   const meshDb = loadDatabase().platforms.find((p) => p.id === "agentmesh");
-  assert.equal(evalCell.querySelector(".cell-what").textContent, meshDb.categories.evaluations.what.split(/(?<=\.)\s/)[0], "the database's own first sentence");
+  assert.equal(evalCell.querySelector(".cell-what"), null, "the database's words open behind the name"); void meshDb;
   assert.equal(swapCells[0], evalCell, "what it would lose comes first");
   const before = resizes(sent);
   const every = panel().querySelector('button[data-k="every-platform"]') ?? panel().querySelectorAll("button.btn").find((b) => b.textContent === "Every platform");
@@ -799,7 +802,7 @@ test("[F6.A9] Moving it: AgentMesh and two more, the rest behind Every platform;
   const words = readable(panel());
   for (const re of [/\bsrc\/maker\b/, /\.py\b/, /:\d+\b/]) assert.ok(!re.test(words), `nothing like ${re}: ${words.match(re)?.[0]}`);
   // Inspect's own words give no advice; the database's are the vendors' own.
-  const own = [...panel().querySelectorAll("p.ties"), ...panel().querySelectorAll("h4"), ...panel().querySelectorAll("p.tie-swap"), ...panel().querySelectorAll("p.db-line")].map((n) => n.textContent).join("\n");
+  const own = [...panel().querySelectorAll("p.ties"), ...panel().querySelectorAll("span.tie-swap"), ...panel().querySelectorAll("p.db-line")].map((n) => n.textContent).join("\n");
   for (const re of [/recommend/i, /\bbest\b/i, /\bshould\b/i, /\bchoose\b/i]) assert.ok(!re.test(own), `nothing like ${re}`);
 });
 
@@ -830,7 +833,7 @@ test("[F6.A9] while the job runs the tab shows placeholders until the reading ar
   const copy = workingCopy({ about: { ...ABOUT, portability: reading }, findings: scripts, stage: "Step 3 of 5: Judging what it does and the systems it uses." });
   p.data(copy);
   const sand = () => shownPanel(p.app).querySelectorAll("li").find((li) => li.querySelector?.(".tie-name")?.textContent === "Sandboxes and code execution");
-  assert.ok(sand().querySelector(".tie-need .sk"), "what it needs is a placeholder until the model answers");
+  assert.ok(sand().querySelector(".tie-swap"), "the row is drawn in one line; what it needs opens behind its name when the model answers");
   const bare = { ...copyOf(scripts, "Step 4 of 5: Judging its risks and its tests.") };
   delete bare.portability;
   p.data(bare);
