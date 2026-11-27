@@ -55,7 +55,7 @@ import { admit, askerOf } from "./limits.mjs";
 import { loadedSkills, pickPlugin, pluginFacts, scopeOf, shapeOf, subjectOf } from "./plugin-facts.mjs";
 import { loadDatabase, platformUses, readingOf } from "./platforms.mjs";
 
-export const VERSION = "0.6.1";
+export const VERSION = "0.6.2";
 const DAY_MS = 24 * 60 * 60 * 1000;
 
 /**

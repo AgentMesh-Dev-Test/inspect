@@ -567,9 +567,11 @@ export const firstSentence = (s) => { const t = trim(s); const m = /^(.+?[.!?])(
  *  on a tie: OpenAI's deployment cell names ChatKit only in its second
  *  sentence, and that is the one for an agent that uses ChatKit. */
 const COMMON_TOKENS = new Set(["from", "import", "true", "false", "with", "none", "client", "python", "typescript", "javascript"]);
-export function leadSentence(what, values = []) {
+export function leadSentence(what, values = [], vendor = []) {
   const sentences = trim(what).split(/(?<=[.!?])\s+(?=[A-Z`(])/).filter(Boolean);
-  const tokens = [...new Set(values.flatMap((v) => String(v).toLowerCase().split(/[^a-z0-9]+/)).filter((x) => x.length >= 4 && !COMMON_TOKENS.has(x)))];
+  // The vendor's own name is in most of its sentences, so it tells none apart.
+  const own = new Set(vendor.flatMap((v) => String(v ?? "").toLowerCase().split(/[^a-z0-9]+/)));
+  const tokens = [...new Set(values.flatMap((v) => String(v).toLowerCase().split(/[^a-z0-9]+/)).filter((x) => x.length >= 4 && !COMMON_TOKENS.has(x) && !own.has(x)))];
   let best = 0; let score = 0;
   sentences.forEach((s, i) => {
     const words = new Set(s.toLowerCase().replace(/`/g, "").split(/[^a-z0-9]+/));
@@ -619,7 +621,7 @@ export function readingOf({ found, db, frameworks = [], ownCode = null, language
       const codeFiles = new Set(places.filter((u) => u.kind === "import" || u.kind === "call" || (u.kind === "config" && ALL_CODE.has(ext(u.file)))).map((u) => u.file));
       sources.push({
         platform: b.id, vendor: byId.get(b.id).vendor, name: byId.get(b.id).name, rating: cell.rating, level: cell.portability.level, standards: cell.portability.standards ?? [],
-        what: trim(cell.what), lead: leadSentence(cell.what, places.map((u) => u.value)), note: cell.portability.note,
+        what: trim(cell.what), lead: leadSentence(cell.what, places.map((u) => u.value), [b.id, byId.get(b.id).vendor]), note: cell.portability.note,
         reach: { code_files: codeFiles.size, settings_only: codeFiles.size === 0 && places.every((u) => ["env", "config", "file", "cli", "package"].includes(u.kind)) },
         evidence: places.map((u) => ({ file: u.file, line: u.line, kind: u.kind, value: u.value, ...(u.fact ? { fact: u.fact } : {}) })),
       });
