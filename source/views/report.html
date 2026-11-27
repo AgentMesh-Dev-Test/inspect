@@ -1567,19 +1567,23 @@ button { font: inherit; color: inherit; cursor: pointer; }
     // The answer first: what it is built on, and the outside services it reaches.
     const name = plugin ? toolList(plugin) || "Its coding tool" : main ? one(main.name) : "None of the platforms in the database";
     const under = plugin
-      ? ((b.platforms ?? []).length ? `Its code also uses ${andList(b.platforms.map((x) => one(x.name)))}` : null)
-      : [b.frameworks?.length ? andList(b.frameworks.map(one)) : null, one(b.language) || null, (b.platforms ?? []).length > 1 ? `also ${andList(b.platforms.slice(1).map((x) => one(x.name)))}` : null].filter(Boolean).join(" · ");
+      ? ((b.platforms ?? []).length ? `Its code also imports from ${andList(b.platforms.map((x) => `${one(x.vendor)}'s platform`))}` : null)
+      : [b.frameworks?.length ? andList(b.frameworks.map(one)) : null, one(b.language) || null, (b.platforms ?? []).length > 1 ? `also ${andList(b.platforms.slice(1).map((x) => `${one(x.vendor)}'s platform`))}` : null].filter(Boolean).join(" · ");
     out.push(el("div", { class: "move-lead" },
       systemIcon(plugin ? (plugin.tools?.[0] ?? name) : one(main?.vendor) || name),
       el("div", {}, el("span", { class: "k", text: plugin ? "Runs in" : "Built on" }), el("p", { class: "v", text: name }), under ? el("p", { class: "under", text: under }) : null)));
-    if (!plugin) out.push(el("p", { class: "ties", text: outside.length ? `It reaches outside services for ${titles(outside.map((r) => r.title.toLowerCase()))}.` : (p.uses ?? []).length ? "It reaches no outside service of its platform." : "It uses none of the features the database lists." }));
+    // What ties it to its vendor: each row the database rates the vendor's
+    // own or partly open, said as the ratings say it and no more.
+    const ties = (p.uses ?? []).filter((r) => !r.plugin_part && (r.level === "proprietary" || r.level === "mixed"));
+    if (!plugin) out.push(el("p", { class: "ties", text: ties.length ? `Tied to its vendor in ${titles(ties.map((r) => r.title.toLowerCase()))}.` : (p.uses ?? []).length ? "Everything it uses of its platform is open source or an open standard." : "It uses none of the features the database lists." }));
 
     out.push(el("h2", { text: "How tied it is" }));
     if ((p.uses ?? []).length) {
       out.push(el("ul", { class: "tie-list" }, p.uses.map((r) => {
         const src = r.sources.find((s) => s.level === r.level) ?? r.sources[0];
         const others = r.sources.filter((s) => s !== src);
-        const words = one(src?.what);
+        // The cell's sentence that names what the code uses, else its first.
+        const words = one(src?.lead) || one(src?.what);
         const needs = r.needs
           ? el("div", { class: "tie-need" }, el("span", { class: "k", text: "Needs" }), el("span", { text: cap(r.needs) }), r.choices ? el("span", { class: "k", text: "Also offers" }) : null, r.choices ? el("span", { text: cap(r.choices) }) : null)
           : r.outside && pending.has(3) ? el("div", { class: "tie-need" }, el("span", { class: "k", text: "Needs" }), el("span", {}, skInline(), el("span", { class: "sr", text: SOON }))) : null;
@@ -1612,7 +1616,8 @@ button { font: inherit; color: inherit; cursor: pointer; }
   function drawDest(p, x, outside) {
     const byRating = (a, c) => OFFER_ORDER.indexOf(a.rating) - OFFER_ORDER.indexOf(c.rating);
     const swapping = new Set(outside.map((r) => r.category));
-    const cells = [...(x.cells ?? [])].sort(byRating);
+    // Its deployment is the re-host line itself, said once.
+    const cells = [...(x.cells ?? [])].filter((c) => pluginOf(state.doc) || c.category !== "deployment").sort(byRating);
     const list = (cs) => el("ul", { class: "cells" }, cs.map((c) => el("li", {},
       factBadge(OFFER[c.rating] ?? OFFER.unknown, c.rating === "native" || c.rating === "standard"),
       el("div", { class: "cell-body" },
@@ -1621,7 +1626,7 @@ button { font: inherit; color: inherit; cursor: pointer; }
     const swaps = cells.filter((c) => swapping.has(c.category));
     const rest = cells.filter((c) => !swapping.has(c.category));
     const out = [el("div", { class: "dest-head" }, systemIcon(one(x.vendor) || one(x.name)), el("h3", { text: one(x.name) }), x.also_used ? el("span", { class: "also", text: "Its code uses it too" }) : null)];
-    if (swaps.length) out.push(el("div", { class: "work" }, el("h4", { text: "Swap its outside services" }), list(swaps)));
+    if (swaps.length) out.push(el("div", { class: "work" }, el("h4", { text: "Swap part by part" }), list(swaps)));
     if (!pluginOf(state.doc)) {
       const rt = x.runtime;
       const size = rt && rt.own_files !== null && Number.isFinite(Number(rt.own_files)) ? `${num(rt.own_files)} ${Number(rt.own_files) === 1 ? "file" : "files"}, ${num(Number(rt.own_lines) || 0)} lines` : null;

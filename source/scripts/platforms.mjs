@@ -563,6 +563,21 @@ export const PLUGIN_CATEGORIES = ["packaging", "tool-connections"];
 
 /** A cell's first sentence, the database's own words. */
 export const firstSentence = (s) => { const t = trim(s); const m = /^(.+?[.!?])(?:\s+(?=[A-Z`(])|$)/.exec(t); return m ? m[1] : t; };
+/** The sentence of a cell that names most of what the code shows, the first
+ *  on a tie: OpenAI's deployment cell names ChatKit only in its second
+ *  sentence, and that is the one for an agent that uses ChatKit. */
+const COMMON_TOKENS = new Set(["from", "import", "true", "false", "with", "none", "client", "python", "typescript", "javascript"]);
+export function leadSentence(what, values = []) {
+  const sentences = trim(what).split(/(?<=[.!?])\s+(?=[A-Z`(])/).filter(Boolean);
+  const tokens = [...new Set(values.flatMap((v) => String(v).toLowerCase().split(/[^a-z0-9]+/)).filter((x) => x.length >= 4 && !COMMON_TOKENS.has(x)))];
+  let best = 0; let score = 0;
+  sentences.forEach((s, i) => {
+    const words = new Set(s.toLowerCase().replace(/`/g, "").split(/[^a-z0-9]+/));
+    const n = tokens.filter((x) => words.has(x)).length;
+    if (n > score) { score = n; best = i; }
+  });
+  return sentences[best] ?? trim(what);
+}
 
 /** A count in words a person reads. */
 const filesWord = (n) => (n === 1 ? "one file" : `${n.toLocaleString("en-US")} files`);
@@ -604,12 +619,17 @@ export function readingOf({ found, db, frameworks = [], ownCode = null, language
       const codeFiles = new Set(places.filter((u) => u.kind === "import" || u.kind === "call" || (u.kind === "config" && ALL_CODE.has(ext(u.file)))).map((u) => u.file));
       sources.push({
         platform: b.id, vendor: byId.get(b.id).vendor, name: byId.get(b.id).name, rating: cell.rating, level: cell.portability.level, standards: cell.portability.standards ?? [],
-        what: trim(cell.what), note: cell.portability.note,
+        what: trim(cell.what), lead: leadSentence(cell.what, places.map((u) => u.value)), note: cell.portability.note,
         reach: { code_files: codeFiles.size, settings_only: codeFiles.size === 0 && places.every((u) => ["env", "config", "file", "cli", "package"].includes(u.kind)) },
         evidence: places.map((u) => ({ file: u.file, line: u.line, kind: u.kind, value: u.value, ...(u.fact ? { fact: u.fact } : {}) })),
       });
     }
     const std = found.standards.filter((s) => s.category === key);
+    // 0.6.0: a plugin's MCP servers are the open standard, whichever tool connects to them.
+    if (subject && key === "tool-connections" && (pluginParts.mcp ?? []).length && !std.some((s) => s.standard === "MCP")) {
+      const mcp = pluginParts.mcp;
+      sources.push({ platform: null, standard: "MCP", rating: "standard", level: "open-standard", standards: ["MCP"], what: "MCP servers, which any tool that speaks the Model Context Protocol can connect to.", reach: { code_files: 0, settings_only: false }, evidence: mcp.slice(0, PLACES).map((f) => ({ file: f.file, line: f.line, kind: "file", value: f.kind, ...(f.id ? { fact: f.id } : {}) })) });
+    }
     for (const name of [...new Set(std.map((s) => s.standard))]) {
       const places = std.filter((s) => s.standard === name);
       sources.push({ platform: null, standard: name, rating: "standard", level: "open-standard", standards: [name], what: STANDARD_WHAT[name], reach: { code_files: new Set(places.filter((x) => x.kind === "import").map((x) => x.file)).size, settings_only: false }, evidence: places.map((u) => ({ file: u.file, line: u.line, kind: u.kind, value: u.value, ...(u.fact ? { fact: u.fact } : {}) })) });
