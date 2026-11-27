@@ -215,3 +215,10 @@ test("[F6.A8] a working copy short of room leaves out the database's words first
   const tight = sized(10, JSON.stringify({ ...sized(10, 1e9), portability: undefined }).length - 2000);
   assert.ok(tight.findings.every((f) => f.detail?.need), "each system's need is kept while the reading gives way");
 });
+
+test("[F6.A2] a row says the sentence of its cell that names what the code uses, never one only the vendor's name matches", async () => {
+  const { leadSentence } = await import("../scripts/platforms.mjs");
+  const what = db.platforms.find((p) => p.id === "openai").categories.deployment.what;
+  assert.match(leadSentence(what, ["@openai/chatkit-react"], ["openai", "OpenAI"]), /ChatKit/);
+  assert.equal(leadSentence(what, ["nothing-it-names"], ["openai"]), what.split(/(?<=\.)\s(?=[A-Z])/)[0], "the first sentence when none names it");
+});
