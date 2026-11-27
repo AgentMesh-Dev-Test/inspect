@@ -1,0 +1,326 @@
+{
+  "$schema": "../platform.schema.json",
+  "id": "openai",
+  "vendor": "OpenAI",
+  "name": "OpenAI Agents SDK and OpenAI API platform",
+  "summary": "This entry covers the open-source OpenAI Agents SDK for Python and TypeScript, which runs inside the customer's own application, and the OpenAI services it works with: the Responses API and its hosted tools, the Conversations API, the Agents API, Agent Builder and ChatKit, Evals, and the platform's projects, API keys and Traces dashboard. OpenAI has deprecated Agent Builder, the Evals platform and reusable prompt objects, all scheduled to shut down on November 30, 2026.",
+  "products": [
+    {
+      "name": "OpenAI Agents SDK (Python, openai-agents)",
+      "kind": "framework",
+      "license": "MIT",
+      "languages": ["python"],
+      "docs": "https://openai.github.io/openai-agents-python/"
+    },
+    {
+      "name": "OpenAI Agents SDK (TypeScript, @openai/agents)",
+      "kind": "framework",
+      "license": "MIT",
+      "languages": ["typescript", "javascript"],
+      "docs": "https://openai.github.io/openai-agents-js/"
+    },
+    {
+      "name": "Responses API and hosted tools",
+      "kind": "hosted-service",
+      "license": "proprietary",
+      "docs": "https://developers.openai.com/api/docs/"
+    },
+    {
+      "name": "Conversations API",
+      "kind": "hosted-service",
+      "license": "proprietary",
+      "docs": "https://developers.openai.com/api/docs/guides/conversation-state"
+    },
+    {
+      "name": "Agents API",
+      "kind": "hosted-service",
+      "license": "proprietary",
+      "docs": "https://developers.openai.com/api/docs/guides/agents-api/overview"
+    },
+    {
+      "name": "Agent Builder",
+      "kind": "low-code",
+      "license": "proprietary",
+      "docs": "https://developers.openai.com/api/docs/guides/agent-builder"
+    },
+    {
+      "name": "ChatKit",
+      "kind": "framework",
+      "license": "Apache-2.0",
+      "languages": ["typescript", "javascript", "python"],
+      "docs": "https://developers.openai.com/api/docs/guides/chatkit"
+    },
+    {
+      "name": "Evals",
+      "kind": "hosted-service",
+      "license": "proprietary",
+      "docs": "https://developers.openai.com/api/docs/guides/evals"
+    },
+    {
+      "name": "OpenAI API platform (projects, API keys, Traces dashboard)",
+      "kind": "hosted-service",
+      "license": "proprietary",
+      "docs": "https://developers.openai.com/api/docs/guides/api-keys"
+    }
+  ],
+  "documentation": [
+    "https://openai.github.io/openai-agents-python/",
+    "https://openai.github.io/openai-agents-js/",
+    "https://developers.openai.com/",
+    "https://github.com/openai/",
+    "https://help.openai.com/"
+  ],
+  "checked": "2026-11-27",
+  "categories": {
+    "tracing": {
+      "rating": "native",
+      "what": "The Agents SDK has built-in tracing, on by default, that records model calls, tool calls, handoffs and guardrails and sends them to the Traces dashboard on the OpenAI platform; trace() groups runs, and custom trace processors add or replace destinations. The docs say tracing is unavailable for organizations that use the API under a Zero Data Retention policy.",
+      "portability": {
+        "level": "mixed",
+        "standards": [],
+        "note": "The trace processor interface is part of the open-source SDK, while the default destination, the Traces dashboard, is OpenAI's own service. The docs list third-party trace processors, maintained by their vendors, for backends such as Arize Phoenix, Langfuse, MLflow and Datadog; the tracing pages do not describe a built-in OpenTelemetry exporter."
+      },
+      "evidence": [
+        { "kind": "env", "value": "OPENAI_AGENTS_DISABLE_TRACING", "language": "python" },
+        { "kind": "call", "value": "add_trace_processor", "language": "python" },
+        { "kind": "call", "value": "set_trace_processors", "language": "python" },
+        { "kind": "call", "value": "set_tracing_export_api_key", "language": "python" },
+        { "kind": "call", "value": "withTrace", "language": "typescript" },
+        { "kind": "call", "value": "addTraceProcessor", "language": "typescript" }
+      ],
+      "sources": [
+        { "url": "https://openai.github.io/openai-agents-python/tracing/", "title": "Tracing - OpenAI Agents SDK" },
+        { "url": "https://openai.github.io/openai-agents-js/guides/tracing/", "title": "Tracing | OpenAI Agents SDK" }
+      ],
+      "checked": "2026-11-27"
+    },
+    "evaluations": {
+      "rating": "native",
+      "what": "The Evals platform (Evals API, dashboard and graders) scores model outputs against uploaded JSONL datasets with graders, and trace grading scores agent traces in the Traces dashboard. OpenAI is deprecating the Evals platform: it became read-only for existing users on October 31, 2026 and is scheduled to shut down on November 30, 2026.",
+      "portability": {
+        "level": "proprietary",
+        "standards": [],
+        "note": "Evals, graders and results use OpenAI's own API and data format and run only on OpenAI's service. OpenAI's deprecations page directs users to migrate to Promptfoo."
+      },
+      "evidence": [
+        { "kind": "call", "value": "client.evals.create", "language": "python" },
+        { "kind": "call", "value": "openai.evals.create", "language": "typescript" },
+        { "kind": "call", "value": "client.evals.runs.create", "language": "python" },
+        { "kind": "config", "value": "testing_criteria", "language": "any" },
+        { "kind": "config", "value": "data_source_config", "language": "any" },
+        { "kind": "not-in-code", "value": "trace grading", "note": "Trace graders are created and run in the Traces dashboard (Logs > Traces) on the OpenAI platform." }
+      ],
+      "sources": [
+        { "url": "https://developers.openai.com/api/docs/guides/evals", "title": "Working with evals" },
+        { "url": "https://developers.openai.com/api/docs/guides/trace-grading", "title": "Trace grading" },
+        { "url": "https://developers.openai.com/api/docs/deprecations", "title": "Deprecations" }
+      ],
+      "checked": "2026-11-27"
+    },
+    "prompt-management": {
+      "rating": "native",
+      "what": "Reusable prompt objects (v1/prompts) store prompts with an id, versions and variables on the OpenAI platform, and the Agents SDK Agent takes them through its prompt parameter; the dataset-backed prompt optimizer runs in the dashboard. OpenAI is deprecating both: v1/prompts and the prompt optimizer are scheduled to shut down on November 30, 2026, and the docs recommend keeping prompts in versioned application code.",
+      "portability": {
+        "level": "proprietary",
+        "standards": [],
+        "note": "Prompt objects are stored only on OpenAI's platform and fetched by id. OpenAI's guidance for new work is to keep prompts in application code and pass them through instructions and input."
+      },
+      "evidence": [
+        { "kind": "config", "value": "pmpt_", "language": "any", "note": "Prompt object ids start with pmpt_; the Agents SDK example passes prompt={\"id\": \"pmpt_123\", \"version\": \"1\", \"variables\": {...}}." },
+        { "kind": "not-in-code", "value": "prompt optimizer", "note": "The prompt optimizer is started from the prompt pane in the OpenAI platform dashboard." }
+      ],
+      "sources": [
+        { "url": "https://developers.openai.com/api/docs/guides/prompting", "title": "Prompting" },
+        { "url": "https://openai.github.io/openai-agents-python/agents/", "title": "Agents - OpenAI Agents SDK" },
+        { "url": "https://developers.openai.com/api/docs/guides/prompt-optimizer", "title": "Prompt optimizer" }
+      ],
+      "checked": "2026-11-27"
+    },
+    "keys-and-secrets": {
+      "rating": "partial",
+      "what": "OpenAI provides project API keys and service-account keys, which the Agents SDK reads from OPENAI_API_KEY, and the docs advise keeping them in a secret manager. Credentials for other systems are supplied by the application: for remote MCP servers it passes an OAuth token in the authorization field on every request, and the Responses API does not store that value.",
+      "portability": {
+        "level": "proprietary",
+        "standards": ["OAuth 2.0"],
+        "note": "OpenAI API keys are OpenAI's own credentials. Credentials for other systems stay in the customer's own secret store and are passed at request time; remote MCP servers take OAuth tokens that the application obtains itself."
+      },
+      "evidence": [
+        { "kind": "env", "value": "OPENAI_API_KEY", "language": "any" },
+        { "kind": "call", "value": "set_default_openai_key", "language": "python" },
+        { "kind": "config", "value": "authorization", "language": "any", "note": "Field of the Responses API mcp tool (and HostedMCPTool tool_config) that carries the OAuth access token for a remote MCP server or connector." },
+        { "kind": "not-in-code", "value": "project API keys and service accounts", "note": "Keys and service accounts are created in the OpenAI platform dashboard's project settings." }
+      ],
+      "sources": [
+        { "url": "https://developers.openai.com/api/docs/guides/api-keys", "title": "API keys and service accounts" },
+        { "url": "https://openai.github.io/openai-agents-python/config/", "title": "Configuration - OpenAI Agents SDK" },
+        { "url": "https://developers.openai.com/api/docs/guides/tools-connectors-mcp", "title": "MCP servers" }
+      ],
+      "checked": "2026-11-27"
+    },
+    "memory-and-state": {
+      "rating": "native",
+      "what": "Agents SDK Sessions keep conversation history across runs, with self-hosted backends such as SQLiteSession, RedisSession and SQLAlchemySession or the OpenAI-hosted OpenAIConversationsSession. On the API side, previous_response_id chains stored responses (kept 30 days by default), the Conversations API keeps durable conversation objects, and the Agents API saves its own sessions.",
+      "portability": {
+        "level": "mixed",
+        "standards": [],
+        "note": "The SDK's session backends are open source and store history in databases the customer runs, in the library's own format. The Conversations API, stored responses and Agents API sessions are OpenAI's own services and hold the state on OpenAI's side."
+      },
+      "evidence": [
+        { "kind": "call", "value": "SQLiteSession", "language": "python" },
+        { "kind": "call", "value": "OpenAIConversationsSession", "language": "python" },
+        { "kind": "import", "value": "from agents.extensions.memory import RedisSession", "language": "python" },
+        { "kind": "config", "value": "previous_response_id", "language": "any" },
+        { "kind": "call", "value": "conversations.create", "language": "any" }
+      ],
+      "sources": [
+        { "url": "https://openai.github.io/openai-agents-python/sessions/", "title": "Sessions - OpenAI Agents SDK" },
+        { "url": "https://developers.openai.com/api/docs/guides/conversation-state", "title": "Conversation state" },
+        { "url": "https://developers.openai.com/api/docs/guides/agents", "title": "Agents" }
+      ],
+      "checked": "2026-11-27"
+    },
+    "human-approval": {
+      "rating": "native",
+      "what": "In the Agents SDK, tools marked needs_approval (Python) or needsApproval (TypeScript) pause the run with interruptions, and the paused RunState can be serialized, stored and resumed after approve or reject. The Responses API mcp tool asks for approval of MCP tool calls by default with an mcp_approval_request item, answered with an mcp_approval_response.",
+      "portability": {
+        "level": "mixed",
+        "standards": [],
+        "note": "The approval flow and the RunState format belong to the open-source SDK and run anywhere, with state stored wherever the application chooses. The MCP approval items are part of OpenAI's own Responses API."
+      },
+      "evidence": [
+        { "kind": "config", "value": "needs_approval", "language": "python" },
+        { "kind": "config", "value": "needsApproval", "language": "typescript" },
+        { "kind": "call", "value": "RunState", "language": "any" },
+        { "kind": "call", "value": "interruptions", "language": "any" },
+        { "kind": "config", "value": "require_approval", "language": "any" },
+        { "kind": "config", "value": "mcp_approval_request", "language": "any" }
+      ],
+      "sources": [
+        { "url": "https://openai.github.io/openai-agents-python/human_in_the_loop/", "title": "Human-in-the-loop - OpenAI Agents SDK" },
+        { "url": "https://openai.github.io/openai-agents-js/guides/human-in-the-loop/", "title": "Human-in-the-loop | OpenAI Agents SDK" },
+        { "url": "https://developers.openai.com/api/docs/guides/tools-connectors-mcp", "title": "MCP servers" }
+      ],
+      "checked": "2026-11-27"
+    },
+    "deployment": {
+      "rating": "native",
+      "what": "The Agents API runs a managed Codex harness on OpenAI's side, with durable sessions and optional OpenAI-hosted or self-hosted sandboxes; its examples use the beta header OpenAI-Beta: agents=v1. The Agents SDK runs inside the customer's own application, and Agent Builder workflows (served through ChatKit) are deprecated and scheduled to shut down on November 30, 2026.",
+      "portability": {
+        "level": "proprietary",
+        "standards": [],
+        "note": "The Agents API and Agent Builder run only on OpenAI's service. Agents SDK code runs on whatever infrastructure the customer chooses, and Agent Builder can export a workflow as Agents SDK code to run there."
+      },
+      "evidence": [
+        { "kind": "call", "value": "client.beta.agents.sessions.create", "language": "any" },
+        { "kind": "config", "value": "OpenAI-Beta: agents=v1", "language": "any", "note": "HTTP header sent on Agents API requests." },
+        { "kind": "package", "value": "@openai/chatkit-react", "language": "typescript" },
+        { "kind": "config", "value": "OpenAI-Beta: chatkit_beta=v1", "language": "any", "note": "HTTP header sent when creating ChatKit sessions for an Agent Builder workflow." }
+      ],
+      "sources": [
+        { "url": "https://developers.openai.com/api/docs/guides/agents", "title": "Agents" },
+        { "url": "https://developers.openai.com/api/docs/guides/agents-api/overview", "title": "Agents API" },
+        { "url": "https://developers.openai.com/api/docs/guides/agent-builder", "title": "Agent Builder" }
+      ],
+      "checked": "2026-11-27"
+    },
+    "sandboxes": {
+      "rating": "native",
+      "what": "Code Interpreter runs Python in OpenAI-hosted containers (/v1/containers) that expire after 20 minutes without use, and the Agents API offers OpenAI-hosted sandboxes (openai_hosted) with network policies, or self-hosted ones. The Agents SDK's sandbox agents (SandboxAgent) run in sandbox clients such as UnixLocalSandboxClient and DockerSandboxClient, and the docs name hosted providers such as Modal, E2B and Vercel.",
+      "portability": {
+        "level": "mixed",
+        "standards": [],
+        "note": "OpenAI-hosted containers and sandboxes are OpenAI's own services. The SDK's sandbox clients are open source and run locally, in Docker, or with third-party sandbox providers."
+      },
+      "evidence": [
+        { "kind": "call", "value": "CodeInterpreterTool", "language": "python" },
+        { "kind": "config", "value": "code_interpreter", "language": "any" },
+        { "kind": "config", "value": "openai_hosted", "language": "any" },
+        { "kind": "import", "value": "from agents.sandbox import SandboxAgent", "language": "python" },
+        { "kind": "call", "value": "DockerSandboxClient", "language": "python" }
+      ],
+      "sources": [
+        { "url": "https://developers.openai.com/api/docs/guides/tools-code-interpreter", "title": "Code Interpreter" },
+        { "url": "https://developers.openai.com/api/docs/guides/agents-api/environments/openai-hosted", "title": "OpenAI-hosted sandboxes" },
+        { "url": "https://openai.github.io/openai-agents-python/sandbox/guide/", "title": "Concepts - OpenAI Agents SDK" }
+      ],
+      "checked": "2026-11-27"
+    },
+    "tool-connections": {
+      "rating": "standard",
+      "what": "As an MCP client, the Agents SDK connects over stdio (MCPServerStdio), Streamable HTTP (MCPServerStreamableHttp) and the deprecated SSE transport, or through HostedMCPTool, which has the Responses API mcp tool call remote MCP servers and OpenAI connectors (connector_id, deprecated for models released after September 1, 2026); the Agents API also takes mcp tools. The docs describe MCP client use only, not exposing an agent as an MCP server.",
+      "portability": {
+        "level": "open-standard",
+        "standards": ["MCP"],
+        "note": "Tools are reached through MCP, so the same servers work with other MCP clients. OpenAI connectors are referenced by OpenAI-defined connector ids and work only through the Responses API."
+      },
+      "evidence": [
+        { "kind": "call", "value": "MCPServerStdio", "language": "python" },
+        { "kind": "call", "value": "MCPServerStreamableHttp", "language": "python" },
+        { "kind": "call", "value": "HostedMCPTool", "language": "python" },
+        { "kind": "import", "value": "from agents.mcp import MCPServerStreamableHttp", "language": "python" },
+        { "kind": "config", "value": "server_url", "language": "any" },
+        { "kind": "config", "value": "connector_id", "language": "any" }
+      ],
+      "sources": [
+        { "url": "https://openai.github.io/openai-agents-python/mcp/", "title": "Model context protocol (MCP) - OpenAI Agents SDK" },
+        { "url": "https://developers.openai.com/api/docs/guides/tools-connectors-mcp", "title": "MCP servers" },
+        { "url": "https://developers.openai.com/api/docs/guides/agents-api/overview", "title": "Agents API" }
+      ],
+      "checked": "2026-11-27"
+    },
+    "agent-to-agent": {
+      "rating": "unknown",
+      "what": "No Agent2Agent (A2A) support was found in the Agents SDK, Responses API or Agents API documentation.",
+      "portability": {
+        "level": "unknown",
+        "standards": [],
+        "note": "Not found in the vendor's documentation."
+      },
+      "evidence": [],
+      "sources": [],
+      "checked": "2026-11-27"
+    },
+    "identity-and-access": {
+      "rating": "native",
+      "what": "The OpenAI platform controls access by organization and project, with preset and custom roles, groups that can be synced from an identity provider over SCIM, project-scoped service accounts, and key scopes that cannot exceed the owner's permissions. Workload identity federation lets a workload exchange an OIDC JWT, SPIFFE JWT-SVID or X.509 certificate for a short-lived token for a service account instead of storing a key.",
+      "portability": {
+        "level": "mixed",
+        "standards": ["OpenID Connect", "SCIM", "SPIFFE"],
+        "note": "Projects, roles and API keys are OpenAI's own access model. Workload identity federation accepts OIDC tokens from supported identity providers, and group membership can be synced over SCIM."
+      },
+      "evidence": [
+        { "kind": "not-in-code", "value": "roles, groups and service accounts", "note": "Set in the OpenAI platform's organization and project settings." },
+        { "kind": "env", "value": "OPENAI_PROJECT_ID", "language": "python", "note": "Read by the Agents SDK to attribute traces to a proj_ project." },
+        { "kind": "env", "value": "OPENAI_ORG_ID", "language": "python", "note": "Read by the Agents SDK to attribute traces to an org_ organization." }
+      ],
+      "sources": [
+        { "url": "https://developers.openai.com/api/docs/guides/rbac", "title": "Manage permissions in the OpenAI platform" },
+        { "url": "https://developers.openai.com/api/docs/guides/api-keys", "title": "API keys and service accounts" },
+        { "url": "https://developers.openai.com/api/docs/guides/workload-identity-federation", "title": "Workload identity federation" }
+      ],
+      "checked": "2026-11-27"
+    },
+    "packaging": {
+      "rating": "standard",
+      "what": "Skills, uploaded through /v1/skills or bundled inline and attached to the hosted or local shell tool, are documented as compatible with the open Agent Skills standard (a SKILL.md with name and description); the Agents API loads skills and plugins from capability_directories. Agents API plugins use the .codex-plugin/plugin.json layout, while OpenAI's ChatGPT and Codex plugin docs describe the portable Agent Plugins 1.0.0 root plugin.json, which the Agents API pages do not mention.",
+      "portability": {
+        "level": "mixed",
+        "standards": ["Agent Skills", "Agent Plugins"],
+        "note": "Skills follow the Agent Skills format, so the same SKILL.md folders work with other hosts that read it. The Agents API plugin layout is OpenAI's Codex format; the portable Agent Plugins 1.0.0 layout is documented for ChatGPT and Codex plugins."
+      },
+      "evidence": [
+        { "kind": "file", "value": "SKILL.md", "language": "any" },
+        { "kind": "config", "value": "skill_reference", "language": "any" },
+        { "kind": "config", "value": "capability_directories", "language": "any" },
+        { "kind": "file", "value": ".codex-plugin/plugin.json", "language": "any" },
+        { "kind": "import", "value": "from agents.sandbox.capabilities import Capabilities, Skills", "language": "python" }
+      ],
+      "sources": [
+        { "url": "https://developers.openai.com/api/docs/guides/tools-skills", "title": "Skills" },
+        { "url": "https://developers.openai.com/api/docs/guides/agents-api/tools/plugins", "title": "Plugins" },
+        { "url": "https://developers.openai.com/plugins/build/plugins", "title": "Package your plugin" }
+      ],
+      "checked": "2026-11-27"
+    }
+  }
+}

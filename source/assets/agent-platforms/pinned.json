@@ -1,0 +1,54 @@
+{
+  "about": "A copy of AgentMesh's agent platforms database (data/agent-platforms), taken byte for byte at one AgentMesh commit. Inspect reads it to say how tied an agent is to its platform and what moving it would take. To take a newer copy: copy the folder again from the new commit, set commit, checked and every sha256 here, run the tests, release; that is a normal pull request.",
+  "repository": "https://github.com/jeffrschneider/AgentMesh",
+  "path": "data/agent-platforms",
+  "commit": "c782cb92279030d14c59c523b12bd5b648972b74",
+  "committed": "2026-11-27",
+  "checked": "2026-11-27",
+  "files": [
+    {
+      "file": "README.md",
+      "sha256": "63b1d0b04eb8fbdf6b608ee7e37d511c23853f08d1e015ee261358795b1e50a9"
+    },
+    {
+      "file": "platform.schema.json",
+      "sha256": "55780171c1351a02c8a4026db6186ab9f2104e5b1fd4bfc89f56f7b8c544a7c0"
+    },
+    {
+      "file": "platforms/agentmesh.json",
+      "sha256": "4b3f9e33de49e94e3b5ec08d9b32bd3c08bd47960e4ea9f9f20a3c6e384c907b"
+    },
+    {
+      "file": "platforms/anthropic.json",
+      "sha256": "9a8686ab2e404d7f48a003e9707cf898faa02db6627553001926de88decc0d26"
+    },
+    {
+      "file": "platforms/aws.json",
+      "sha256": "270c987b33e5edaca846e1fdb836a0728a68fc7e1463d39e5da82dec8c0b48ac"
+    },
+    {
+      "file": "platforms/crewai.json",
+      "sha256": "3315ab09be8ccc2a53c37a428926fe95c6c33f6f6b4f8dedd73108fd4f6cdf9d"
+    },
+    {
+      "file": "platforms/google.json",
+      "sha256": "fcb56836ae09c8163d36b09b69a33b35a83c2f1af304fd580052c3a6edd642aa"
+    },
+    {
+      "file": "platforms/langchain.json",
+      "sha256": "3b2d591e1c94320deff50ce63dfee552d148801e97c7800889b93ef12a7ad62d"
+    },
+    {
+      "file": "platforms/mastra.json",
+      "sha256": "d7bf53c58e82ed4a1c75f552cbbc0224b66fc3bdc66befa9e4ca27e874238ad6"
+    },
+    {
+      "file": "platforms/microsoft.json",
+      "sha256": "3c8c93b661420b38882f6c7c35bca2d956a7592bbd5b78169575a72f4d57c2c1"
+    },
+    {
+      "file": "platforms/openai.json",
+      "sha256": "3c29e242ab171b24e44452e30a96159c5ddb2e60837eb505d2abdb31a74bbcc2"
+    }
+  ]
+}

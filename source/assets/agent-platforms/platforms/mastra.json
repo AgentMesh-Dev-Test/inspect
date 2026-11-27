@@ -1,0 +1,296 @@
+{
+  "$schema": "../platform.schema.json",
+  "id": "mastra",
+  "vendor": "Mastra",
+  "name": "Mastra framework and Mastra platform",
+  "summary": "Mastra is an open-source TypeScript framework (`@mastra/core` and related `@mastra/*` packages) for agents, workflows, memory and tools, with a local Studio UI started by `mastra dev`. The Mastra platform, which replaces Mastra Cloud, is Mastra's hosted service with Observability, Studio and Server products.",
+  "products": [
+    {
+      "name": "Mastra",
+      "kind": "framework",
+      "license": "Apache-2.0",
+      "languages": ["TypeScript"],
+      "docs": "https://mastra.ai/docs/"
+    },
+    {
+      "name": "Mastra platform",
+      "kind": "hosted-service",
+      "license": "proprietary",
+      "languages": ["TypeScript"],
+      "docs": "https://mastra.ai/docs/mastra-platform/overview"
+    }
+  ],
+  "documentation": [
+    "https://mastra.ai/docs/",
+    "https://mastra.ai/reference/",
+    "https://mastra.ai/models/",
+    "https://mastra.ai/integrations/",
+    "https://github.com/mastra-ai/"
+  ],
+  "checked": "2026-11-27",
+  "categories": {
+    "tracing": {
+      "rating": "native",
+      "what": "Observability (the `Observability` class from `@mastra/observability`, set as `observability` on the Mastra instance) records a span for every agent run, workflow run, tool call and model call, with token counts and cost estimates. Exporters send spans to Studio (MastraStorageExporter), the Mastra platform (MastraPlatformExporter) or third-party tools such as Langfuse, Braintrust and Arize.",
+      "portability": {
+        "level": "mixed",
+        "standards": ["OpenTelemetry", "OTLP", "OpenTelemetry GenAI semantic conventions"],
+        "note": "Spans and exporters use Mastra's own open-source interface. The OtelExporter (`@mastra/otel-exporter`) sends traces and logs to any OTLP endpoint (http/json, http/protobuf or grpc) using the OpenTelemetry GenAI semantic conventions, and an OtelBridge links Mastra spans to existing OpenTelemetry context."
+      },
+      "evidence": [
+        { "kind": "package", "value": "@mastra/observability", "language": "typescript" },
+        { "kind": "call", "value": "Observability", "language": "typescript" },
+        { "kind": "call", "value": "MastraPlatformExporter", "language": "typescript" },
+        { "kind": "env", "value": "MASTRA_PLATFORM_ACCESS_TOKEN", "language": "any" },
+        { "kind": "package", "value": "@mastra/otel-exporter", "language": "typescript" },
+        { "kind": "package", "value": "@mastra/langfuse", "language": "typescript" }
+      ],
+      "sources": [
+        { "url": "https://mastra.ai/docs/observability/overview", "title": "Observability" },
+        { "url": "https://mastra.ai/docs/observability/tracing/overview", "title": "Usage (tracing)" },
+        { "url": "https://mastra.ai/reference/observability/tracing/exporters/otel", "title": "OtelExporter" }
+      ],
+      "checked": "2026-11-27"
+    },
+    "evaluations": {
+      "rating": "native",
+      "what": "Evals use scorers (prebuilt ones in `@mastra/evals`, custom ones made with `createScorer`) that score agent and workflow outputs live on sampled traffic through the `scorers` option, or in batches with `runEvals`; datasets and experiments run an agent or workflow against stored test cases. Scores are saved to the `mastra_scorers` table in the configured storage and shown in Studio.",
+      "portability": {
+        "level": "open-source",
+        "standards": [],
+        "note": "Scorers and score records use Mastra's own interface and are stored in the developer's own database through the open-source framework. The docs show no open standard format for eval data."
+      },
+      "evidence": [
+        { "kind": "package", "value": "@mastra/evals", "language": "typescript" },
+        { "kind": "import", "value": "@mastra/evals/scorers/prebuilt", "language": "typescript" },
+        { "kind": "call", "value": "createScorer", "language": "typescript" },
+        { "kind": "call", "value": "runEvals", "language": "typescript" },
+        { "kind": "call", "value": "createAnswerRelevancyScorer", "language": "typescript" }
+      ],
+      "sources": [
+        { "url": "https://mastra.ai/docs/evals/overview", "title": "Evals" },
+        { "url": "https://mastra.ai/reference/evals/create-scorer", "title": "createScorer" }
+      ],
+      "checked": "2026-11-27"
+    },
+    "prompt-management": {
+      "rating": "native",
+      "what": "Editor (`MastraEditor` from `@mastra/editor`, set as `editor` on the Mastra instance) stores agent instructions and reusable prompt blocks with draft and published versions, edited in Studio; agents that reference a prompt block use its active published version at run time.",
+      "portability": {
+        "level": "open-source",
+        "standards": [],
+        "note": "Versions use Mastra's own format, kept in the developer's configured storage by default or, with `source: 'code'`, as JSON override files in the repository. No open standard for prompts is involved."
+      },
+      "evidence": [
+        { "kind": "package", "value": "@mastra/editor", "language": "typescript" },
+        { "kind": "call", "value": "MastraEditor", "language": "typescript" },
+        { "kind": "call", "value": "getEditor", "language": "typescript" },
+        { "kind": "call", "value": "editor.prompt.create", "language": "typescript" },
+        { "kind": "file", "value": "mastra/editor/agents/", "language": "any", "note": "Override files written when the Editor uses source: 'code'." }
+      ],
+      "sources": [
+        { "url": "https://mastra.ai/docs/studio/editor", "title": "Editor" },
+        { "url": "https://mastra.ai/reference/editor/prompt-blocks", "title": "Prompt blocks" },
+        { "url": "https://mastra.ai/reference/editor/mastra-editor", "title": "MastraEditor class" }
+      ],
+      "checked": "2026-11-27"
+    },
+    "keys-and-secrets": {
+      "rating": "native",
+      "what": "Mastra platform environments store variables as write-only encrypted secrets or readable config values, set in the dashboard or with `mastra env vars set`, and deliver them to the service at boot; the framework reads model provider keys from environment variables such as `OPENAI_API_KEY`. Connect (Public Beta) on the Mastra platform holds OAuth or API-key connections to services such as GitHub and Slack, adding credentials on the server for tool calls or returning them through `credential()`.",
+      "portability": {
+        "level": "mixed",
+        "standards": [],
+        "note": "Agent code reads plain environment variables, which any host can supply. The platform's secret storage, the `mastra env vars` commands and Connect are Mastra's own hosted features."
+      },
+      "evidence": [
+        { "kind": "env", "value": "OPENAI_API_KEY", "language": "any" },
+        { "kind": "env", "value": "ANTHROPIC_API_KEY", "language": "any" },
+        { "kind": "cli", "value": "mastra env vars set", "language": "any" },
+        { "kind": "cli", "value": "mastra env vars pull", "language": "any" },
+        { "kind": "package", "value": "@mastra/connect", "language": "typescript" },
+        { "kind": "file", "value": ".env.example", "language": "any" }
+      ],
+      "sources": [
+        { "url": "https://mastra.ai/docs/mastra-platform/deploy/environments", "title": "Environments" },
+        { "url": "https://mastra.ai/models/environment-variables", "title": "Environment variables" },
+        { "url": "https://mastra.ai/docs/mastra-platform/connect", "title": "Connect" }
+      ],
+      "checked": "2026-11-27"
+    },
+    "memory-and-state": {
+      "rating": "native",
+      "what": "Memory (`@mastra/memory`) gives agents message history, working memory, semantic recall and observational memory, scoped by `thread` and `resource` ids, and workflow snapshots let suspended runs resume. State is kept in a storage adapter set on the Mastra instance, such as LibSQLStore (`@mastra/libsql`) or PostgresStore (`@mastra/pg`).",
+      "portability": {
+        "level": "open-source",
+        "standards": [],
+        "note": "Threads, messages, working memory and snapshots use Mastra's own data format, stored in the developer's own database through open-source adapters for libSQL, PostgreSQL, MongoDB and others. No open standard for agent memory is involved."
+      },
+      "evidence": [
+        { "kind": "package", "value": "@mastra/memory", "language": "typescript" },
+        { "kind": "call", "value": "Memory", "language": "typescript" },
+        { "kind": "package", "value": "@mastra/libsql", "language": "typescript" },
+        { "kind": "call", "value": "LibSQLStore", "language": "typescript" },
+        { "kind": "call", "value": "PostgresStore", "language": "typescript" },
+        { "kind": "call", "value": "MastraCompositeStore", "language": "typescript" }
+      ],
+      "sources": [
+        { "url": "https://mastra.ai/docs/memory/overview", "title": "Memory" },
+        { "url": "https://mastra.ai/docs/storage", "title": "Storage" }
+      ],
+      "checked": "2026-11-27"
+    },
+    "human-approval": {
+      "rating": "native",
+      "what": "Workflow steps pause with `suspend()` and continue with `run.resume()`, and agent tool calls pause for approval through `requireApproval` on `createTool()` or `requireToolApproval` per request, answered with `approveToolCall()` or `declineToolCall()`. Paused runs survive restarts only when persistent storage is configured.",
+      "portability": {
+        "level": "open-source",
+        "standards": [],
+        "note": "This is Mastra's own API in the open-source framework, with snapshots kept in the developer's configured storage. No open standard is involved."
+      },
+      "evidence": [
+        { "kind": "call", "value": "suspendSchema", "language": "typescript" },
+        { "kind": "call", "value": "resumeSchema", "language": "typescript" },
+        { "kind": "call", "value": "requireApproval", "language": "typescript" },
+        { "kind": "call", "value": "requireToolApproval", "language": "typescript" },
+        { "kind": "call", "value": "approveToolCall", "language": "typescript" },
+        { "kind": "call", "value": "resumeStream", "language": "typescript" }
+      ],
+      "sources": [
+        { "url": "https://mastra.ai/docs/agents/human-in-the-loop", "title": "Human-in-the-loop" },
+        { "url": "https://mastra.ai/docs/workflows/suspend-and-resume", "title": "Suspend and resume" }
+      ],
+      "checked": "2026-11-27"
+    },
+    "deployment": {
+      "rating": "native",
+      "what": "`mastra build` produces a standalone Hono-based server in `.mastra/output` that runs on Node.js, Bun or Deno, with optional deployers for Vercel, Netlify and Cloudflare. `mastra deploy` releases the app to the Mastra platform, which replaces Mastra Cloud with separate Studio and Server products and per-environment URLs and variables.",
+      "portability": {
+        "level": "mixed",
+        "standards": [],
+        "note": "The built server comes from the open-source framework and runs on any host that supports Node.js, Bun or Deno. The Mastra platform and `mastra deploy` are Mastra's hosted service, and the provider deployers target each provider's own format."
+      },
+      "evidence": [
+        { "kind": "cli", "value": "mastra build", "language": "any" },
+        { "kind": "cli", "value": "mastra deploy", "language": "any" },
+        { "kind": "file", "value": ".mastra-project.json", "language": "any" },
+        { "kind": "file", "value": ".mastra/output", "language": "any" },
+        { "kind": "package", "value": "@mastra/deployer-vercel", "language": "typescript" },
+        { "kind": "call", "value": "VercelDeployer", "language": "typescript" }
+      ],
+      "sources": [
+        { "url": "https://mastra.ai/docs/deployment/overview", "title": "Deploy" },
+        { "url": "https://mastra.ai/docs/deployment/mastra-server", "title": "Mastra server" },
+        { "url": "https://mastra.ai/docs/mastra-platform/deploy/overview", "title": "Deploy to Mastra platform" }
+      ],
+      "checked": "2026-11-27"
+    },
+    "sandboxes": {
+      "rating": "native",
+      "what": "A Workspace (`Workspace` from `@mastra/core/workspace`) gives an agent a sandbox for running commands and code plus a filesystem, using LocalSandbox or provider packages for services such as E2B, Daytona, Modal and Vercel; the Mastra platform provisions managed Workspaces through `@mastra/platform-workspace`. The docs state that LocalSandbox runs commands on the host and is not isolated by default.",
+      "portability": {
+        "level": "mixed",
+        "standards": [],
+        "note": "The Workspace interface is Mastra's own and open source. Isolation comes from the chosen provider, several of which are third-party services, and the managed Workspaces are a Mastra platform service."
+      },
+      "evidence": [
+        { "kind": "import", "value": "@mastra/core/workspace", "language": "typescript" },
+        { "kind": "call", "value": "Workspace", "language": "typescript" },
+        { "kind": "call", "value": "LocalSandbox", "language": "typescript" },
+        { "kind": "package", "value": "@mastra/daytona", "language": "typescript" },
+        { "kind": "package", "value": "@mastra/platform-workspace", "language": "typescript" },
+        { "kind": "call", "value": "PlatformSandbox", "language": "typescript" }
+      ],
+      "sources": [
+        { "url": "https://mastra.ai/docs/sandbox/overview", "title": "Sandboxes and filesystems" },
+        { "url": "https://mastra.ai/docs/mastra-platform/workspaces", "title": "Workspaces" }
+      ],
+      "checked": "2026-11-27"
+    },
+    "tool-connections": {
+      "rating": "standard",
+      "what": "`@mastra/mcp` provides MCPClient, which connects agents to MCP servers over stdio or Streamable HTTP (with `authenticate()` for OAuth-protected servers), and MCPServer, which exposes a Mastra app's agents, tools and workflows as an MCP server. The MCP events support (SEP-3415, a draft extension) is labeled experimental.",
+      "portability": {
+        "level": "open-standard",
+        "standards": ["MCP"],
+        "note": "Tools reached through MCPClient and MCPServer use the open protocol (the docs name the 2026-07-28 revision). Tools defined with `createTool()` use Mastra's own interface but can be exposed to other clients through MCPServer."
+      },
+      "evidence": [
+        { "kind": "package", "value": "@mastra/mcp", "language": "typescript" },
+        { "kind": "call", "value": "MCPClient", "language": "typescript" },
+        { "kind": "call", "value": "MCPServer", "language": "typescript" },
+        { "kind": "call", "value": "listTools", "language": "typescript" },
+        { "kind": "call", "value": "startStdio", "language": "typescript" }
+      ],
+      "sources": [
+        { "url": "https://mastra.ai/docs/connections/mcp", "title": "MCP" }
+      ],
+      "checked": "2026-11-27"
+    },
+    "agent-to-agent": {
+      "rating": "standard",
+      "what": "Mastra serves each registered agent as an A2A endpoint with an agent card (`/api/.well-known/<agentId>/agent-card.json`) and an execution URL (`/api/a2a/<agentId>`), supporting A2A 0.3.0 and 1.0, and `A2AAgent` from `@mastra/core/a2a` or `getA2A()` in `@mastra/client-js` call remote A2A agents. The docs note that A2A task records and push notification configs are kept in memory and lost on restart.",
+      "portability": {
+        "level": "open-standard",
+        "standards": ["A2A"],
+        "note": "Both serving and calling follow the A2A protocol over JSON-RPC with Server-Sent Events streaming, and agent cards can be signed with ES256."
+      },
+      "evidence": [
+        { "kind": "import", "value": "@mastra/core/a2a", "language": "typescript" },
+        { "kind": "call", "value": "A2AAgent", "language": "typescript" },
+        { "kind": "package", "value": "@mastra/client-js", "language": "typescript" },
+        { "kind": "call", "value": "getA2A", "language": "typescript" },
+        { "kind": "config", "value": "agentCardSigning", "language": "typescript", "note": "Key under server.a2a on the Mastra instance." }
+      ],
+      "sources": [
+        { "url": "https://mastra.ai/docs/connections/a2a", "title": "A2A (Agent-to-Agent)" }
+      ],
+      "checked": "2026-11-27"
+    },
+    "identity-and-access": {
+      "rating": "native",
+      "what": "Auth providers set on `server.auth` protect the Mastra API and Studio: built-in Simple Auth and JSON Web Token (`MastraJwtAuth` in `@mastra/auth`) plus provider packages for Auth0, Better Auth, Clerk, Firebase, Google, Neon, Okta, Supabase and WorkOS, with role-based access control and fine-grained authorization. Authentication is optional, and without it all routes and Studio are public.",
+      "portability": {
+        "level": "mixed",
+        "standards": ["OAuth 2.0", "OpenID Connect", "JWT"],
+        "note": "The provider interface is Mastra's own, while providers such as Okta use an OAuth 2.0 / OIDC sign-in flow and verify Bearer JWTs against the identity provider's JWKS. Fine-grained authorization (`@mastra/core/auth/ee`) requires a Mastra Enterprise Edition license in production."
+      },
+      "evidence": [
+        { "kind": "package", "value": "@mastra/auth", "language": "typescript" },
+        { "kind": "call", "value": "MastraJwtAuth", "language": "typescript" },
+        { "kind": "env", "value": "MASTRA_JWT_SECRET", "language": "any" },
+        { "kind": "package", "value": "@mastra/auth-okta", "language": "typescript" },
+        { "kind": "call", "value": "MastraAuthOkta", "language": "typescript" },
+        { "kind": "import", "value": "@mastra/core/auth/ee", "language": "typescript" }
+      ],
+      "sources": [
+        { "url": "https://mastra.ai/docs/auth/overview", "title": "Auth" },
+        { "url": "https://mastra.ai/reference/auth/okta", "title": "MastraAuthOkta and MastraRBACOkta class" },
+        { "url": "https://mastra.ai/docs/auth/fga", "title": "Fine-grained authorization (FGA)" }
+      ],
+      "checked": "2026-11-27"
+    },
+    "packaging": {
+      "rating": "standard",
+      "what": "Mastra agents load skills that follow the Agent Skills specification (a folder with a `SKILL.md` carrying `name` and `description`), through a Workspace `skills` option, the agent's `skills` config or `createSkill()`; the docs do not mention Agent Plugins. Mastra's own layout puts the Mastra instance in `src/mastra/index.ts`, with file-based agents in `src/mastra/agents/<name>/` (`config.ts`, `instructions.md`, `skills/`).",
+      "portability": {
+        "level": "mixed",
+        "standards": ["Agent Skills"],
+        "note": "Skills use the open Agent Skills format and can be read by other tools that support it. The project layout, the Mastra instance file and file-based agent folders are Mastra's own conventions, and no Agent Plugins `plugin.json` support is documented."
+      },
+      "evidence": [
+        { "kind": "file", "value": "SKILL.md", "language": "any" },
+        { "kind": "file", "value": "src/mastra/index.ts", "language": "typescript" },
+        { "kind": "import", "value": "@mastra/core/skills", "language": "typescript" },
+        { "kind": "call", "value": "createSkill", "language": "typescript" },
+        { "kind": "call", "value": "agentConfig", "language": "typescript" }
+      ],
+      "sources": [
+        { "url": "https://mastra.ai/docs/skills", "title": "Agent skills" },
+        { "url": "https://mastra.ai/docs/sandbox/skills", "title": "Filesystem-backed skills" },
+        { "url": "https://mastra.ai/reference/file-based-agents/config", "title": "config.ts" }
+      ],
+      "checked": "2026-11-27"
+    }
+  }
+}

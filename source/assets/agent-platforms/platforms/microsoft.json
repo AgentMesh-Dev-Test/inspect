@@ -1,0 +1,311 @@
+{
+  "$schema": "../platform.schema.json",
+  "id": "microsoft",
+  "vendor": "Microsoft",
+  "name": "Microsoft Agent Framework, Foundry Agent Service and Copilot Studio",
+  "summary": "Microsoft's agent products: the open-source Microsoft Agent Framework for Python, .NET and Go (the successor to Semantic Kernel and AutoGen), the hosted Microsoft Foundry Agent Service, and the low-code Microsoft Copilot Studio. Agent Framework agents can run anywhere or as Foundry hosted agents, and Copilot Studio agents can call MCP servers and A2A agents.",
+  "products": [
+    {
+      "name": "Microsoft Agent Framework",
+      "kind": "framework",
+      "license": "MIT",
+      "languages": ["Python", "C#", "Go"],
+      "docs": "https://learn.microsoft.com/en-us/agent-framework/overview/"
+    },
+    {
+      "name": "Microsoft Foundry Agent Service",
+      "kind": "hosted-service",
+      "license": "proprietary",
+      "languages": ["Python", "C#", "JavaScript", "TypeScript", "Java"],
+      "docs": "https://learn.microsoft.com/en-us/azure/foundry/agents/overview"
+    },
+    {
+      "name": "Microsoft Copilot Studio",
+      "kind": "low-code",
+      "license": "proprietary",
+      "languages": ["Power Fx"],
+      "docs": "https://learn.microsoft.com/en-us/microsoft-copilot-studio/"
+    }
+  ],
+  "documentation": [
+    "https://learn.microsoft.com/en-us/agent-framework/",
+    "https://learn.microsoft.com/en-us/azure/foundry/",
+    "https://learn.microsoft.com/en-us/microsoft-copilot-studio/",
+    "https://github.com/microsoft/"
+  ],
+  "checked": "2026-11-27",
+  "categories": {
+    "tracing": {
+      "rating": "standard",
+      "what": "Agent Framework emits traces, logs and metrics that follow the OpenTelemetry GenAI semantic conventions and sends them through any OpenTelemetry exporter, including OTLP and Azure Monitor. Foundry agent tracing stores OpenTelemetry-based traces in Azure Monitor Application Insights and is generally available for prompt, hosted and external agents, with workflow agents in preview.",
+      "portability": {
+        "level": "open-standard",
+        "standards": ["OpenTelemetry", "OTLP", "W3C Trace Context"],
+        "note": "Agent Framework spans use the OpenTelemetry GenAI semantic conventions and can go to any OTLP backend, such as Aspire Dashboard, Jaeger, Langfuse or MLflow. The Foundry portal's trace view reads from Application Insights, which is Azure's own store."
+      },
+      "evidence": [
+        { "kind": "import", "value": "from agent_framework.observability import configure_otel_providers", "language": "python" },
+        { "kind": "call", "value": "enable_instrumentation", "language": "python" },
+        { "kind": "call", "value": "UseOpenTelemetry", "language": "csharp" },
+        { "kind": "env", "value": "ENABLE_INSTRUMENTATION", "language": "python" },
+        { "kind": "env", "value": "OTEL_EXPORTER_OTLP_ENDPOINT", "language": "any" },
+        { "kind": "package", "value": "azure-monitor-opentelemetry", "language": "python" }
+      ],
+      "sources": [
+        { "url": "https://learn.microsoft.com/en-us/agent-framework/agents/observability", "title": "Observability (Microsoft Agent Framework)" },
+        { "url": "https://learn.microsoft.com/en-us/azure/foundry/observability/concepts/trace-agent-concept", "title": "Agent tracing overview - Microsoft Foundry" }
+      ],
+      "checked": "2026-11-27"
+    },
+    "evaluations": {
+      "rating": "native",
+      "what": "Agent Framework has a built-in evaluation framework (evaluate_agent, LocalEvaluator and FoundryEvals), and Microsoft Foundry provides built-in and custom evaluators, continuous evaluation of sampled production traffic and an AI red teaming agent. Copilot Studio has its own Agent evaluation with test sets, run in the product or through Power Platform REST APIs.",
+      "portability": {
+        "level": "mixed",
+        "standards": [],
+        "note": "The Agent Framework evaluation types and LocalEvaluator are open source and provider-agnostic, and .NET builds on Microsoft.Extensions.AI.Evaluation. Foundry evaluators and Copilot Studio agent evaluation run in Microsoft's hosted services; no open evaluation standard is involved."
+      },
+      "evidence": [
+        { "kind": "call", "value": "evaluate_agent", "language": "python" },
+        { "kind": "call", "value": "LocalEvaluator", "language": "any" },
+        { "kind": "call", "value": "FoundryEvals", "language": "any" },
+        { "kind": "import", "value": "from agent_framework.foundry import FoundryEvals", "language": "python" },
+        { "kind": "call", "value": "EvaluateAsync", "language": "csharp" },
+        { "kind": "import", "value": "using Microsoft.Extensions.AI.Evaluation;", "language": "csharp" }
+      ],
+      "sources": [
+        { "url": "https://learn.microsoft.com/en-us/agent-framework/agents/evaluation", "title": "Evaluation (Microsoft Agent Framework)" },
+        { "url": "https://learn.microsoft.com/en-us/azure/foundry/concepts/observability", "title": "Observability in Generative AI - Microsoft Foundry" },
+        { "url": "https://learn.microsoft.com/en-us/microsoft-copilot-studio/analytics-agent-evaluation-intro", "title": "About agent evaluation - Microsoft Copilot Studio" }
+      ],
+      "checked": "2026-11-27"
+    },
+    "prompt-management": {
+      "rating": "partial",
+      "what": "A Foundry prompt agent is a versioned resource whose saved definition holds the model, instructions and tools, and each saved change creates a new version that applications call by name. Agent Framework can load an agent's instructions from a declarative YAML file; the pages checked describe versioned agent definitions rather than a standalone prompt store.",
+      "portability": {
+        "level": "mixed",
+        "standards": [],
+        "note": "Foundry agent versions live in the hosted service and are its own format. Agent Framework declarative YAML is the framework's own open-source format, kept in the repository."
+      },
+      "evidence": [
+        { "kind": "call", "value": "PromptAgentDefinition", "language": "python" },
+        { "kind": "call", "value": "project.agents.create_version", "language": "python" },
+        { "kind": "config", "value": "agent_reference", "language": "any", "note": "Passed in the Responses request to call a saved Foundry agent." },
+        { "kind": "file", "value": "azure.yaml", "note": "Holds a prompt agent definition for azd deployment." },
+        { "kind": "call", "value": "create_agent_from_yaml_path", "language": "python" },
+        { "kind": "package", "value": "agent-framework-declarative", "language": "python" }
+      ],
+      "sources": [
+        { "url": "https://learn.microsoft.com/en-us/azure/foundry/agents/concepts/prompt-agents", "title": "Prompt agents in Foundry Agent Service - Microsoft Foundry" },
+        { "url": "https://learn.microsoft.com/en-us/agent-framework/agents/declarative", "title": "Declarative Agents (Microsoft Agent Framework)" }
+      ],
+      "checked": "2026-11-27"
+    },
+    "keys-and-secrets": {
+      "rating": "native",
+      "what": "Foundry keeps connection secrets in a Microsoft-managed Key Vault unless you set up an Azure Key Vault connection, and agents reach tools through project connections and their Microsoft Entra agent identity rather than keys in code. Foundry's hosted-agent guidance is to keep secrets out of container images and environment variables and use managed identities, connections and a managed secret store.",
+      "portability": {
+        "level": "proprietary",
+        "standards": ["OAuth 2.0"],
+        "note": "Connections, Azure Key Vault and Entra agent identities are Azure services. Tool calls authenticate with OAuth 2.0 tokens, including OAuth identity passthrough, so the downstream side is standard."
+      },
+      "evidence": [
+        { "kind": "config", "value": "project_connection_id", "language": "any" },
+        { "kind": "cli", "value": "azd ai connection create" },
+        { "kind": "config", "value": "AzureKeyVault", "note": "Connection category in a Bicep template." },
+        { "kind": "config", "value": "Microsoft.CognitiveServices/accounts/connections", "note": "Bicep or ARM resource type for a Foundry connection." },
+        { "kind": "call", "value": "DefaultAzureCredential", "language": "any" },
+        { "kind": "call", "value": "ManagedIdentityCredential", "language": "csharp" }
+      ],
+      "sources": [
+        { "url": "https://learn.microsoft.com/en-us/azure/foundry/how-to/set-up-key-vault-connection", "title": "Set up an Azure Key Vault Connection - Microsoft Foundry" },
+        { "url": "https://learn.microsoft.com/en-us/azure/foundry/agents/concepts/hosted-agents", "title": "Hosted agents in Foundry Agent Service - Microsoft Foundry" },
+        { "url": "https://learn.microsoft.com/en-us/azure/foundry/agents/concepts/agent-identity", "title": "Agent identity concepts in Microsoft Foundry" }
+      ],
+      "checked": "2026-11-27"
+    },
+    "memory-and-state": {
+      "rating": "native",
+      "what": "Agent Framework keeps conversation state in an AgentSession and saves workflow checkpoints at each superstep to in-memory, file or Azure Cosmos DB storage, so a run can resume. Foundry Agent Service adds stored conversations, hosted-agent session state and a state store, and Memory (preview), a managed long-term memory store.",
+      "portability": {
+        "level": "mixed",
+        "standards": [],
+        "note": "Agent Framework sessions and checkpoints are the framework's own open-source format, and the CheckpointStorage protocol lets you swap or write a store you run yourself. Foundry conversations, the state store and Memory are hosted Azure services."
+      },
+      "evidence": [
+        { "kind": "call", "value": "create_session", "language": "python" },
+        { "kind": "call", "value": "FileCheckpointStorage", "language": "python" },
+        { "kind": "call", "value": "CosmosCheckpointStorage", "language": "python" },
+        { "kind": "package", "value": "agent-framework-azure-cosmos", "language": "python" },
+        { "kind": "call", "value": "CheckpointManager", "language": "csharp" },
+        { "kind": "env", "value": "AZURE_COSMOS_ENDPOINT", "language": "python" }
+      ],
+      "sources": [
+        { "url": "https://learn.microsoft.com/en-us/agent-framework/workflows/checkpoints", "title": "Microsoft Agent Framework Workflows - Checkpoints" },
+        { "url": "https://learn.microsoft.com/en-us/azure/foundry/agents/concepts/what-is-memory", "title": "What is Memory? - Microsoft Foundry" },
+        { "url": "https://learn.microsoft.com/en-us/azure/foundry/agents/concepts/hosted-agents", "title": "Hosted agents in Foundry Agent Service - Microsoft Foundry" }
+      ],
+      "checked": "2026-11-27"
+    },
+    "human-approval": {
+      "rating": "native",
+      "what": "Agent Framework pauses a run for tool approval (approval_mode on @tool in Python, ApprovalRequiredAIFunction in .NET) and supports human-in-the-loop in workflows through request and response, with pending requests saved in checkpoints. Copilot Studio offers Multistage and AI approvals in agent flows, which is in preview.",
+      "portability": {
+        "level": "mixed",
+        "standards": [],
+        "note": "The Agent Framework approval and request-response interfaces are its own, open source and runnable anywhere. Copilot Studio approvals run in Microsoft's service and are answered in Teams, Outlook or the Power Automate portal."
+      },
+      "evidence": [
+        { "kind": "call", "value": "@tool(approval_mode=\"always_require\")", "language": "python" },
+        { "kind": "call", "value": "to_function_approval_response", "language": "python" },
+        { "kind": "call", "value": "ApprovalRequiredAIFunction", "language": "csharp" },
+        { "kind": "call", "value": "ToolApprovalRequestContent", "language": "csharp" },
+        { "kind": "call", "value": "ctx.request_info", "language": "python" },
+        { "kind": "call", "value": "RequestPort", "language": "csharp" }
+      ],
+      "sources": [
+        { "url": "https://learn.microsoft.com/en-us/agent-framework/agents/tools/tool-approval", "title": "Using function tools with human in the loop approvals (Microsoft Agent Framework)" },
+        { "url": "https://learn.microsoft.com/en-us/agent-framework/workflows/human-in-the-loop", "title": "Microsoft Agent Framework Workflows - Human-in-the-loop (HITL)" },
+        { "url": "https://learn.microsoft.com/en-us/microsoft-copilot-studio/flows-advanced-approvals", "title": "Multistage and AI approvals in agent flows - Microsoft Copilot Studio" }
+      ],
+      "checked": "2026-11-27"
+    },
+    "deployment": {
+      "rating": "native",
+      "what": "Foundry Agent Service runs prompt agents and hosted agents, which are container images given a dedicated endpoint and Microsoft Entra agent identity and run in per-session VM-isolated sandboxes that scale per session. Copilot Studio publishes agents to channels such as Teams and Microsoft Copilot, websites, mobile apps and Azure Bot Service channels, and Agent Framework agents can also be self-hosted.",
+      "portability": {
+        "level": "mixed",
+        "standards": ["A2A"],
+        "note": "Hosted agents run your own container and accept Agent Framework, LangGraph or custom code, but the endpoint, scaling and identity are Foundry's. Agent Framework's self-hosting packages are open source and can serve agents over A2A, MCP or OpenAI Responses from any host."
+      },
+      "evidence": [
+        { "kind": "file", "value": "azure.yaml" },
+        { "kind": "config", "value": "azure.ai.agent", "note": "Service entry in azure.yaml that declares the hosted agent and its protocols." },
+        { "kind": "import", "value": "using Microsoft.Agents.AI.Foundry.Hosting;", "language": "csharp" },
+        { "kind": "call", "value": "AddFoundryResponses", "language": "csharp" },
+        { "kind": "call", "value": "A2AExecutor", "language": "python" },
+        { "kind": "not-in-code", "value": "Copilot Studio publishing channels", "note": "Copilot Studio agents are published and connected to channels in the Copilot Studio portal." }
+      ],
+      "sources": [
+        { "url": "https://learn.microsoft.com/en-us/azure/foundry/agents/concepts/hosted-agents", "title": "Hosted agents in Foundry Agent Service - Microsoft Foundry" },
+        { "url": "https://learn.microsoft.com/en-us/microsoft-copilot-studio/publication-fundamentals-publish-channels", "title": "Key concepts - Publish and deploy your agent - Microsoft Copilot Studio" },
+        { "url": "https://learn.microsoft.com/en-us/agent-framework/hosting/self-hosting/a2a/", "title": "Self-host A2A agents (Microsoft Agent Framework)" }
+      ],
+      "checked": "2026-11-27"
+    },
+    "sandboxes": {
+      "rating": "native",
+      "what": "Foundry Agent Service provides the Code Interpreter tool, which runs Python in a Microsoft-managed sandbox on Azure Container Apps dynamic sessions with a Hyper-V boundary, and also lists Browser automation and Computer use tools. Hosted agents run each session in a VM-isolated sandbox with a persistent file system.",
+      "portability": {
+        "level": "proprietary",
+        "standards": ["MCP"],
+        "note": "The sandboxes are Foundry services. A toolbox can expose Code Interpreter through an MCP-compatible endpoint, so MCP clients outside Foundry can call it."
+      },
+      "evidence": [
+        { "kind": "call", "value": "CodeInterpreterTool", "language": "python" },
+        { "kind": "call", "value": "AutoCodeInterpreterToolParam", "language": "python" },
+        { "kind": "call", "value": "CodeInterpreterToolboxTool", "language": "python" },
+        { "kind": "call", "value": "ResponseTool.CreateCodeInterpreterTool", "language": "csharp" },
+        { "kind": "config", "value": "\"type\": \"code_interpreter\"", "language": "any" }
+      ],
+      "sources": [
+        { "url": "https://learn.microsoft.com/en-us/azure/foundry/agents/how-to/tools/code-interpreter", "title": "Use Code Interpreter with Microsoft Foundry agents" },
+        { "url": "https://learn.microsoft.com/en-us/azure/foundry/agents/concepts/toolbox-overview", "title": "What is Toolbox in Microsoft Foundry?" },
+        { "url": "https://learn.microsoft.com/en-us/azure/foundry/agents/concepts/hosted-agents", "title": "Hosted agents in Foundry Agent Service - Microsoft Foundry" }
+      ],
+      "checked": "2026-11-27"
+    },
+    "tool-connections": {
+      "rating": "standard",
+      "what": "Agent Framework connects to MCP servers over stdio and streamable HTTP (MCPStdioTool and MCPStreamableHTTPTool in Python, the official MCP C# SDK in .NET) and can expose an agent as an MCP server, and Foundry has an MCP tool and Toolboxes that serve curated tools through one MCP-compatible endpoint. Copilot Studio connects to MCP servers as a client and currently supports MCP tools and resources.",
+      "portability": {
+        "level": "open-standard",
+        "standards": ["MCP"],
+        "note": "MCP is the main path for outside tools in all three products. Function tools, OpenAPI tools and Copilot Studio connectors are the vendor's own alternatives; Python MCP WebSocket transport was removed in favour of streamable HTTP."
+      },
+      "evidence": [
+        { "kind": "call", "value": "MCPStdioTool", "language": "python" },
+        { "kind": "call", "value": "MCPStreamableHTTPTool", "language": "python" },
+        { "kind": "call", "value": "as_mcp_server", "language": "python" },
+        { "kind": "package", "value": "ModelContextProtocol", "language": "csharp" },
+        { "kind": "call", "value": "McpClient.CreateAsync", "language": "csharp" },
+        { "kind": "call", "value": "FoundryToolbox", "language": "python" }
+      ],
+      "sources": [
+        { "url": "https://learn.microsoft.com/en-us/agent-framework/agents/tools/local-mcp-tools", "title": "Using MCP Tools (Microsoft Agent Framework)" },
+        { "url": "https://learn.microsoft.com/en-us/azure/foundry/agents/concepts/toolbox-overview", "title": "What is Toolbox in Microsoft Foundry?" },
+        { "url": "https://learn.microsoft.com/en-us/microsoft-copilot-studio/agent-extend-action-mcp", "title": "Extend your agent with Model Context Protocol - Microsoft Copilot Studio" }
+      ],
+      "checked": "2026-11-27"
+    },
+    "agent-to-agent": {
+      "rating": "standard",
+      "what": "Agent Framework calls remote A2A agents through A2AAgent over JSON-RPC, HTTP+JSON or gRPC and hosts agents as A2A servers, and Foundry Agent Service supports the A2A protocol for agent endpoints, with A2A v1.0 generally available and v0.3 in preview. Copilot Studio documents connecting to external A2A agents as a client.",
+      "portability": {
+        "level": "open-standard",
+        "standards": ["A2A"],
+        "note": "Agent cards, tasks and messages follow the A2A specification and use the official A2A SDKs. Foundry hosted-agent A2A endpoints accept single-turn SendMessage calls only."
+      },
+      "evidence": [
+        { "kind": "package", "value": "agent-framework-a2a", "language": "python" },
+        { "kind": "package", "value": "Microsoft.Agents.AI.A2A", "language": "csharp" },
+        { "kind": "import", "value": "from agent_framework.a2a import A2AAgent", "language": "python" },
+        { "kind": "call", "value": "A2ACardResolver", "language": "any" },
+        { "kind": "call", "value": "A2AExecutor", "language": "python" },
+        { "kind": "not-in-code", "value": "Copilot Studio A2A agent connection", "note": "Added in the Copilot Studio portal under Agents, Add agent, A2A agent." }
+      ],
+      "sources": [
+        { "url": "https://learn.microsoft.com/en-us/agent-framework/integrations/by-component/agent-services/a2a", "title": "A2A Agent (Microsoft Agent Framework)" },
+        { "url": "https://learn.microsoft.com/en-us/azure/foundry/agents/overview", "title": "What is Microsoft Foundry Agent Service?" },
+        { "url": "https://learn.microsoft.com/en-us/microsoft-copilot-studio/add-agent-agent-to-agent", "title": "Connect to an agent over the Agent2Agent (A2A) protocol - Microsoft Copilot Studio" }
+      ],
+      "checked": "2026-11-27"
+    },
+    "identity-and-access": {
+      "rating": "native",
+      "what": "Foundry gives each agent a Microsoft Entra agent identity (Microsoft Entra Agent ID) that authenticates its tool calls, with Azure RBAC roles such as Foundry User controlling who can create, invoke and manage agents; agent identity acting on behalf of a user is in preview. Copilot Studio agents use Authenticate with Microsoft (Entra ID) by default, or Authenticate manually or No authentication.",
+      "portability": {
+        "level": "mixed",
+        "standards": ["OAuth 2.0"],
+        "note": "Agent identities, blueprints and RBAC are Microsoft Entra and Azure features. Tokens are issued through OAuth 2.0 token exchange and On-Behalf-Of flows, so MCP servers and A2A endpoints receive standard bearer tokens."
+      },
+      "evidence": [
+        { "kind": "import", "value": "from azure.identity import DefaultAzureCredential", "language": "python" },
+        { "kind": "call", "value": "ManagedIdentityCredential", "language": "csharp" },
+        { "kind": "call", "value": "AzureCliCredential", "language": "python" },
+        { "kind": "config", "value": "AgentOnBehalfOfUser", "note": "Authentication type for on-behalf-of-user tool access." },
+        { "kind": "not-in-code", "value": "Foundry RBAC role assignments", "note": "Roles such as Foundry User are assigned to agent identities and users in Azure, outside the agent's code." }
+      ],
+      "sources": [
+        { "url": "https://learn.microsoft.com/en-us/azure/foundry/agents/concepts/agent-identity", "title": "Agent identity concepts in Microsoft Foundry" },
+        { "url": "https://learn.microsoft.com/en-us/azure/foundry/agents/concepts/hosted-agents", "title": "Hosted agents in Foundry Agent Service - Microsoft Foundry" },
+        { "url": "https://learn.microsoft.com/en-us/microsoft-copilot-studio/publication-fundamentals-publish-channels", "title": "Key concepts - Publish and deploy your agent - Microsoft Copilot Studio" }
+      ],
+      "checked": "2026-11-27"
+    },
+    "packaging": {
+      "rating": "standard",
+      "what": "Agent Framework supports Agent Skills, folders with a SKILL.md file loaded through SkillsProvider in Python or AgentSkillsProvider in .NET (MCP-based skills are experimental), and Foundry Skills (preview) follow the Agent Skills specification and attach to prompt agents or toolboxes. Agent Framework also has its own declarative agent YAML format, and the pages checked do not mention Agent Plugins 1.0.0.",
+      "portability": {
+        "level": "mixed",
+        "standards": ["Agent Skills", "MCP"],
+        "note": "Skills follow the Agent Skills specification, and Foundry toolboxes serve skills through the MCP Skills extension. Declarative agent YAML (kind: Prompt) is Agent Framework's own open-source format, and Foundry skill versions are stored in the hosted service."
+      },
+      "evidence": [
+        { "kind": "file", "value": "SKILL.md" },
+        { "kind": "call", "value": "SkillsProvider", "language": "python" },
+        { "kind": "call", "value": "AgentSkillsProvider", "language": "csharp" },
+        { "kind": "cli", "value": "azd ai skill create" },
+        { "kind": "package", "value": "agent-framework-declarative", "language": "python" },
+        { "kind": "config", "value": "kind: Prompt", "note": "First key of an Agent Framework declarative agent YAML file." }
+      ],
+      "sources": [
+        { "url": "https://learn.microsoft.com/en-us/agent-framework/agents/skills", "title": "Agent Skills (Microsoft Agent Framework)" },
+        { "url": "https://learn.microsoft.com/en-us/azure/foundry/agents/how-to/tools/skills", "title": "Use skills with Microsoft Foundry agents (preview)" },
+        { "url": "https://learn.microsoft.com/en-us/agent-framework/agents/declarative", "title": "Declarative Agents (Microsoft Agent Framework)" }
+      ],
+      "checked": "2026-11-27"
+    }
+  }
+}
