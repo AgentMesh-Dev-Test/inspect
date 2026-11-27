@@ -398,7 +398,9 @@ function programOf(file, read, root, fileSet) {
     try { tr = traceOne(f, t); } catch { /* a program the trace cannot read is said by its size alone */ }
     for (const h of tr.hosts) hosts.add(h.host);
     for (const c of tr.commands) starts.add(c.what);
-    for (const p of TOUCHES) if (linesWhere(p, f, t).length) touches.add(p.what);
+    // What a hook prints is its own file's to say: a module it imports may
+    // print for other hooks (0.5.5, vercel-plugin's telemetry hook).
+    for (const p of TOUCHES) if ((!p.hooksOnly || f === file) && linesWhere(p, f, t).length) touches.add(p.what);
     lines += codeLines(t);
   }
   const t = String(read(file) ?? "");
