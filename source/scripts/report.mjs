@@ -550,6 +550,15 @@ export const WORKING_DETAIL_FIRST = {
  *  as still to come. */
 export function portabilityCopy(p, full = true) {
   if (!p) return null;
+  // The smallest form: what it is built on, each row's category and how open
+  // it is, and each destination's rating for it; the words wait for the report.
+  if (full === "least") return {
+    database: p.database, built_on: { ...p.built_on, platforms: (p.built_on?.platforms ?? []).map(({ platform, name, vendor }) => ({ platform, name, vendor })) },
+    uses: (p.uses ?? []).map(({ category, title, level, outside, swap, code_files, plugin_part, needs, choices, sources }) => ({ category, title, level, outside, swap, code_files, ...(plugin_part ? { plugin_part } : {}), needs, choices, sources: sources.map(({ platform, vendor, standard, tools, rating, level: l }) => ({ platform, ...(vendor ? { vendor } : {}), ...(standard ? { standard } : {}), ...(tools ? { tools } : {}), rating, level: l, what: "" })) })),
+    not_used: p.not_used, not_applicable: p.not_applicable,
+    destinations: (p.destinations ?? []).map(({ platform, name, vendor, shown, also_used, language_fits, cells }) => ({ platform, name, vendor, shown, also_used, language_fits, cells: cells.map(({ category, title, rating }) => ({ category, title, rating })) })),
+    words_left_out: true,
+  };
   const noEvidence = (x) => { const { evidence, ...rest } = x; return rest; };
   return {
     ...p,
@@ -592,7 +601,7 @@ export function workingCopy({ about, findings, stage, limit = WORKING_COPY_CHARS
     inspector: { name: "inspect", version: a.version },
     sections: SECTIONS,
     findings: list,
-    ...(a.portability ? { portability: portabilityCopy(a.portability, pfull) } : {}),
+    ...(a.portability && pfull !== null ? { portability: portabilityCopy(a.portability, pfull) } : {}),
     held_back: [],
     facts: [],
     counts: { findings: all.length, by_section: bySection(all), by_level: byLevel(all), held_back: 0, facts: 0 },
@@ -604,8 +613,17 @@ export function workingCopy({ about, findings, stage, limit = WORKING_COPY_CHARS
   // those the Overview and the systems' cards need (0.4.5); then those too.
   d = doc(all.map((f) => short(f, false)), false, 0);
   if (fits(d)) return d;
-  // 0.6.0: then the database's words for each destination.
+  // 0.6.0: then the database's words for each destination, then all its words.
   pfull = false;
+  d = doc(all.map((f) => short(f, false)), false, 0);
+  if (fits(d)) return d;
+  pfull = "least";
+  d = doc(all.map((f) => short(f, false)), false, 0);
+  if (fits(d)) return d;
+  // Then none of it, before any field the Overview draws: the reading is made
+  // before the first finding and changes only when the model has answered,
+  // so the view keeps the one an earlier copy gave it.
+  pfull = null;
   d = doc(all.map((f) => short(f, false)), false, 0);
   if (fits(d)) return d;
   d = doc(all.map((f) => short(f, false, "first")), false, 0);
