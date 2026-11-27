@@ -360,3 +360,41 @@ export function checkGlance(drafts, findings, { most = 5 } = {}) {
   }
   return { kept, held };
 }
+
+// ── Could it move? (0.6.0) ──
+/** Words that would turn a fact about a dependency into advice. */
+const ADVICE = /\b(?:should|ought|recommend(?:s|ed)?|better|best|worse|worst|prefer(?:red)?|easy|easier|hard(?:er)?|simple|simpler|light(?:er)?|heavy|heavier|lock-?in|locked in|trapped)\b/i;
+/**
+ * The model's words for each outside service the agent uses (0.6.0):
+ * {kept: Map(category -> {needs, choices, based_on}), held: [...]}. For a
+ * category the reading lists as an outside dependency only: what it really
+ * needs, two to fourteen plain words; what the code already offers in its
+ * place, at most fourteen plain words or nothing; each citing facts the
+ * scripts found. Neither gives a verdict or advice, or says how easily it
+ * swaps, which the reading says by rule. One that breaks a rule is held back
+ * with why, and its row shows what the database says alone.
+ */
+export function checkPortability(entries, reading, byId) {
+  const kept = new Map(); const held = [];
+  const rows = new Map((reading?.uses ?? []).filter((r) => r.outside).map((r) => [r.category, r]));
+  for (const e of Array.isArray(entries) ? entries : []) {
+    const key = trim(e?.category);
+    const row = rows.get(key);
+    const needs = plainWords(trim(e?.needs)).replace(/\s+/g, " ").replace(/[.;:]+$/, "");
+    const choices = plainWords(trim(e?.choices)).replace(/\s+/g, " ").replace(/[.;:]+$/, "");
+    const hold = (why) => held.push({ section: 5, title: `What it needs for ${row ? row.title.toLowerCase() : "a service"}`, ...(needs ? { says: needs } : {}), why });
+    if (!row) { hold(`it names ${JSON.stringify(e?.category ?? null)}, which is not an outside service the scripts found it uses`); continue; }
+    if (kept.has(key)) continue;
+    const based = (Array.isArray(e?.based_on) ? e.based_on : []).map(trim).filter(Boolean);
+    if (!based.length || based.some((id) => !byId.has(id))) { hold("it cites no fact, or a fact the scripts did not find"); continue; }
+    const n = (s) => s.split(" ").filter(Boolean).length;
+    if (n(needs) < 2 || n(needs) > 14 || needs.length > 140 || /[.!?]\s/.test(needs)) { hold("what it needs is not a few plain words"); continue; }
+    if (choices && (n(choices) > 14 || choices.length > 140 || /[.!?]\s/.test(choices))) { hold("what else it offers is not a few plain words"); continue; }
+    const p = notPlain(`${needs} ${choices}`);
+    if (p) { hold(plainWhy(p)); continue; }
+    const v = VERDICT.exec(unquoted(`${needs} ${choices}`)) ?? ADVICE.exec(`${needs} ${choices}`);
+    if (v) { hold(`it gives advice or a verdict ("${v[0]}"), where the reading gives facts`); continue; }
+    kept.set(key, { needs: `${needs[0].toUpperCase()}${needs.slice(1)}`, choices: choices && !/^(?:none|nothing|no other|n\/a)\b/i.test(choices) ? `${choices[0].toUpperCase()}${choices.slice(1)}` : "", based_on: based });
+  }
+  return { kept, held };
+}

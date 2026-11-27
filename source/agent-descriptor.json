@@ -1357,7 +1357,7 @@
           "repository": "https://github.com/langchain-ai/design-agent",
           "commit": "86d8f667796890eb6d3612dbd1b9e941782fe03f"
         },
-        "good_result": "A report in eight sections on what the agent does and how safe it is, each finding citing a file and line at that commit, with its risks rated by level."
+        "good_result": "A report in eight sections on what the agent does and how safe it is, each finding citing a file and line at that commit, with its risks rated by level, and how tied it is to its platform, with what moving it to each other platform would take."
       }
     }
   ],
@@ -1427,7 +1427,7 @@
         "output": "inspection"
       },
       "file": "views/report.html",
-      "digest": "sha256:7724bb56048e4e47c4d2954e93b17c66514d84a8b9ac723c68256b9a9fe5d722",
+      "digest": "sha256:5f350c53f817c0a6bf18aad44ad5d5fe0bb96c250c3709a3ef85661c43635366",
       "requests": [
         "resize",
         "copy-text",

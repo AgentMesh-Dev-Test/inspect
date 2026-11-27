@@ -1,0 +1,302 @@
+{
+  "$schema": "../platform.schema.json",
+  "id": "anthropic",
+  "vendor": "Anthropic",
+  "name": "Claude Agent SDK and Claude Managed Agents",
+  "summary": "Anthropic's Claude Agent SDK (formerly the Claude Code SDK), a Python and TypeScript library that runs the Claude Code CLI as a subprocess on infrastructure you operate, and Claude Managed Agents (beta), a hosted agent harness on the Claude Developer Platform. The entry also covers the Developer Platform features these agents use: the code execution tool, the MCP connector, the memory tool, Agent Skills, the Files API, and the Console's workspaces and API keys.",
+  "products": [
+    {
+      "name": "Claude Agent SDK for Python (claude-agent-sdk)",
+      "kind": "framework",
+      "license": "MIT",
+      "languages": ["python"],
+      "docs": "https://code.claude.com/docs/en/agent-sdk/overview"
+    },
+    {
+      "name": "Claude Agent SDK for TypeScript (@anthropic-ai/claude-agent-sdk)",
+      "kind": "framework",
+      "license": "proprietary",
+      "languages": ["typescript", "javascript"],
+      "docs": "https://code.claude.com/docs/en/agent-sdk/overview"
+    },
+    {
+      "name": "Claude Managed Agents",
+      "kind": "hosted-service",
+      "license": "proprietary",
+      "languages": ["python", "typescript", "csharp", "go", "java", "php", "ruby"],
+      "docs": "https://platform.claude.com/docs/en/managed-agents/overview"
+    },
+    {
+      "name": "Claude Developer Platform (Claude API)",
+      "kind": "hosted-service",
+      "license": "proprietary",
+      "languages": ["python", "typescript", "csharp", "go", "java", "php", "ruby"],
+      "docs": "https://platform.claude.com/docs/en/"
+    }
+  ],
+  "documentation": [
+    "https://platform.claude.com/docs/",
+    "https://code.claude.com/docs/",
+    "https://github.com/anthropics/"
+  ],
+  "checked": "2026-11-27",
+  "categories": {
+    "tracing": {
+      "rating": "standard",
+      "what": "The Agent SDK exports OpenTelemetry metrics, log events and traces (traces are beta) over OTLP through the Claude Code CLI it runs. For the Claude API and Managed Agents, OpenTelemetry tracing (beta) sends spans to OTLP destinations added in the Claude Console, and the Anthropic client SDK can emit client-side spans.",
+      "portability": {
+        "level": "open-standard",
+        "standards": ["OpenTelemetry", "OTLP", "OpenTelemetry GenAI semantic conventions"],
+        "note": "Both paths export to any backend that accepts OTLP and use the standard OTEL_* exporter variables; the API spans use attributes from the GenAI semantic conventions. Span and event names are Anthropic's own (claude_code.* in the Agent SDK, anthropic.* in the API), and Managed Agents sessions can also be inspected in the Claude Console."
+      },
+      "evidence": [
+        { "kind": "env", "value": "CLAUDE_CODE_ENABLE_TELEMETRY", "language": "any" },
+        { "kind": "env", "value": "CLAUDE_CODE_ENHANCED_TELEMETRY_BETA", "language": "any" },
+        { "kind": "env", "value": "OTEL_TRACES_EXPORTER", "language": "any" },
+        { "kind": "env", "value": "OTEL_EXPORTER_OTLP_ENDPOINT", "language": "any" },
+        { "kind": "not-in-code", "value": "API tracing destination", "note": "API-side tracing for Messages API requests and Managed Agents sessions is set up by an admin as a destination in the Claude Console, so the agent's code shows nothing." }
+      ],
+      "sources": [
+        { "url": "https://code.claude.com/docs/en/agent-sdk/observability", "title": "Observability with OpenTelemetry" },
+        { "url": "https://platform.claude.com/docs/en/manage-claude/opentelemetry", "title": "OpenTelemetry tracing for the Claude API" }
+      ],
+      "checked": "2026-11-27"
+    },
+    "evaluations": {
+      "rating": "partial",
+      "what": "Managed Agents outcomes (beta) provision a grader that scores a session's deliverable against a markdown rubric and sends feedback to the agent, and Claude Code's claude plugin eval command runs suites of test cases with graders against a plugin. The documentation checked shows no hosted service for evaluating an agent across datasets; the Developer Platform guide shows evals written in your own code.",
+      "portability": {
+        "level": "proprietary",
+        "standards": [],
+        "note": "Outcome rubrics are plain markdown, but grading runs only inside Managed Agents, and plugin eval suites use Claude Code's own file layout. The OpenTelemetry tracing page says traces exported with full content can be used to build evals in OTLP-compatible observability platforms."
+      },
+      "evidence": [
+        { "kind": "config", "value": "user.define_outcome", "language": "any" },
+        { "kind": "config", "value": "span.outcome_evaluation_end", "language": "any" },
+        { "kind": "cli", "value": "claude plugin eval", "language": "any" },
+        { "kind": "file", "value": "evals/", "language": "any", "note": "Eval suite directory inside a Claude Code plugin." }
+      ],
+      "sources": [
+        { "url": "https://platform.claude.com/docs/en/managed-agents/define-outcomes", "title": "Define outcomes" },
+        { "url": "https://code.claude.com/docs/en/plugin-evals", "title": "Test plugins with evals" },
+        { "url": "https://platform.claude.com/docs/en/test-and-evaluate/develop-tests", "title": "Define success criteria and build evaluations" }
+      ],
+      "checked": "2026-11-27"
+    },
+    "prompt-management": {
+      "rating": "partial",
+      "what": "Managed Agents stores each agent's system prompt in a versioned agent configuration (beta) that sessions reference by ID and version, and updates create new versions. The documentation checked describes no standalone prompt store or prompt template API.",
+      "portability": {
+        "level": "proprietary",
+        "standards": [],
+        "note": "The agent configuration and its version history are Anthropic's own API resources; the system prompt itself is plain text that can be copied out through the API."
+      },
+      "evidence": [
+        { "kind": "call", "value": "client.beta.agents.create", "language": "any" },
+        { "kind": "call", "value": "client.beta.agents.update", "language": "any" },
+        { "kind": "call", "value": "client.beta.agents.versions.list", "language": "any" },
+        { "kind": "config", "value": "system", "language": "any", "note": "The system prompt field of a Managed Agents agent configuration." }
+      ],
+      "sources": [
+        { "url": "https://platform.claude.com/docs/en/managed-agents/agent-setup", "title": "Define your agent" },
+        { "url": "https://platform.claude.com/docs/en/managed-agents/sessions", "title": "Start a session" }
+      ],
+      "checked": "2026-11-27"
+    },
+    "keys-and-secrets": {
+      "rating": "native",
+      "what": "Managed Agents vaults (beta) hold per-user credentials: MCP OAuth or bearer tokens injected when the agent connects to an MCP server, and environment-variable secrets substituted at egress so the agent never sees the value. The Agent SDK reads ANTHROPIC_API_KEY or cloud-provider settings (Amazon Bedrock, Google Cloud, Microsoft Foundry) from its environment, and the docs recommend a proxy that injects credentials outside the agent's container.",
+      "portability": {
+        "level": "mixed",
+        "standards": ["OAuth 2.0"],
+        "note": "Vaults are Anthropic's own API and are hosted only by Anthropic; mcp_oauth credentials hold OAuth 2.0 tokens that Anthropic refreshes. The Agent SDK uses plain environment variables, so keys can come from any secret manager."
+      },
+      "evidence": [
+        { "kind": "env", "value": "ANTHROPIC_API_KEY", "language": "any" },
+        { "kind": "env", "value": "CLAUDE_CODE_USE_BEDROCK", "language": "any" },
+        { "kind": "env", "value": "CLAUDE_CODE_USE_VERTEX", "language": "any" },
+        { "kind": "call", "value": "client.beta.vaults.create", "language": "any" },
+        { "kind": "call", "value": "client.beta.vaults.credentials.create", "language": "any" },
+        { "kind": "config", "value": "vault_ids", "language": "any" }
+      ],
+      "sources": [
+        { "url": "https://platform.claude.com/docs/en/managed-agents/vaults", "title": "Authenticate with vaults" },
+        { "url": "https://code.claude.com/docs/en/agent-sdk/quickstart", "title": "Quickstart" },
+        { "url": "https://code.claude.com/docs/en/agent-sdk/secure-deployment", "title": "Securely deploying AI agents" }
+      ],
+      "checked": "2026-11-27"
+    },
+    "memory-and-state": {
+      "rating": "native",
+      "what": "Agent SDK sessions save each conversation as JSONL transcripts that can be continued, resumed by ID or forked, a SessionStore adapter mirrors them to your own storage, and CLAUDE.md files load as memory. Managed Agents keeps session history server-side and offers memory stores (beta) mounted in the sandbox under /mnt/memory/, and the Messages API memory tool stores memory files on the client.",
+      "portability": {
+        "level": "mixed",
+        "standards": [],
+        "note": "Agent SDK transcripts are files on your own disk in Claude Code's own format, and SessionStore can write them to an object store, key-value store or database you run; memory tool files are stored by your application. Managed Agents sessions and memory stores are Anthropic-hosted resources, readable and editable through the API."
+      },
+      "evidence": [
+        { "kind": "config", "value": "fork_session", "language": "python" },
+        { "kind": "config", "value": "forkSession", "language": "typescript" },
+        { "kind": "call", "value": "SessionStore", "language": "any" },
+        { "kind": "file", "value": "CLAUDE.md", "language": "any" },
+        { "kind": "call", "value": "client.beta.memory_stores.create", "language": "any" },
+        { "kind": "config", "value": "memory_20250818", "language": "any", "note": "Tool type of the Messages API memory tool." }
+      ],
+      "sources": [
+        { "url": "https://code.claude.com/docs/en/agent-sdk/sessions", "title": "Work with sessions" },
+        { "url": "https://platform.claude.com/docs/en/managed-agents/memory", "title": "Using agent memory" },
+        { "url": "https://platform.claude.com/docs/en/agents-and-tools/tool-use/memory-tool", "title": "Memory tool" }
+      ],
+      "checked": "2026-11-27"
+    },
+    "human-approval": {
+      "rating": "native",
+      "what": "The Agent SDK pauses a tool call or a clarifying question (AskUserQuestion) in the canUseTool callback, governed by permission modes and rules, and a PreToolUse hook can return defer so the process exits and resumes later from the saved session. Managed Agents permission policies (beta) can be set to always_ask, which pauses the session until a user.tool_confirmation event allows or denies the call.",
+      "portability": {
+        "level": "proprietary",
+        "standards": [],
+        "note": "Callbacks, permission modes and confirmation events are Anthropic's own interfaces; no open standard for approval steps is used."
+      },
+      "evidence": [
+        { "kind": "config", "value": "can_use_tool", "language": "python" },
+        { "kind": "config", "value": "canUseTool", "language": "typescript" },
+        { "kind": "call", "value": "PermissionResultAllow", "language": "python" },
+        { "kind": "config", "value": "permission_mode", "language": "python" },
+        { "kind": "config", "value": "always_ask", "language": "any" },
+        { "kind": "config", "value": "user.tool_confirmation", "language": "any" }
+      ],
+      "sources": [
+        { "url": "https://code.claude.com/docs/en/agent-sdk/user-input", "title": "Handle approvals and user input" },
+        { "url": "https://code.claude.com/docs/en/agent-sdk/permissions", "title": "Configure permissions" },
+        { "url": "https://platform.claude.com/docs/en/managed-agents/permission-policies", "title": "Permission policies" }
+      ],
+      "checked": "2026-11-27"
+    },
+    "deployment": {
+      "rating": "native",
+      "what": "Managed Agents (beta) runs the agent loop on Anthropic's service, with sessions in cloud or self-hosted sandboxes and recurring runs through scheduled deployments; self-hosted Claude Managed Agents, available on request, runs the service on your own infrastructure. The Agent SDK is self-hosted: it runs the Claude Code CLI as one subprocess per session in containers you operate.",
+      "portability": {
+        "level": "mixed",
+        "standards": [],
+        "note": "Agent SDK agents run wherever you run a container, and the hosting guide points to Anthropic's cookbook for Docker, Modal and Kubernetes. Managed Agents is Anthropic's own API, hosted by Anthropic or self-hosted under the Software License Agreement: Claude Managed Agents Server."
+      },
+      "evidence": [
+        { "kind": "package", "value": "claude-agent-sdk", "language": "python" },
+        { "kind": "package", "value": "@anthropic-ai/claude-agent-sdk", "language": "typescript" },
+        { "kind": "call", "value": "client.beta.sessions.create", "language": "any" },
+        { "kind": "call", "value": "client.beta.deployments.create", "language": "any" },
+        { "kind": "cli", "value": "ant apply", "language": "any" },
+        { "kind": "file", "value": "claude-lock.json", "language": "any", "note": "Written by ant apply to record the IDs of the Managed Agents resources it created." }
+      ],
+      "sources": [
+        { "url": "https://code.claude.com/docs/en/agent-sdk/hosting", "title": "Hosting the Agent SDK" },
+        { "url": "https://platform.claude.com/docs/en/managed-agents/overview", "title": "Claude Managed Agents overview" },
+        { "url": "https://platform.claude.com/docs/en/managed-agents/self-hosted", "title": "Self-hosted Claude Managed Agents" }
+      ],
+      "checked": "2026-11-27"
+    },
+    "sandboxes": {
+      "rating": "native",
+      "what": "Managed Agents gives each session its own sandbox, either an Anthropic cloud sandbox (a fresh Linux container, beta) with limited or unrestricted networking or a self-hosted sandbox, and the code execution tool runs Python and Bash in a sandboxed container from the Messages API. In the Agent SDK, the sandbox option turns on Claude Code's sandboxed Bash tool, built on the open source sandbox-runtime package.",
+      "portability": {
+        "level": "mixed",
+        "standards": [],
+        "note": "Cloud sandboxes and the code execution tool are Anthropic-hosted and use Anthropic's own API. The sandbox-runtime package behind the sandboxed Bash tool is open source, and the hosting guide also covers isolating the SDK in your own containers (Docker, gVisor, Firecracker)."
+      },
+      "evidence": [
+        { "kind": "call", "value": "client.beta.environments.create", "language": "any" },
+        { "kind": "config", "value": "allowed_hosts", "language": "any", "note": "Networking allowlist of a Managed Agents environment." },
+        { "kind": "config", "value": "code_execution_20250825", "language": "any", "note": "Tool type of the code execution tool; later versions use newer dates." },
+        { "kind": "call", "value": "SandboxSettings", "language": "typescript" },
+        { "kind": "config", "value": "sandbox", "language": "typescript", "note": "Agent SDK option that configures the sandboxed Bash tool." }
+      ],
+      "sources": [
+        { "url": "https://platform.claude.com/docs/en/managed-agents/environments", "title": "Cloud environment setup" },
+        { "url": "https://platform.claude.com/docs/en/agents-and-tools/tool-use/code-execution-tool", "title": "Code execution tool" },
+        { "url": "https://code.claude.com/docs/en/sandboxing", "title": "Configure the sandboxed Bash tool" }
+      ],
+      "checked": "2026-11-27"
+    },
+    "tool-connections": {
+      "rating": "standard",
+      "what": "The Agent SDK is an MCP client for stdio, HTTP and SSE servers set in the mcpServers option or a .mcp.json file, and it can run in-process SDK MCP servers for custom tools. Managed Agents and the Messages API MCP connector (beta) connect to remote MCP servers over Streamable HTTP or SSE, and the connector supports only the tool-call part of the MCP specification.",
+      "portability": {
+        "level": "open-standard",
+        "standards": ["MCP"],
+        "note": "Tools are reached through standard MCP servers that other MCP clients can also use. The SDK does not run an interactive OAuth flow and takes an access token in the server headers, Managed Agents supplies MCP credentials from vaults, and Claude Code can itself run as an MCP server (claude mcp serve)."
+      },
+      "evidence": [
+        { "kind": "config", "value": "mcpServers", "language": "typescript" },
+        { "kind": "config", "value": "mcp_servers", "language": "python" },
+        { "kind": "file", "value": ".mcp.json", "language": "any" },
+        { "kind": "call", "value": "createSdkMcpServer", "language": "typescript" },
+        { "kind": "call", "value": "create_sdk_mcp_server", "language": "python" },
+        { "kind": "config", "value": "mcp_toolset", "language": "any", "note": "Tool entry that exposes an MCP server's tools in the Messages API and Managed Agents." }
+      ],
+      "sources": [
+        { "url": "https://code.claude.com/docs/en/agent-sdk/mcp", "title": "Connect to external tools with MCP" },
+        { "url": "https://platform.claude.com/docs/en/agents-and-tools/mcp-connector", "title": "MCP connector" },
+        { "url": "https://platform.claude.com/docs/en/managed-agents/mcp-connector", "title": "MCP connector" }
+      ],
+      "checked": "2026-11-27"
+    },
+    "agent-to-agent": {
+      "rating": "unknown",
+      "what": "No A2A support is described in the Agent SDK, Managed Agents or Claude Developer Platform documentation checked. Managed Agents multiagent orchestration (beta) runs subagents as threads within one session, which is not agent-to-agent across systems.",
+      "portability": {
+        "level": "unknown",
+        "standards": [],
+        "note": "Not found in the documentation. Managed Agents sessions are reached through Anthropic's own Sessions API."
+      },
+      "evidence": [],
+      "sources": [
+        { "url": "https://platform.claude.com/docs/en/managed-agents/multiagent-orchestration", "title": "Multiagent orchestration" }
+      ],
+      "checked": "2026-11-27"
+    },
+    "identity-and-access": {
+      "rating": "native",
+      "what": "The Claude Developer Platform uses API keys scoped to workspaces with per-workspace roles, an Admin API for members, workspaces and keys, and Workload Identity Federation, which exchanges OIDC tokens from your own identity provider for short-lived access tokens bound to a service account. For the systems an agent signs in to, Managed Agents vaults hold MCP OAuth credentials, and the Agent SDK takes MCP OAuth access tokens in server headers.",
+      "portability": {
+        "level": "mixed",
+        "standards": ["OAuth 2.0", "OpenID Connect"],
+        "note": "API keys, workspaces, service accounts and the Admin API are Anthropic's own. Workload Identity Federation accepts OpenID Connect tokens through the OAuth 2.0 JWT bearer grant (RFC 7523), and vault MCP credentials hold OAuth 2.0 tokens."
+      },
+      "evidence": [
+        { "kind": "env", "value": "ANTHROPIC_IDENTITY_TOKEN_FILE", "language": "any" },
+        { "kind": "env", "value": "ANTHROPIC_FEDERATION_RULE_ID", "language": "any" },
+        { "kind": "env", "value": "ANTHROPIC_SERVICE_ACCOUNT_ID", "language": "any" },
+        { "kind": "config", "value": "mcp_oauth", "language": "any", "note": "Vault credential type for MCP servers that use OAuth 2.0." },
+        { "kind": "not-in-code", "value": "Workspaces, roles and API keys", "note": "Workspaces, member roles, API keys and federation rules are managed in the Claude Console or through the Admin API, outside the agent's code." }
+      ],
+      "sources": [
+        { "url": "https://platform.claude.com/docs/en/manage-claude/workspaces", "title": "Workspaces" },
+        { "url": "https://platform.claude.com/docs/en/manage-claude/workload-identity-federation", "title": "Workload Identity Federation" },
+        { "url": "https://platform.claude.com/docs/en/manage-claude/admin-api", "title": "Admin API" }
+      ],
+      "checked": "2026-11-27"
+    },
+    "packaging": {
+      "rating": "standard",
+      "what": "Agent Skills (folders with a SKILL.md file) load in the Agent SDK from .claude/skills/ and from plugins, and upload to the Claude API and Managed Agents (beta) as custom skills; Claude Code's docs say its skills follow the Agent Skills open standard. Plugins use Claude Code's own format with a .claude-plugin/plugin.json manifest and a .mcp.json file, loaded in the SDK by local path; the documentation checked does not mention Agent Plugins 1.0.0.",
+      "portability": {
+        "level": "mixed",
+        "standards": ["Agent Skills"],
+        "note": "Skills follow the Agent Skills standard, with extra frontmatter fields that only Claude Code reads; its docs list the spec's fields to use for skills meant for other tools. The plugin manifest is Claude Code's own format."
+      },
+      "evidence": [
+        { "kind": "file", "value": "SKILL.md", "language": "any" },
+        { "kind": "file", "value": ".claude/skills/", "language": "any" },
+        { "kind": "file", "value": ".claude-plugin/plugin.json", "language": "any" },
+        { "kind": "config", "value": "plugins", "language": "any", "note": "Agent SDK option that loads plugins by local path, for example {\"type\": \"local\", \"path\": \"./my-plugin\"}." },
+        { "kind": "config", "value": "skill_id", "language": "any", "note": "Skill reference in Managed Agents agent skills and in container.skills on the Messages API." }
+      ],
+      "sources": [
+        { "url": "https://code.claude.com/docs/en/skills", "title": "Extend Claude with skills" },
+        { "url": "https://code.claude.com/docs/en/agent-sdk/plugins", "title": "Plugins in the SDK" },
+        { "url": "https://platform.claude.com/docs/en/managed-agents/skills", "title": "Skills" }
+      ],
+      "checked": "2026-11-27"
+    }
+  }
+}
