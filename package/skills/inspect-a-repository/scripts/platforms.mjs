@@ -784,9 +784,10 @@ export function harnessReadings({ db, rows, builtOn = [], primary = null, subjec
       // A harness or an assistant runs skills and tool servers, not an agent's own program.
       const mcp = sup("mcp");
       const code = ownFiles ? `its own code (${fileWords(ownFiles)}) ` : "its own code ";
+      const Code = `${code.charAt(0).toUpperCase()}${code.slice(1)}`;
       if (!ownFiles && skillsUsed) takes = "Its skills load as they are";
-      else if (mcp === "yes" || mcp === "partial") takes = `Running ${code}as a tool server ${h.name} connects to${skillsUsed && sup("skills") === "yes" ? ", with its skills loaded as they are" : ""}`;
-      else takes = mcp === "no" ? `${code.charAt(0).toUpperCase()}${code.slice(1)}has no way in: ${h.name} runs no tool servers` : `Not known how ${code}would run there`;
+      else if (mcp === "yes" || mcp === "partial") takes = `${Code}runs as a tool server${skillsUsed && sup("skills") === "yes" ? "; its skills load as they are" : ""}`;
+      else takes = mcp === "no" ? `${Code}has no way in: no tool servers there` : `Not known how ${code}would run there`;
     }
     out.push({ harness: h.id, name: h.name, vendor: h.vendor, kind: h.kind, ...(h.house_stack ? { house_stack: true } : {}), ...(h.platform ? { platform: h.platform } : {}), checked: h.checked ?? null, takes, lines });
   }

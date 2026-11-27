@@ -129,7 +129,7 @@ test("[F6.A4] 0.7.0: Run it in: one reading per harness of the catalogue, never 
   const sdk = h.find((x) => x.harness === "langsmith-agent-server");
   assert.match(sdk.takes, /^Built for it/, "the runtime of the platform it is built on");
   const cc = h.find((x) => x.harness === "claude-code");
-  assert.match(cc.takes, /as a tool server Claude Code connects to/);
+  assert.match(cc.takes, /runs as a tool server/); assert.ok(!cc.takes.includes("Claude Code"), "the same work in words that name no harness");
   const bedrock = h.find((x) => x.harness === "bedrock-agentcore");
   assert.match(bedrock.takes, /^Re-hosting its own code/);
   const gained = h.filter((x) => x.lines.some((l) => l.state === "gained"));

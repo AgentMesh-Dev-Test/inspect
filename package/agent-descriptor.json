@@ -1441,7 +1441,7 @@
         "output": "inspection"
       },
       "file": "views/report.html",
-      "digest": "sha256:be217c682198161ff70ee3c9f7c9f6f49578a23df5fe4daeefae01bf26a873b3",
+      "digest": "sha256:68d958c6b02f9e4d2071a6809a90f31271ebece2305b2b40e73dc035fc4cbabb",
       "requests": [
         "resize",
         "copy-text",

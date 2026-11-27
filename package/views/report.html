@@ -330,7 +330,8 @@ button { font: inherit; color: inherit; cursor: pointer; }
 /* Portability (0.7.0): the guidance's basics, then Run it in */
 .guide-lead { display: flex; flex-wrap: wrap; gap: calc(var(--s) * 0.5) calc(var(--s) * 1.5); align-items: baseline; margin-bottom: calc(var(--s) * 1); }
 .guide-lead .v { font-size: 1.25em; font-weight: 700; line-height: 1.3; }
-.marks { list-style: none; margin: 0; padding: 0; border-top: 1px solid var(--border); max-width: 100ch; }
+.marks { list-style: none; margin: 0; padding: 0; border-top: 1px solid var(--border); }
+.takes-all { margin: 0 0 calc(var(--s) * 1); line-height: 1.5; max-width: 80ch; }
 .marks > li { border-bottom: 1px solid var(--border); padding: calc(var(--s) * 0.6) calc(var(--s) * 0.5); display: grid; grid-template-columns: 8.5em minmax(0, 18em) minmax(0, 1fr); gap: calc(var(--s) * 0.3) calc(var(--s) * 1.5); align-items: baseline; }
 .marks .says { color: var(--muted); overflow-wrap: anywhere; }
 .marks .t { font-weight: 650; }
@@ -1385,15 +1386,18 @@ button { font: inherit; color: inherit; cursor: pointer; }
   // tests come first: they answer how well it is tested.
   const TEST_ORDER = ["Tests", "Gaps in the tests", "What Inspect couldn't tell"];
   function testsAnswer(d, groups) {
+    // 0.7.1: the tests the Tests rows stand on, each file once, so the
+    // answer and the rows' measures agree.
     const { facts } = indexOf(d);
-    const files = [...facts.values()].filter((x) => x?.kind === "test-file");
+    const testRows = groups.find((g) => g.heading === "Tests")?.rows ?? [];
+    const files = [...new Set(testRows.flatMap((f) => f.based_on ?? []))].map((id) => facts.get(id)).filter((x) => x?.kind === "test-file");
     const cases = files.reduce((n, x) => n + (Number(x.data?.cases) || 0), 0);
     const live = files.filter((x) => x.data?.live).length;
     const count = (h) => groups.find((g) => g.heading === h)?.rows.length ?? 0;
     const gaps = count("Gaps in the tests");
     const open = count("What Inspect couldn't tell");
     const tested = !files.length ? "No tests" : `${plural(cases, "test")}${live === files.length ? ", all needing live keys" : live ? ", some needing live keys" : ", all offline"}`;
-    return [tested, gaps ? plural(gaps, "gap") : null, open ? `${plural(open, "question")} for its author` : null].filter(Boolean).join(" · ");
+    return [tested, gaps ? plural(gaps, "gap") : null, open ? `${plural(open, "thing")} it couldn't tell` : null].filter(Boolean).join(" · ");
   }
   function drawTests(d, pending) {
     const list = ordered(ofSection(d, 8));
@@ -1695,16 +1699,19 @@ button { font: inherit; color: inherit; cursor: pointer; }
       return out;
     }
     const shown = prefs ? prefs.map((id) => all.find((h) => h.harness === id)).filter(Boolean) : all.filter((h) => h.kind === "harness");
-    out.push(el("div", { class: "runs" }, shown.map((h) => drawRun(p, h))));
+    // 0.7.1: the same work in every card is said once, above them.
+    const same = shown.length > 1 && shown.every((h) => one(h.takes) === one(shown[0].takes)) ? one(shown[0].takes) : null;
+    if (same) out.push(el("p", { class: "takes-all", text: `In each: ${same.charAt(0).toLowerCase()}${same.slice(1).replace(/[.]$/, "")}.` }));
+    out.push(el("div", { class: "runs" }, shown.map((h) => drawRun(p, h, !!same))));
     if (prefs) out.push(el("p", { class: "change" }, el("button", { class: "ref", type: "button", "data-k": "change-harnesses", onclick: () => openPage("preferred-harnesses") }, "Change your harnesses")));
     return out;
   }
-  function drawRun(p, h) {
+  function drawRun(p, h, saidAbove = false) {
     const lines = [...(h.lines ?? [])].sort((a, z) => RUN_ORDER.indexOf(a.state) - RUN_ORDER.indexOf(z.state));
     return el("section", { class: "run", "aria-label": one(h.name) },
-      el("div", { class: "run-head" }, systemIcon(one(h.vendor) || one(h.name)),
+      el("div", { class: "run-head" }, systemIcon(/^(Claude|Gemini|ChatGPT|Microsoft)/.test(one(h.name)) ? one(h.vendor) || one(h.name) : one(h.name)),
         el("div", {}, el("h3", { text: one(h.name) }), h.house_stack ? el("span", { class: "tag", text: "Runs agents in AgentMesh's House Stack" }) : null)),
-      el("p", { class: "takes", text: `${one(h.takes).replace(/[.]$/, "")}.` }),
+      saidAbove ? null : el("p", { class: "takes", text: `${one(h.takes).replace(/[.]$/, "")}.` }),
       lines.length ? el("ul", {}, lines.map((l) => el("li", {}, mark(RUN[l.state] ?? RUN.unknown),
         el("button", { class: "ref", type: "button", "data-k": `run:${h.harness}:${l.capability}`, onclick: (e) => openViewer(runCell(p, h, l), e.currentTarget) }, l.title)))) : null);
   }
