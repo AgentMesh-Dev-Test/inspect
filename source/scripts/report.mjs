@@ -21,6 +21,7 @@ import { SECTIONS, categoryOf, LIST_IDS } from "./lists.mjs";
 import { scrub } from "./secrets.mjs";
 import { HOW_ORDER, settingNeed } from "./collect.mjs";
 import { hookLevel, toolWords } from "./plugin-facts.mjs";
+import { bodyOf } from "./agent-facts.mjs";
 
 /** The most of one skill's instructions the report carries, and of all of them (0.3.0). */
 export const INSTRUCTIONS_CHARS = 8_000;
@@ -383,7 +384,7 @@ export function scriptFindings({ facts, ctx, owner, name, sha, repoUrl, osv = nu
 /** "a, b and c". */
 const and = (xs) => (xs.length < 2 ? xs.join("") : `${xs.slice(0, -1).join(", ")} and ${xs.at(-1)}`);
 /** A SKILL.md's or a command's text without its front matter. */
-const bodyOfText = (text) => { const t = String(text ?? "").replace(/^﻿/, ""); const m = /^---\r?\n[\s\S]*?\r?\n---\r?\n?/.exec(t); return (m ? t.slice(m[0].length) : t).trim(); };
+const bodyOfText = (text) => bodyOf(text);
 /** An address's host, or null. */
 const hostOf = (u) => { try { return new URL(String(u ?? "")).hostname || null; } catch { return null; } };
 /** Where keys are kept, in words, from what a script names. */

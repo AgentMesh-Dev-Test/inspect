@@ -62,6 +62,15 @@ test("[C3] every script carried from another agent is byte for byte the version 
   for (const f of readdirSync(join(ROOT, "scripts")).filter((x) => statSync(join(ROOT, "scripts", x)).isFile())) assert.ok(carried.has(f) || own.has(f), `${f} is either carried and pinned, or Inspect's own`);
 });
 
+test("[C3] no file the package carries holds a hidden character, which the platform's install refuses (0.5.1)", () => {
+  const HIDDEN = /[﻿​-‏⁠-⁤­‪-‮⁦-⁩]/;
+  const walk = (d) => readdirSync(d).flatMap((n) => (statSync(join(d, n)).isDirectory() ? walk(join(d, n)) : [join(d, n)]));
+  for (const f of [...walk(join(ROOT, "scripts")), ...walk(join(ROOT, "views")), join(ROOT, "agent-descriptor.json")]) {
+    const m = HIDDEN.exec(readFileSync(f, "utf8"));
+    assert.equal(m, null, `${f} holds U+${m?.[0].codePointAt(0).toString(16).toUpperCase().padStart(4, "0")} at ${m?.index}`);
+  }
+});
+
 test("[C5] facts too many for a call are not cut: the call is not made and the report says why", async () => {
   const facts = Array.from({ length: 5000 }, (_, i) => ({ id: `F${String(i + 1).padStart(4, "0")}`, kind: "tool", file: "src/a.py", line: 1, text: "y".repeat(400) }));
   const m = model();
