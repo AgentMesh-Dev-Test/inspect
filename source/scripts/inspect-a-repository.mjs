@@ -55,7 +55,7 @@ import { admit, askerOf } from "./limits.mjs";
 import { loadedSkills, pickPlugin, pluginFacts, scopeOf, shapeOf, subjectOf } from "./plugin-facts.mjs";
 import { loadDatabase, platformUses, readingOf } from "./platforms.mjs";
 
-export const VERSION = "0.6.2";
+export const VERSION = "0.6.3";
 const DAY_MS = 24 * 60 * 60 * 1000;
 
 /**
@@ -160,7 +160,7 @@ export async function inspect({ text, workDir, env = process.env, fetchImpl = fe
       found, db, frameworks: frameworkFacts.map((f) => f.data), subject,
       ownCode: facts.find((f) => f.kind === "own-code")?.data ?? null,
       languages: facts.filter((f) => f.kind === "language").map((f) => f.data),
-      pluginParts: subject ? { hooks: facts.filter((f) => f.kind === "hook"), commands: facts.filter((f) => f.kind === "slash-command" || f.kind === "sub-agent"), mcp: facts.filter((f) => f.kind === "mcp-server") } : {},
+      pluginParts: subject ? { hooks: facts.filter((f) => f.kind === "hook"), commands: facts.filter((f) => f.kind === "slash-command" || f.kind === "sub-agent"), mcp: facts.filter((f) => f.kind === "mcp-server"), manifests: facts.filter((f) => f.kind === "plugin-manifest" && f.data?.tool !== "Agent Plugins") } : {},
     });
     about.portability = portability;
     onStart(about);
