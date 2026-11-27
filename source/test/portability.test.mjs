@@ -219,6 +219,44 @@ test("[F6.A8] a working copy short of room leaves out the database's words first
 test("[F6.A2] a row says the sentence of its cell that names what the code uses, never one only the vendor's name matches", async () => {
   const { leadSentence } = await import("../scripts/platforms.mjs");
   const what = db.platforms.find((p) => p.id === "openai").categories.deployment.what;
-  assert.match(leadSentence(what, ["@openai/chatkit-react"], ["openai", "OpenAI"]), /ChatKit/);
+  assert.match(leadSentence(what, ["OpenAI-Beta: chatkit_beta=v1"], ["openai", "OpenAI"]), /ChatKit/);
   assert.equal(leadSentence(what, ["nothing-it-names"], ["openai"]), what.split(/(?<=\.)\s(?=[A-Z])/)[0], "the first sentence when none names it");
+});
+
+test("[F6.A2] 0.6.3: a requirements file names frameworks; a type-only import is no use; a class kept in the agent's own memory reaches no service; a plugin's own manifests are its tools' format; the Markdown says a destination's deployment once", async () => {
+  const { collectFacts } = await import("../scripts/collect.mjs");
+  const req = { "python-backend/requirements.txt": "openai-agents\nopenai-chatkit\nfastapi\n", "python-backend/requirements-dev.txt": "crewai\n", "python-backend/agents.py": "from agents import Agent\n" };
+  const fws = collectFacts({ files: filesOf(req), read: readerOf(req), bytesOf: () => null }).facts.filter((x) => x.kind === "framework").map((x) => x.data.framework);
+  assert.deepEqual(fws, ["OpenAI Agents SDK"], "requirements.txt names the framework; a development requirements file does not");
+  const { scriptImports } = await import("../scripts/platforms.mjs");
+  // A type-only import is marked, and is no use of the module.
+  assert.equal(scriptImports('import type { X } from "@anthropic-ai/claude-agent-sdk";\n')[0].type_only, true);
+  assert.equal(scriptImports('import { type X, type Y } from "m";\n')[0].type_only, true);
+  assert.equal(scriptImports('import { type X, y } from "m";\n')[0].type_only, undefined);
+  const ts = { "package.json": "{\"devDependencies\":{\"@anthropic-ai/claude-agent-sdk\":\"^0.2.70\"}}\n", "hooks/src/inject.mts": 'import type { SyncHookJSONOutput } from "@anthropic-ai/claude-agent-sdk";\nexport const x = 1;\n' };
+  assert.equal(platformUses({ files: filesOf(ts), read: readerOf(ts), db }).present.has("anthropic"), false, "a type-only import shows no platform");
+  // ADK's in-memory sessions: in the cell the database rates partly open, but no service.
+  const adk = {
+    "pyproject.toml": "[project]\nname = \"t\"\ndependencies = [\n  \"google-adk==2.13.0\",\n]\n",
+    "bot/agent.py": "from google.adk.agents import LlmAgent\nroot_agent = LlmAgent(name='x')\n",
+    "bot/run.py": "from google.adk import Runner\nfrom google.adk.sessions import InMemorySessionService, Session\nRunner(session_service=InMemorySessionService())\n",
+  };
+  const { reading } = readOf(adk, [{ framework: "Google ADK", package: "google-adk", file: "pyproject.toml", line: 4 }]);
+  const mem = reading.uses.find((r) => r.category === "memory-and-state");
+  assert.ok(mem, "memory is a row");
+  assert.equal(mem.outside, false); assert.equal(mem.swap, "in-process");
+  assert.ok(reading.destinations.every((d) => !d.swaps.includes("memory-and-state")), "nothing to swap");
+  const vertex = { ...adk, "bot/run.py": "from google.adk.sessions import VertexAiSessionService\nVertexAiSessionService()\n" };
+  assert.equal(readOf(vertex, [{ framework: "Google ADK", package: "google-adk", file: "pyproject.toml", line: 4 }]).reading.uses.find((r) => r.category === "memory-and-state").outside, true, "Vertex's sessions are a service");
+  // A destination's deployment is its re-host line, never again as a cell.
+  const { portabilityMarkdown } = await import("../scripts/report.mjs");
+  const withDeploy = { ...reading, destinations: reading.destinations.map((d) => ({ ...d, cells: [...d.cells, { category: "deployment", title: "Deployment and scaling", rating: "native", what: "Runs it.", level: "proprietary" }] })) };
+  const md = portabilityMarkdown({ portability: withDeploy, repository: "https://github.com/x/y", commit: { sha: "0123456789abcdef" } }).join("\n");
+  assert.match(md, /on AgentMesh's deployment:/); assert.doesNotMatch(md, /for \*\*deployment and scaling\*\*/);
+  // A plugin's manifests in its tools' own format.
+  const files = claudePlugin();
+  const found = platformUses({ files: filesOf(files), read: readerOf(files), db });
+  const plugin = readingOf({ found, db, subject: { kind: "plugin", name: "helper", tools: ["Claude Code"], also_for: [] }, pluginParts: { manifests: [{ id: "F0100", kind: "plugin-manifest", file: ".claude-plugin/plugin.json", line: 2, data: { tool: "Claude Code" } }] } });
+  const man = plugin.uses.find((r) => r.category === "manifests");
+  assert.equal(man.level, "proprietary"); assert.match(man.sources[0].what, /Claude Code's own format/);
 });

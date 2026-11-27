@@ -783,7 +783,8 @@ export function portabilityMarkdown(r) {
     if (swaps.length) work.push(`swap ${and(swaps.map((x) => mdText(x.toLowerCase())))}`);
     if (d.runtime) work.push(`re-host its own code${d.runtime.frameworks?.length ? `, written with ${and(d.runtime.frameworks.map(mdText))}` : ""}${Number.isFinite(d.runtime.own_files) ? ` (${d.runtime.own_files.toLocaleString("en-US")} files, ${Number(d.runtime.own_lines ?? 0).toLocaleString("en-US")} lines)` : ""}, on ${mdText(d.name)}'s deployment: ${mdText(d.runtime.deployment.what)}`);
     if (work.length) out.push(`- The work: ${work.join("; and ")}`.replace(/\.?$/, "."));
-    const by = (rating) => d.cells.filter((c) => c.rating === rating);
+    // Its deployment is the re-host line above, said once (as the view does).
+    const by = (rating) => d.cells.filter((c) => c.rating === rating && !(d.runtime && c.category === "deployment"));
     for (const c of by("none")) out.push(`- Would lose **${mdText(c.title.toLowerCase())}**: ${mdText(c.what)}`);
     for (const c of by("partial")) out.push(`- Only partly, **${mdText(c.title.toLowerCase())}**: ${mdText(c.what)}`);
     for (const c of by("unknown")) out.push(`- Not in its documentation, **${mdText(c.title.toLowerCase())}**: ${mdText(c.what)}`);

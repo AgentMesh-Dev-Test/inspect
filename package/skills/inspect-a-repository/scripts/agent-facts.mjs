@@ -344,6 +344,14 @@ export function agentFacts(files, read, { entries = [] } = {}) {
       continue;
     }
     if (name === "setup.py") { add("install-script", f, 1, { script: "setup.py", runs: "setup.py runs as Python when the package is built or installed from source" }); continue; }
+    // 0.6.3: a requirements file names frameworks too (openai-cs-agents-demo
+    // declares openai-agents only there); development ones aside.
+    if (/^requirements[^/]*\.(txt|in)$/.test(name) && !/(dev|test|lint|docs?)/i.test(name.replace(/^requirements/, ""))) {
+      linesOf(textOf(f) ?? "").forEach((line, i) => {
+        const dep = /^\s*([A-Za-z0-9][A-Za-z0-9._-]*)\s*(?:\[[^\]]*\])?\s*(?:[<>=!~;#@]|$)/.exec(line);
+        if (dep && FRAMEWORKS[dep[1].toLowerCase()]) add("framework", f, i + 1, { framework: FRAMEWORKS[dep[1].toLowerCase()], package: dep[1].toLowerCase() });
+      });
+    }
     if (name === "pyproject.toml") {
       const t = textOf(f) ?? "";
       linesOf(t).forEach((line, i) => {

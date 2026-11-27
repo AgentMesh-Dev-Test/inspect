@@ -1574,7 +1574,8 @@ button { font: inherit; color: inherit; cursor: pointer; }
       el("div", {}, el("span", { class: "k", text: plugin ? "Runs in" : "Built on" }), el("p", { class: "v", text: name }), under ? el("p", { class: "under", text: under }) : null)));
     // What ties it to its vendor: each row the database rates the vendor's
     // own or partly open, said as the ratings say it and no more.
-    const ties = (p.uses ?? []).filter((r) => !r.plugin_part && (r.level === "proprietary" || r.level === "mixed"));
+    // A row whose use is kept in the agent's own memory ties it to nothing.
+    const ties = (p.uses ?? []).filter((r) => !r.plugin_part && r.swap !== "in-process" && (r.level === "proprietary" || r.level === "mixed"));
     if (!plugin) out.push(el("p", { class: "ties", text: ties.length ? `Tied to its vendor in ${titles(ties.map((r) => r.title.toLowerCase()))}.` : (p.uses ?? []).length ? "Everything it uses of its platform is open source or an open standard." : "It uses none of the features the database lists." }));
 
     out.push(el("h2", { text: "How tied it is" }));
@@ -1594,7 +1595,7 @@ button { font: inherit; color: inherit; cursor: pointer; }
             words ? el("p", { class: "tie-what" }, prose(firstOf(words))) : sk("80%"),
             others.length ? el("p", { class: "tie-also" }, `Also ${andList(others.map((s) => (s.standard ? STANDARD_WORDS[s.standard] ?? s.standard : sourceName(s))))}.`) : null,
             needs,
-            r.outside ? el("p", { class: "tie-swap", text: swapLine(r) }) : null));
+            r.outside ? el("p", { class: "tie-swap", text: swapLine(r) }) : r.swap === "in-process" ? el("p", { class: "tie-swap", text: "Kept in its own memory: no service to swap" }) : null));
       })));
     } else out.push(el("p", { class: "quiet", text: "It uses none of the features the database lists." }));
     const notUsed = (plugin ? p.not_applicable : p.not_used) ?? [];

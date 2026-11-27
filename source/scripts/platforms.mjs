@@ -171,7 +171,16 @@ export function scriptImports(text) {
     if (def && def[1] !== "type") names.push("default");
     return { names, star };
   };
-  for (const m of t.matchAll(/\b(?:import|export)\s+(?:type\s+)?([\w*${}\s,]+?)\s+from\s+["']([^"'\n]+)["']/g)) out.push({ module: m[2], ...clauseNames(m[1]), line: lineAt(m.index) });
+  // A type-only import (import type, or every name marked type) is erased
+  // when the code is compiled: it is kept, and marked, but it is no use of
+  // the module (vercel-plugin's hooks import only a type from the Claude
+  // Agent SDK, a development dependency).
+  for (const m of t.matchAll(/\b(?:import|export)\s+(type\s+)?([\w*${}\s,]+?)\s+from\s+["']([^"'\n]+)["']/g)) {
+    const braces = /\{([^}]*)\}/.exec(m[2]);
+    const outside = m[2].replace(/\{[^}]*\}/, "").replace(/[\s,]/g, "");
+    const allTypes = !!braces && !outside && braces[1].split(",").map(trim).filter(Boolean).every((n) => /^type\s/.test(n));
+    out.push({ module: m[3], ...clauseNames(m[2]), line: lineAt(m.index), ...(m[1] || allTypes ? { type_only: true } : {}) });
+  }
   for (const m of t.matchAll(/\bimport\s+["']([^"'\n]+)["']/g)) out.push({ module: m[1], names: [], star: true, line: lineAt(m.index) });
   for (const m of t.matchAll(/\b(?:require|import)\s*\(\s*["']([^"'\n]+)["']\s*\)/g)) out.push({ module: m[1], names: [], star: true, line: lineAt(m.index) });
   return out;
@@ -380,7 +389,7 @@ export function platformUses({ files, read, db, frameworks = [] }) {
   const code = agent.filter((f) => ALL_CODE.has(ext(f)));
   const config = agent.filter((f) => isConfig(f));
   const importCache = new Map();
-  const imports = (f) => { if (!importCache.has(f)) { const t = text(f); importCache.set(f, t === null ? [] : importsOf(f, t)); } return importCache.get(f); };
+  const imports = (f) => { if (!importCache.has(f)) { const t = text(f); importCache.set(f, t === null ? [] : importsOf(f, t).filter((im) => !im.type_only)); } return importCache.get(f); };
   const langOf = (f) => (PY.has(ext(f)) ? "python" : JS.has(ext(f)) ? "js" : ext(f) === ".cs" ? "csharp" : ext(f) === ".go" ? "go" : "java");
   // A module the repository holds itself is the agent's own, whatever its name.
   const local = (root, file) => {
@@ -443,7 +452,7 @@ export function platformUses({ files, read, db, frameworks = [] }) {
       if (!cell || cell.rating === "none" || cell.rating === "unknown") continue;
       for (const e of cell.evidence ?? []) {
         const places = matchEvidence(e, { p, cell, deps, agent, code, config, commandFiles, imports, linesIn, langOf, local, importsPlatform });
-        for (const at of places.slice(0, PLACES)) uses.push({ platform: p.id, category, kind: e.kind, value: e.value, language: e.language ?? "any", file: at.file, line: at.line, files: new Set(places.map((x) => x.file)).size });
+        for (const at of places.slice(0, PLACES)) uses.push({ platform: p.id, category, kind: e.kind, value: e.value, language: e.language ?? "any", file: at.file, line: at.line, files: new Set(places.map((x) => x.file)).size, ...(at.names?.length ? { names: at.names } : {}) });
       }
     }
   }
@@ -503,7 +512,7 @@ function matchEvidence(e, ctx) {
           if (im.module === ev.module) return !wanted.length || im.star || im.names.some((n) => wanted.includes(n));
           return !ev.names.length && (im.module.startsWith(`${ev.module}.`) || im.module.startsWith(`${ev.module}/`));
         });
-        if (hit) out.push({ file: f, line: hit.line });
+        if (hit) out.push({ file: f, line: hit.line, names: wanted.length ? hit.names.filter((n) => wanted.includes(n)) : [] });
       }
       break;
     }
@@ -575,7 +584,8 @@ export function leadSentence(what, values = [], vendor = []) {
   let best = 0; let score = 0;
   sentences.forEach((s, i) => {
     const words = new Set(s.toLowerCase().replace(/`/g, "").split(/[^a-z0-9]+/));
-    const n = tokens.filter((x) => words.has(x)).length;
+    // 0.6.3: a longer name tells more (chatkit over beta, in chatkit_beta).
+    const n = tokens.filter((x) => words.has(x)).reduce((sum, x) => sum + x.length, 0);
     if (n > score) { score = n; best = i; }
   });
   return sentences[best] ?? trim(what);
@@ -623,6 +633,10 @@ export function readingOf({ found, db, frameworks = [], ownCode = null, language
         platform: b.id, vendor: byId.get(b.id).vendor, name: byId.get(b.id).name, rating: cell.rating, level: cell.portability.level, standards: cell.portability.standards ?? [],
         what: trim(cell.what), lead: leadSentence(cell.what, places.map((u) => u.value), [b.id, byId.get(b.id).vendor]), note: cell.portability.note,
         reach: { code_files: codeFiles.size, settings_only: codeFiles.size === 0 && places.every((u) => ["env", "config", "file", "cli", "package"].includes(u.kind)) },
+        // Every place an import of a class kept in the agent's own memory
+        // (ADK's InMemorySessionService, LangGraph's InMemorySaver): it
+        // reaches no service, whatever else the cell's rating covers.
+        in_process: places.every((u) => u.kind === "import" && (u.names ?? []).length > 0 && u.names.every((n) => /^InMemory[A-Z]/.test(n))),
         evidence: places.map((u) => ({ file: u.file, line: u.line, kind: u.kind, value: u.value, ...(u.fact ? { fact: u.fact } : {}) })),
       });
     }
@@ -641,17 +655,22 @@ export function readingOf({ found, db, frameworks = [], ownCode = null, language
     const tied = sources.find((s) => s.level === level);
     // An outside dependency: a vendor's own or partly open feature, which
     // moves only by being swapped. The runtime itself is said under Moving it.
-    const outside = (level === "proprietary" || level === "mixed") && !NOT_A_SERVICE.includes(key);
+    // 0.6.3: not when all it uses of the tied cell is kept in its own memory.
+    const inProcess = sources.filter((s) => s.level === level).every((s) => s.in_process);
+    const outside = (level === "proprietary" || level === "mixed") && !NOT_A_SERVICE.includes(key) && !inProcess;
     const reach = tied.reach;
-    const swap = level === "open-standard" ? "standard" : level === "open-source" ? "library" : key === "deployment" ? "runtime" : reach.settings_only ? "settings" : reach.code_files <= 1 ? "one-file" : "files";
+    const swap = level === "open-standard" ? "standard" : level === "open-source" ? "library" : key === "deployment" ? "runtime" : inProcess ? "in-process" : reach.settings_only ? "settings" : reach.code_files <= 1 ? "one-file" : "files";
     rows.push({ category: key, title: title(key), level, outside, swap, code_files: reach.code_files, sources, needs: null, choices: null });
   }
   // A plugin's own parts that are its tool's format, not a standard.
   if (subject) {
-    const tools = subject.tools?.length ? subject.tools : [];
-    for (const [key, words] of [["hooks", "Hooks"], ["commands", "Commands and sub-agents"]]) {
+    const toolsOfPlugin = subject.tools?.length ? subject.tools : [];
+    // 0.6.3: its manifests too, each in its own tool's format, unless it is
+    // an Agent Plugins 1.0.0 manifest (the open standard, said under Packaging).
+    for (const [key, words] of [["manifests", "Plugin manifests"], ["hooks", "Hooks"], ["commands", "Commands and sub-agents"]]) {
       const parts = pluginParts[key] ?? [];
       if (!parts.length) continue;
+      const tools = key === "manifests" ? [...new Set(parts.map((f) => f.data?.tool).filter(Boolean))] : toolsOfPlugin;
       rows.push({ category: key, title: words, level: "proprietary", outside: false, swap: "tool", code_files: 0, plugin_part: true, sources: [{ platform: null, tools, rating: "native", level: "proprietary", standards: [], what: `${words} in ${and(tools) || "its tool"}'s own format.`, reach: { code_files: 0, settings_only: false }, evidence: parts.slice(0, PLACES).map((f) => ({ file: f.file, line: f.line, kind: "file", value: f.kind, ...(f.id ? { fact: f.id } : {}) })) }], needs: null, choices: null });
     }
   }
@@ -723,6 +742,7 @@ export function swapWords(row) {
     case "standard": return "Moves as it is: an open standard";
     case "library": return "Comes with its code: open source";
     case "runtime": return "Its runtime: see each destination";
+    case "in-process": return "Comes with its code: kept in its own memory, no service";
     case "settings": return "Light: settings only";
     case "one-file": return "Light: its code is in one file";
     case "tool": return "Its tool's own format";
