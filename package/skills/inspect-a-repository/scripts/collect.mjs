@@ -22,6 +22,7 @@ import { isTestFile, readFacts } from "./facts.mjs";
 import { credentialsIn, scrub } from "./secrets.mjs";
 import { CODE as TRACE_CODE, traceOne } from "./trace-programs.mjs";
 import { agentFacts, CODE, codeLines } from "./agent-facts.mjs";
+import { enclosingFunction, entryFiles, oneOfFacts, onStartPath, probeFacts } from "./needs.mjs";
 
 /** The longest line a fact keeps the text of. */
 export const TEXT_CHARS = 400;
@@ -191,6 +192,26 @@ export function collectFacts({ files, read, bytesOf, archive = {}, github = {}, 
     add("own-code", { file: ownCode[0], line: 1 }, { files: ownCode.length, lines: ownCode.reduce((n, f) => n + codeLines(read(f)), 0), folders });
   }
 
+  // 0.7.2: what it needs that no setting says. A system the code probes for
+  // (a program on the PATH, a daemon that answers), and a stop in its own
+  // code whose message names alternatives, with whether that stop is on the
+  // path its commands share, which makes one of the alternatives required.
+  const runnable = files.filter((f) => CODE.has(posix.extname(f).toLowerCase()) && !isTestFile(f) && !/(^|\/)(node_modules|vendor|dist|build|\.venv)\//.test(f));
+  const ownSet = new Set(ownCode);
+  const probes = probeFacts(runnable, read);
+  const alts = oneOfFacts(ownCode, read, (f) => ownSet.has(f));
+  let entries = null;
+  const onPath = (file, line) => {
+    entries ??= entryFiles({ files, read, facts });
+    const lines = linesIn(file) ?? [];
+    return onStartPath({ file, fn: enclosingFunction(lines, line - 1) }, { ownFiles: ownCode, read, entries });
+  };
+  for (const p of probes) {
+    const stopsHere = p.data.stops && ownSet.has(p.file);
+    add("probe", { file: p.file, line: p.line }, { ...p.data, ...(inSkill(p.file) ? { in_skill: true } : {}), ...(stopsHere ? { on_start_path: onPath(p.file, p.line) } : {}) });
+  }
+  for (const a of alts) add("one-of", { file: a.file, line: a.line }, { ...a.data, on_start_path: onPath(a.file, a.line) });
+
   // The archive.
   for (const l of archive.links ?? []) add("link", { source: { system: "code-host", call: `GET /repos/${owner}/${name}/tarball/{sha}`, field: l.path } }, { path: l.path, points_to: l.points_to, kind: l.kind });
   for (const p of archive.refused ?? []) add("refused-path", { source: { system: "code-host", call: `GET /repos/${owner}/${name}/tarball/{sha}`, field: p.path } }, { path: p.path, why: p.why });
@@ -287,14 +308,20 @@ export function settingNeed(name, facts) {
  *     the agent runs without it: optional.
  *   - When it reads no setting at all and the person has nothing to set up
  *     (`supply` says so): none, never counted as required (0.4.2).
+ *   - 0.7.2: a probe of it (`probes`) the code stops at, on the path its
+ *     commands share: required.
  * by is "rule" for each. Otherwise need and by are null: the facts leave it
  * unclear, and the model's answer stands.
  */
-export function systemNeed({ settings = [], files = [], facts = [], supply = "" } = {}) {
+export function systemNeed({ settings = [], files = [], facts = [], supply = "", probes = [] } = {}) {
   const names = [...new Set(settings.map((s) => String(s ?? "").trim()).filter(Boolean))].sort();
   const each = names.map((n) => ({ name: n, ...(settingNeed(n, facts) ?? { need: null }) })).filter((x) => x.need);
   const said = each.map((x) => ({ name: x.name, need: x.need, why: x.why }));
   if (each.some((x) => x.need === "required")) return { need: "required", by: "rule", why: "a setting it reads is required", settings: said };
+  // 0.7.2: a system no setting names, which the code checks for (a program
+  // on the PATH, a daemon that answers) and stops without, on the path its
+  // commands share.
+  if (probes.some((p) => p.data?.stops && p.data?.on_start_path)) return { need: "required", by: "rule", why: "the code stops when it is not there", settings: said };
   if (each.length && each.every((x) => x.need === "optional")) return { need: "optional", by: "rule", why: "every setting it reads is optional", settings: said };
   const folders = facts.filter((f) => f.kind === "skill").map((f) => String(f.data?.folder ?? ""));
   // The code that reaches it: no test, and no doc or example settings file, which reach nothing.

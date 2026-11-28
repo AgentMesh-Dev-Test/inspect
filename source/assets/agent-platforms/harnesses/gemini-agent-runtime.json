@@ -50,7 +50,7 @@
       "checked": "2026-11-27"
     },
     "a2a": {
-      "support": "partial",
+      "support": "yes",
       "what": "Agent Runtime hosts agents built with the Agent2Agent (A2A) protocol through the A2aAgent template, which is labelled Preview, and Agent Gateway governs A2A traffic between agents.",
       "sources": [
         { "url": "https://docs.cloud.google.com/gemini-enterprise-agent-platform/build/runtime/create-an-a2a-agent", "title": "Create an Agent2Agent agent" },

@@ -68,7 +68,7 @@
       "required": ["support", "what", "sources", "checked"],
       "properties": {
         "support": {
-          "description": "yes: the documentation says it does. partial: only part of it (what says which part), or only in preview or beta. no: the documentation says it does not. unknown: not found in the documentation on the date checked, never a guess.",
+          "description": "yes: the documentation says it does. partial: only part of it (what says which part). A maker's preview or beta label does not lower it, as for platforms; what says so. no: the documentation says it does not. unknown: not found in the documentation on the date checked, never a guess.",
           "enum": ["yes", "partial", "no", "unknown"]
         },
         "what": { "description": "One short factual sentence, as the maker names the feature, saying preview or beta where the maker does.", "type": "string", "minLength": 1 },
