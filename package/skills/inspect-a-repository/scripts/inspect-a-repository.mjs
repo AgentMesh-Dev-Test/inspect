@@ -55,8 +55,9 @@ import { admit, askerOf } from "./limits.mjs";
 import { loadedSkills, pickPlugin, pluginFacts, scopeOf, shapeOf, subjectOf } from "./plugin-facts.mjs";
 import { loadDatabase, platformUses, readingOf } from "./platforms.mjs";
 import { guidanceOf } from "./guidance.mjs";
+import { applyGroups, groupFindings } from "./needs.mjs";
 
-export const VERSION = "0.7.1";
+export const VERSION = "0.7.2";
 const DAY_MS = 24 * 60 * 60 * 1000;
 
 /**
@@ -177,6 +178,10 @@ export async function inspect({ text, workDir, env = process.env, fetchImpl = fe
     const emitter = createEmitter({ onFinding });
     onStatus(stepLine(2, "Writing what the code shows"));
     for (const f of scriptFindings({ facts, ctx, owner, name, sha, repoUrl: url, osv, bomGaps: gaps, files, textFiles, skillTexts: collected.skillTexts, cased: collected.cased, subject, read })) emitter.emitFinding(f);
+    // 0.7.2: a stop that names alternatives, on the path its commands share,
+    // is one required group, said by rule before the model has judged anything.
+    const groups = subject ? [] : groupFindings(facts, { repoName: name });
+    for (const g of groups) emitter.emitFinding(g);
 
     // The judgments.
     const held = [];
@@ -238,6 +243,8 @@ export async function inspect({ text, workDir, env = process.env, fetchImpl = fe
           hook.based_on = [...new Set([...(hook.based_on ?? []), ...risks.flatMap((r) => r.based_on ?? [])])];
           hook.detail = { ...hook.detail, hook: { ...hook.detail.hook, also: [...(hook.detail.hook.also ?? []), ...risks.map((r) => ({ title: r.title, says: r.says, level: r.level, ...(r.detail?.safe ? { safe: r.detail.safe } : {}) }))] } };
         }
+        // 0.7.2: each system that is one of a group's alternatives says so.
+        applyGroups(groups, fold.stay.filter((f) => f.section === 5 && f.kind === "system"), byId);
         for (const f of fold.stay) emitter.emitFinding(f);
         held.push(...c.held);
         // 0.3.3: each skill's plain name and words replace the title its own

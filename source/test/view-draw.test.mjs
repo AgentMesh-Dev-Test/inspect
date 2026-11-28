@@ -25,7 +25,7 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import vm from "node:vm";
-import { buildReport, workingCopy } from "../scripts/report.mjs";
+import { buildReport, markdownOf, workingCopy } from "../scripts/report.mjs";
 import { ROOT, SHA, descriptor, claudePlugin, ENV, inTemp, model, world } from "./helpers.mjs";
 import { inspect } from "../scripts/inspect-a-repository.mjs";
 import { loadDatabase, platformUses, readingOf } from "../scripts/platforms.mjs";
@@ -610,6 +610,28 @@ test("[F5.R9] a system with nothing to set up says so as its need, with a shape 
   assert.equal(shownPanel(app).querySelectorAll("li.row.system").at(-1), row, "after the systems that ask something of the person");
 });
 
+test("[F5.A9] 0.7.2: a group is one card, counted once: Any one of these, each choice with what is supplied; a system said only in it has no card; a member with other uses says it is also a choice", () => {
+  const { list, facts } = rich();
+  const group = { id: "S5-030", section: 5, kind: "system", title: "Sandbox", says: "The code stops when none of these is there: Docker or LangSmith Sandboxes.", by: "script", based_on: [], evidence: ev("src/sandbox/__init__.py", 143), detail: { system: "Sandbox", need: "required", need_by: "rule", need_why: "the code stops when none of them is there", one_of: [{ name: "Docker", supply: "Install Docker and build the image", settings: [] }, { name: "LangSmith Sandboxes", supply: "Your LangSmith key and sandbox snapshot", settings: ["LANGSMITH_API_KEY", "DESIGN_AGENT_SANDBOX_SNAPSHOT"] }], supply: "Install Docker and build the image, or your LangSmith key and sandbox snapshot" } };
+  const docker = { id: "S5-031", section: 5, kind: "system", title: "Docker for the render sandbox", says: "It starts a container per thread.", by: "model", based_on: [], evidence: ev("src/sandbox/docker.py", 138), detail: { system: "Docker", need: "one-of", need_by: "rule", member_of: "Sandbox", member_as: "Docker", supply: "Docker on the machine" } };
+  const langsmith = { id: "S5-032", section: 5, kind: "system", title: "LangSmith for tracing and sandboxes", says: "Traces go to LangSmith.", by: "model", based_on: [], evidence: ev("src/tools/traces.py", 184), detail: { system: "LangSmith", need: "optional", need_by: "model", member_of: "Sandbox", member_as: "LangSmith Sandboxes", supply: "Your LangSmith key", without: "the sandbox must come from Docker" } };
+  const r = report([...list, group, docker, langsmith], [], facts);
+  const { app } = drawn(r, { width: 1100 });
+  const tile = shownPanel(app).querySelector("ul.size-tiles").querySelectorAll("li").find((t) => t.querySelector(".k").textContent === "Systems required");
+  assert.equal(tile.querySelector(".v").textContent, "3 of 5", "the group once, Docker not again");
+  assert.match(markdownOf(r), /Systems required: 3 of 5\./, "the Markdown counts as the tile does");
+  tabNamed(app, "Systems it uses").click();
+  assert.equal(rowOf(app, "S5-031"), undefined, "Docker is said only in the group");
+  const row = rowOf(app, "S5-030");
+  assert.equal(row.querySelector(".need .word").textContent, "Required");
+  assert.match(readable(row), /Any one of these/);
+  const choices = row.querySelectorAll("ul.choices li");
+  assert.deepEqual(choices.map((c) => c.querySelector(".c-name").textContent), ["Docker", "LangSmith Sandboxes"]);
+  assert.match(readable(choices[1]), /Your LangSmith key and sandbox snapshot/);
+  assert.ok(!/DESIGN_AGENT|LANGSMITH_API_KEY/.test(readable(row)), "no setting as the code writes it");
+  assert.match(readable(rowOf(app, "S5-032")), /Also one choice for the sandbox/);
+});
+
 test("[F5.R9] a system whose supply the model could not name shows only that the code does not settle it, never a line saying it is not shown", () => {
   const { list, facts } = rich();
   const groq = { id: "S5-013", section: 5, kind: "system", title: "Groq: audio transcription address", says: "A transcription address is named.", by: "model", based_on: [], evidence: ev("src/audio.py", 4), detail: { system: "Groq", need: "unclear", need_by: "model", supply: "Not shown" } };
@@ -811,6 +833,23 @@ test("[F6.A9] 0.7.0: Run it in shows the organization's preferred harnesses, in 
   const words = readable(shownPanel(p.app));
   for (const re of [/\bsrc\/maker\b/, /\.py\b/, /:\d+\b/, /\bour harness/i]) assert.ok(!re.test(words), `nothing like ${re}: ${words.match(re)?.[0]}`);
   for (const re of [/recommend/i, /\bbest\b/i, /\bshould\b/i]) assert.ok(!re.test(words.replace(/[^\n]*database[^\n]*/g, "")), `nothing like ${re}`);
+});
+
+test("[F6.A12] 0.7.2: each harness card draws its maker's mark, never a letter; each item of the tie list keeps its comma on its line", () => {
+  const reading = moveReading();
+  const p = drawn(withReading(richReport(), reading));
+  hostData(p, withReading(richReport(), reading), { preferred_harnesses: ["opencode", "chatgpt", "codex", "claude-code"] });
+  tabNamed(p.app, "Portability").click();
+  const cards = shownPanel(p.app).querySelectorAll("section.run");
+  assert.deepEqual(cards.map((c) => c.querySelector("h3").textContent), ["opencode", "ChatGPT", "Codex", "Claude Code"]);
+  for (const c of cards) {
+    const mark = c.querySelector(".run-head .sys-icon");
+    assert.ok(!/\bletter\b/.test(mark.className), `${c.querySelector("h3").textContent} draws a mark, not a letter`);
+    assert.ok(mark.querySelector("svg"), "an inline mark");
+  }
+  const items = shownPanel(p.app).querySelector("p.ties").querySelectorAll("span.nw").map((s) => s.textContent);
+  assert.deepEqual(items, ["tracing and telemetry,", "evaluations,", "sandboxes and code execution"], "each item whole, its comma with it");
+  assert.match(style, /\.nw\s*\{\s*white-space:\s*nowrap;/);
 });
 
 test("[F6.A9] a capability's name opens the harness's own words in the dialog, and Close brings focus back", async () => {

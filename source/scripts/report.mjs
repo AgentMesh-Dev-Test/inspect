@@ -522,7 +522,7 @@ export const WORKING_DETAIL = {
   "built-on": ["languages", "frameworks"], activity: ["pushed_at", "archived", "commits_last_90_days"],
   skill: ["name", "path", "size", "own", "for_coding_assistants", "instructions_only", "lift_out", "plain", "does"],
   code: ["files", "lines"], test: ["files", "cases", "live"],
-  system: ["system", "need", "need_by", "supply", "without", "sends", "credentials"],
+  system: ["system", "need", "need_by", "supply", "without", "sends", "credentials", "one_of", "member_of"],
   credential: ["env", "how", "need", "need_by", "need_why", "read_by_code", "from"],
   risk: ["safe", "hook"],
   // 0.5.0: a plugin's parts and what it is.
@@ -539,7 +539,7 @@ export const WORKING_DETAIL_FIRST = {
   "built-on": WORKING_DETAIL["built-on"], activity: WORKING_DETAIL.activity,
   skill: ["path", "size", "own", "for_coding_assistants", "instructions_only"],
   code: WORKING_DETAIL.code, test: WORKING_DETAIL.test,
-  system: ["system", "need", "need_by", "supply", "credentials"],
+  system: ["system", "need", "need_by", "supply", "credentials", "one_of", "member_of"],
   credential: ["env", "how", "need", "need_by", "read_by_code", "from"],
   subject: WORKING_DETAIL.subject, plugins: WORKING_DETAIL.plugins,
   "slash-command": ["size"], "sub-agent": ["size"], "mcp-server": ["name", "transport", "local", "host", "supply"],
@@ -692,7 +692,13 @@ function findingLine(f, report) {
   const mcp = f.kind === "mcp-server" && d.supply ? ` You supply: ${mdText(d.supply)}.` : "";
   // 0.5.7: what the model found in a hook's own code, said on the hook's line.
   const also = Array.isArray(d.hook?.also) ? d.hook.also.map((a) => ` Also, ${mdText(String(a.title ?? "").replace(/^\w/, (c) => c.toLowerCase()))}: ${mdText(a.says)}${a.safe ? ` To make it safe: ${mdText(a.safe)}` : ""}`).join("") : "";
-  const need = f.kind === "system" && d.need ? ` ${d.need === "required" ? "Required" : d.need === "optional" ? "Optional" : "Whether it is required is not clear from the code"}.${d.supply ? ` You supply: ${mdText(d.supply)}.` : ""}${d.without ? ` Without it: ${mdText(d.without)}.` : ""}` : "";
+  // 0.7.2: a group says each choice and what the person supplies for it; a
+  // member says the group it is a choice of.
+  const end = (s) => String(s ?? "").trim().replace(/[.]+$/, "");
+  const choices = Array.isArray(d.one_of) && d.one_of.length ? ` One of them is required: ${d.one_of.map((c) => `${mdText(c.name)} (you supply: ${mdText(end(c.supply))}${c.settings?.length ? `; settings ${c.settings.map(mdText).join(", ")}` : ""})`).join(", or ")}.` : "";
+  const member = d.member_of && d.need !== "one-of" ? ` It is one choice for the ${mdText(String(d.member_of).toLowerCase())}.` : "";
+  const needWord = { required: "Required", optional: "Optional", "one-of": `Needed only as one choice for the ${String(d.member_of ?? "group").toLowerCase()}` };
+  const need = f.kind === "system" && d.need ? (choices || ` ${needWord[d.need] ?? "Whether it is required is not clear from the code"}.${member}${d.supply ? ` You supply: ${mdText(end(d.supply))}.` : ""}${d.without ? ` Without it: ${mdText(end(d.without))}.` : ""}`) : "";
   const safe = d.safe ? ` To make it safe: ${mdText(d.safe)}` : "";
   // The names the code gives its models, for the reader who checks them (0.3.4).
   const named = f.kind === "model" && f.by === "script" && Array.isArray(d.models) && d.models.length ? ` Models as the code names them: ${d.models.map(mdText).join(", ")}.` : "";
@@ -701,6 +707,22 @@ function findingLine(f, report) {
 
 /** The whole report as Markdown: the same findings, in the same sections, with
  *  each risk's level in words, sorted by level within its section. */
+/** How many outside systems a person must supply, of how many, as the
+ *  view's Systems required tile counts them (0.7.2): each system the model
+ *  wrote, a group once, a system said only in its group not again, and the
+ *  credentials no system names, one per system they open. */
+export function systemCount(findings, facts = []) {
+  const every = findings.filter((f) => f.section === 5 && f.kind === "system");
+  const sys = every.filter((f) => f.detail?.need !== "one-of");
+  const byId = new Map(facts.map((x) => [x.id, x]));
+  const named = new Set(every.flatMap((f) => [...(Array.isArray(f.detail?.credentials) ? f.detail.credentials : []), ...(f.based_on ?? []).map((id) => byId.get(id)).filter((x) => x?.kind === "setting").map((x) => x.data?.name)]).filter(Boolean));
+  const creds = findings.filter((f) => f.section === 5 && f.kind === "credential" && f.detail?.read_by_code !== false && !named.has(f.detail?.env));
+  const word = (t) => String(t ?? "").replace(/s+(?:apis+)?(?:application credentials|access token|service account|keys?|tokens?|secrets?|credentials|password)$/i, "").trim().toLowerCase();
+  const byName = new Map();
+  for (const f of creds) byName.set(word(f.title), [...(byName.get(word(f.title)) ?? []), f]);
+  const credNeed = (f) => (f.detail?.need ?? (f.detail?.how === "fails" ? "required" : null));
+  return { required: sys.filter((f) => f.detail?.need === "required").length + [...byName.values()].filter((g) => g.some((f) => credNeed(f) === "required")).length, all: sys.length + byName.size };
+}
 export function markdownOf(report) {
   const r = report; const sha = r.commit.sha;
   const lv = byLevel(r.findings);
@@ -727,7 +749,9 @@ export function markdownOf(report) {
   lines.push(...(glance.length ? glance.map((f) => findingLine(f, r)) : ["- Nothing was judged for this section."]), "");
   for (const s of SECTIONS.filter((x) => x.number > 1)) {
     const list = sorted(r.findings.filter((f) => f.section === s.number));
-    lines.push(`## ${s.title}`, "", ...(list.length ? list.map((f) => findingLine(f, r)) : ["- None found."]), "");
+    // 0.7.2: how many systems are required, a group counted once, as the view's tile.
+    const counted = s.number === 5 && !r.subject ? systemCount(r.findings, r.facts ?? []) : null;
+    lines.push(`## ${s.title}`, "", ...(counted?.all ? [`Systems required: ${counted.required} of ${counted.all}.`, ""] : []), ...(list.length ? list.map((f) => findingLine(f, r)) : ["- None found."]), "");
     // 0.6.0: Portability (Could it move? before 0.7.0), after the systems it uses, as the view has it.
     if (s.number === 5 && r.portability) lines.push(...portabilityMarkdown(r));
   }

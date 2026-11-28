@@ -244,6 +244,16 @@ button { font: inherit; color: inherit; cursor: pointer; }
 .supply { display: flex; gap: 0.45em; align-items: flex-start; color: var(--text); font-size: 0.94em; }
 .supply .ico { color: var(--muted); margin-top: 0.2em; }
 .supply.nothing { color: var(--muted); }
+/* 0.7.2: a list item kept whole with its comma; a link inside still wraps */
+.nw { white-space: nowrap; }
+.nw > .ref { white-space: normal; }
+/* 0.7.2: a group's choices, each with what the person supplies for it */
+.choices { list-style: none; margin: calc(var(--s) * 0.25) 0 0; padding: 0; display: grid; gap: calc(var(--s) * 0.5); }
+.choices li { display: grid; grid-template-columns: 28px minmax(0, 1fr); gap: 0.1em calc(var(--s) * 0.9); align-items: center; }
+.choices .sys-icon { width: 28px; height: 28px; border-radius: 7px; grid-row: span 2; }
+.choices .sys-icon svg { width: 16px; height: 16px; }
+.choices .c-name { font-weight: 600; color: var(--text); }
+.choices .supply { grid-column: 2; }
 .rows.systems .detail { padding-left: calc(var(--s) * 0.5 + 1em + 40px + var(--s) * 1.5); }
 
 /* Tests and gaps (0.7.0): the answer, then one line an item */
@@ -635,6 +645,9 @@ button { font: inherit; color: inherit; cursor: pointer; }
     airtable: "M11.992 1.966c-.434 0-.87.086-1.28.257L1.779 5.917c-.503.208-.49.908.012 1.116l8.982 3.558a3.266 3.266 0 0 0 2.454 0l8.982-3.558c.503-.196.503-.908.012-1.116l-8.957-3.694a3.255 3.255 0 0 0-1.272-.257zM23.4 8.056a.589.589 0 0 0-.222.045l-10.012 3.877a.612.612 0 0 0-.38.564v8.896a.6.6 0 0 0 .821.552L23.62 18.1a.583.583 0 0 0 .38-.551V8.653a.6.6 0 0 0-.6-.596zM.676 8.095a.644.644 0 0 0-.48.19C.086 8.396 0 8.53 0 8.69v8.355c0 .442.515.737.908.54l6.27-3.006.307-.147 2.969-1.436c.466-.22.43-.908-.061-1.092L.883 8.138a.57.57 0 0 0-.207-.044z",
     deepgram: "M11.203 24H1.517a.364.364 0 0 1-.258-.62l6.239-6.275a.366.366 0 0 1 .259-.108h3.52c2.723 0 5.025-2.127 5.107-4.845a5.004 5.004 0 0 0-4.999-5.148H7.613v4.646c0 .2-.164.364-.365.364H.968a.365.365 0 0 1-.363-.364V.364C.605.164.768 0 .969 0h10.416c6.684 0 12.111 5.485 12.01 12.187C23.293 18.77 17.794 24 11.202 24z",
     vercel: "m12 1.608 12 20.784H0Z",
+    // 0.7.2: OpenAI's mark (Simple Icons 13.21.0, CC0) and opencode's (Simple Icons 16.38.1, CC0).
+    openai: "M22.2819 9.8211a5.9847 5.9847 0 0 0-.5157-4.9108 6.0462 6.0462 0 0 0-6.5098-2.9A6.0651 6.0651 0 0 0 4.9807 4.1818a5.9847 5.9847 0 0 0-3.9977 2.9 6.0462 6.0462 0 0 0 .7427 7.0966 5.98 5.98 0 0 0 .511 4.9107 6.051 6.051 0 0 0 6.5146 2.9001A5.9847 5.9847 0 0 0 13.2599 24a6.0557 6.0557 0 0 0 5.7718-4.2058 5.9894 5.9894 0 0 0 3.9977-2.9001 6.0557 6.0557 0 0 0-.7475-7.0729zm-9.022 12.6081a4.4755 4.4755 0 0 1-2.8764-1.0408l.1419-.0804 4.7783-2.7582a.7948.7948 0 0 0 .3927-.6813v-6.7369l2.02 1.1686a.071.071 0 0 1 .038.052v5.5826a4.504 4.504 0 0 1-4.4945 4.4944zm-9.6607-4.1254a4.4708 4.4708 0 0 1-.5346-3.0137l.142.0852 4.783 2.7582a.7712.7712 0 0 0 .7806 0l5.8428-3.3685v2.3324a.0804.0804 0 0 1-.0332.0615L9.74 19.9502a4.4992 4.4992 0 0 1-6.1408-1.6464zM2.3408 7.8956a4.485 4.485 0 0 1 2.3655-1.9728V11.6a.7664.7664 0 0 0 .3879.6765l5.8144 3.3543-2.0201 1.1685a.0757.0757 0 0 1-.071 0l-4.8303-2.7865A4.504 4.504 0 0 1 2.3408 7.872zm16.5963 3.8558L13.1038 8.364 15.1192 7.2a.0757.0757 0 0 1 .071 0l4.8303 2.7913a4.4944 4.4944 0 0 1-.6765 8.1042v-5.6772a.79.79 0 0 0-.407-.667zm2.0107-3.0231l-.142-.0852-4.7735-2.7818a.7759.7759 0 0 0-.7854 0L9.409 9.2297V6.8974a.0662.0662 0 0 1 .0284-.0615l4.8303-2.7866a4.4992 4.4992 0 0 1 6.6802 4.66zM8.3065 12.863l-2.02-1.1638a.0804.0804 0 0 1-.038-.0567V6.0742a4.4992 4.4992 0 0 1 7.3757-3.4537l-.142.0805L8.704 5.459a.7948.7948 0 0 0-.3927.6813zm1.0976-2.3654l2.602-1.4998 2.6069 1.4998v2.9994l-2.5974 1.4997-2.6067-1.4997Z",
+    opencode: "M22 24H2V0h20zM17 4.8H7v14.4h10z",
   };
   const BRAND_OF = [
     [/anthropic|claude/i, "anthropic"], [/gemini/i, "googlegemini"], [/gmail/i, "gmail"], [/google drive/i, "googledrive"], [/youtube/i, "youtube"],
@@ -644,7 +657,7 @@ button { font: inherit; color: inherit; cursor: pointer; }
     [/stripe/i, "stripe"], [/sentry/i, "sentry"], [/supabase/i, "supabase"], [/redis/i, "redis"], [/mongo/i, "mongodb"], [/hugging ?face/i, "huggingface"],
     [/mistral/i, "mistralai"], [/perplexity/i, "perplexity"], [/twitter|^x\b/i, "x"], [/telegram/i, "telegram"], [/whatsapp/i, "whatsapp"],
     [/cloudflare/i, "cloudflare"], [/openstreetmap|\bosm\b/i, "openstreetmap"], [/mapbox/i, "mapbox"], [/replicate/i, "replicate"], [/jira/i, "jira"],
-    [/atlassian|confluence/i, "atlassian"], [/dropbox/i, "dropbox"], [/airtable/i, "airtable"], [/deepgram/i, "deepgram"], [/vercel/i, "vercel"],
+    [/atlassian|confluence/i, "atlassian"], [/dropbox/i, "dropbox"], [/airtable/i, "airtable"], [/deepgram/i, "deepgram"], [/vercel/i, "vercel"], [/openai|chatgpt|\bcodex\b/i, "openai"], [/opencode/i, "opencode"],
   ];
   function systemIcon(name) {
     const n = one(name);
@@ -1070,7 +1083,8 @@ button { font: inherit; color: inherit; cursor: pointer; }
   // A button that opens a skill in the dialog, or brings a finding into sight.
   const skillButton = (s, key) => el("button", { class: "ref", type: "button", "data-k": `${key}:${s.id}`, onclick: (e) => openViewer(s.id, e.currentTarget) }, prose(displayTitle(s)));
   const findingButton = (f, key, shown) => el("button", { class: "ref", type: "button", "data-k": `${key}:${f.id}`, onclick: () => reveal(f.id) }, prose(shown ?? displayTitle(f)));
-  const refs = (list) => el("span", { class: "refs" }, list.flatMap((x, i) => (i ? [", ", x] : [x])));
+  // 0.7.2: each item keeps its comma, so a comma never starts a line.
+  const refs = (list) => el("span", { class: "refs" }, list.flatMap((x, i) => [...(i ? [" "] : []), i < list.length - 1 ? el("span", { class: "nw" }, x, ",") : x]));
 
   // ── What it does ──
   // Jobs, with the skills that do each; what it takes and hands back; its
@@ -1198,7 +1212,11 @@ button { font: inherit; color: inherit; cursor: pointer; }
     for (const f of sys) { const x = onMcp(f); if (x) x.reach.push(f); }
     return [
       ...mcp,
-      ...sys.filter((f) => !onMcp(f)).map((f) => ({ finding: f, ...split(f), need: order.includes(f.detail?.need) ? f.detail.need : "unclear", supply: one(f.detail?.supply) })),
+      // 0.7.2: a group ("one of these") is one card with its choices; a
+      // system said only in its group has no card of its own.
+      ...sys.filter((f) => !onMcp(f) && f.detail?.need !== "one-of").map((f) => (Array.isArray(f.detail?.one_of) && f.detail.one_of.length
+        ? { finding: f, name: displayTitle(f), purpose: "Any one of these", need: order.includes(f.detail.need) ? f.detail.need : "unclear", choices: f.detail.one_of }
+        : { finding: f, ...split(f), need: order.includes(f.detail?.need) ? f.detail.need : "unclear", supply: one(f.detail?.supply), memberOf: one(f.detail?.member_of) })),
       ...[...byName].map(([name, group]) => ({ finding: group[0], group, name, purpose: "", need: order.find((n) => group.some((f) => needOfCred(f) === n)), supply: `Your ${and(group.map((f) => displayTitle(f)))}` })),
     ].map((x, i) => ({ ...x, i })).sort((a, b) => Number(!a.mcp) - Number(!b.mcp) || order.indexOf(a.need) - order.indexOf(b.need) || a.i - b.i);
   }
@@ -1221,9 +1239,16 @@ button { font: inherit; color: inherit; cursor: pointer; }
       const byFinding = new Map(list.map((x) => [x.finding, x]));
       out.push(drawRows(d, list.map((x) => x.finding), { listCls: "systems", cls: "system", per: (f) => {
         const x = byFinding.get(f);
+        // 0.7.2: a group's card lists each choice with what the person supplies for it.
+        if (x.choices) return {
+          title: x.name, lead: el("span", { class: "sys-icon", "aria-hidden": "true" }, icon("systems", 22)),
+          under: x.purpose,
+          under2: el("ul", { class: "choices" }, x.choices.map((c) => el("li", {}, systemIcon(c.name), el("span", { class: "c-name", text: one(c.name) }), el("span", { class: "supply" }, icon("key", 16), el("span", { class: "sr", text: "You supply: " }), el("span", { text: one(c.supply) }))))),
+          side: needBadge(x.need),
+        };
         return {
           title: x.name, lead: systemIcon(x.name),
-          under: x.purpose || "",
+          under: x.memberOf ? [x.purpose, `Also one choice for the ${x.memberOf.toLowerCase()}`].filter(Boolean).join(" · ") : x.purpose || "",
           // What the person supplies, with a key; nothing to supply is said plainly, with no key.
           // A supply the model could not name ("Not shown") says nothing the need does not.
           under2: !x.supply || x.need === "none" || /^(?:not (?:shown|clear|known)|unknown|unclear)\b/i.test(x.supply) ? null : /^(?:nothing|none|no setup)\b/i.test(x.supply) ? el("span", { class: "supply nothing" }, el("span", { text: cap(x.supply) })) : el("span", { class: "supply" }, icon("key", 16), el("span", { class: "sr", text: "You supply: " }), el("span", { text: x.supply })),
@@ -1631,7 +1656,15 @@ button { font: inherit; color: inherit; cursor: pointer; }
   const dayOf = (s) => dateOf(/^\d{4}-\d{2}-\d{2}$/.test(one(s)) ? `${one(s)}T12:00:00` : s);
   const dbLine = (p) => el("p", { class: "db-line", text: `From the agent platforms database, checked ${dayOf(p.database?.checked) ?? (one(p.database?.checked) || "on a date it does not give")}.` });
   // Names that hold "and" themselves, listed so each reads whole.
-  const titles = (xs) => (xs.length < 3 ? xs.join(xs.some((x) => / and /.test(x)) ? ", and " : " and ") : `${xs.slice(0, -1).join(", ")}, and ${xs.at(-1)}`);
+  // The same list as nodes: each item whole on one line, with its comma.
+  const listParts = (xs) => {
+    const glue = xs.length > 2 || xs.some((x) => / and /.test(x));
+    return xs.flatMap((x, i) => {
+      const last = i === xs.length - 1;
+      const item = el("span", { class: "nw", text: `${x}${!last && glue ? "," : ""}` });
+      return i === 0 ? [item] : [last ? " and " : " ", item];
+    });
+  };
   // The guidance's basics, the answer first: how many it follows.
   function drawGuidance(p) {
     const g = p.guidance;
@@ -1669,9 +1702,11 @@ button { font: inherit; color: inherit; cursor: pointer; }
     // A row whose use is kept in the agent's own memory ties it to nothing.
     const ties = (p.uses ?? []).filter((r) => !r.plugin_part && r.swap !== "in-process" && (r.level === "proprietary" || r.level === "mixed"));
     const toolTies = (p.uses ?? []).filter((r) => r.plugin_part);
-    out.push(el("p", { class: "ties", text: plugin
-      ? (toolTies.length ? `Tied to its tools in ${titles(toolTies.map((r) => r.title.toLowerCase()))}.` : "Nothing it uses ties it to its tools.")
-      : ties.length ? `Tied to its vendor in ${titles(ties.map((r) => r.title.toLowerCase()))}.` : (p.uses ?? []).length ? "Nothing it uses ties it to its vendor." : "It uses none of the features the database lists." }));
+    // 0.7.2: each item of the list on one line, with its comma.
+    const tiedIn = (lead, xs) => el("p", { class: "ties" }, lead, ...listParts(xs.map((r) => r.title.toLowerCase())), ".");
+    out.push(plugin
+      ? (toolTies.length ? tiedIn("Tied to its tools in ", toolTies) : el("p", { class: "ties", text: "Nothing it uses ties it to its tools." }))
+      : ties.length ? tiedIn("Tied to its vendor in ", ties) : el("p", { class: "ties", text: (p.uses ?? []).length ? "Nothing it uses ties it to its vendor." : "It uses none of the features the database lists." }));
     if ((p.uses ?? []).length) {
       // One line a row: how open, the capability (its words behind its
       // name), and how hard it is to swap.
@@ -1709,7 +1744,7 @@ button { font: inherit; color: inherit; cursor: pointer; }
   function drawRun(p, h, saidAbove = false) {
     const lines = [...(h.lines ?? [])].sort((a, z) => RUN_ORDER.indexOf(a.state) - RUN_ORDER.indexOf(z.state));
     return el("section", { class: "run", "aria-label": one(h.name) },
-      el("div", { class: "run-head" }, systemIcon(/^(Claude|Gemini|ChatGPT|Microsoft)/.test(one(h.name)) ? one(h.vendor) || one(h.name) : one(h.name)),
+      el("div", { class: "run-head" }, systemIcon(/^(Claude|Gemini|ChatGPT|Microsoft|Agents API)/.test(one(h.name)) ? one(h.vendor) || one(h.name) : one(h.name)),
         el("div", {}, el("h3", { text: one(h.name) }), h.house_stack ? el("span", { class: "tag", text: "Runs agents in AgentMesh's House Stack" }) : null)),
       saidAbove ? null : el("p", { class: "takes", text: `${one(h.takes).replace(/[.]$/, "")}.` }),
       lines.length ? el("ul", {}, lines.map((l) => el("li", {}, mark(RUN[l.state] ?? RUN.unknown),
