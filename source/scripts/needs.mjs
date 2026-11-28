@@ -300,6 +300,59 @@ const firstWord = (s) => String(s ?? "").toLowerCase().split(/\s+/)[0] ?? "";
  * so one of them is required. Its detail: need required by rule, one_of
  * [{name, supply, settings}], and supply, every alternative in words.
  */
+// ── The model provider, by rule ──
+/** The makers a model's name in the code points to: by its provider prefix
+ *  ("anthropic:claude-opus-5-5", "google_genai:…") or its family ("gpt-",
+ *  "claude-", "gemini-"). Each with the words a system's name may use for it. */
+const MAKERS = [
+  { name: "Anthropic", aliases: ["anthropic", "claude"], re: /^(?:anthropic[:/]|claude)/i },
+  { name: "OpenAI", aliases: ["openai", "gpt"], re: /^(?:openai[:/]|azure_openai[:/]|gpt-|o[1-9]\b|chatgpt)/i },
+  { name: "Google", aliases: ["google", "gemini", "vertex"], re: /^(?:google(?:_genai|_vertexai)?[:/]|vertexai[:/]|gemini)/i },
+  { name: "Mistral", aliases: ["mistral"], re: /^(?:mistral(?:ai)?[:/]|mistral-|codestral)/i },
+  { name: "Amazon Bedrock", aliases: ["bedrock"], re: /^bedrock[:/]/i },
+  { name: "Groq", aliases: ["groq"], re: /^groq[:/]/i },
+  { name: "Ollama", aliases: ["ollama"], re: /^ollama[:/]/i },
+  { name: "Cohere", aliases: ["cohere"], re: /^(?:cohere[:/]|command-r)/i },
+  { name: "xAI", aliases: ["xai", "grok"], re: /^(?:xai[:/]|grok-)/i },
+  { name: "DeepSeek", aliases: ["deepseek"], re: /^deepseek/i },
+];
+/**
+ * The model provider an agent needs (0.7.2): when its own code (outside its
+ * skills and tests) calls a model, it needs a provider, and the providers
+ * are those its own code names models of. Two or more are one group, Required
+ * by rule; one is required by rule on its own: {group} or {single: maker} or null.
+ */
+export function modelProvider(facts) {
+  const folders = facts.filter((f) => f.kind === "skill").map((f) => String(f.data?.folder ?? "")).filter(Boolean);
+  const own = (f) => f.file && !folders.some((d) => f.file.startsWith(`${d}/`)) && !/(^|\/)(tests?|__tests__|spec|examples?|samples?)\//i.test(f.file);
+  if (!facts.some((f) => f.kind === "model-client" && own(f))) return null;
+  const named = [];
+  for (const f of facts.filter((x) => x.kind === "model" && own(x))) {
+    const m = MAKERS.find((k) => k.re.test(String(f.data?.match ?? "").trim()));
+    if (m && !named.some((x) => x.maker === m)) named.push({ maker: m, fact: f });
+  }
+  if (!named.length) return null;
+  if (named.length === 1) return { single: named[0].maker };
+  const choices = named.map(({ maker }) => ({ name: maker.name, supply: `Your ${maker.name} key`, settings: [], aliases: maker.aliases }));
+  return { group: {
+    section: 5, kind: "system", by: "script", title: "Model provider",
+    says: "Its own code calls a model; without one of these providers, it has none to call.",
+    based_on: named.map((x) => x.fact.id), evidence: named.map((x) => ({ file: x.fact.file, line: x.fact.line })),
+    detail: { system: "Model provider", of_models: true, need: "required", need_by: "rule", need_why: "its own code calls a model, from one of these providers", one_of: choices, supply: choices.map((c, i) => (i ? c.supply.replace(/^Your/, "your") : c.supply)).join(", or ") },
+  } };
+}
+/** One provider named: the system the model wrote for it is required by rule. */
+export function applySingleProvider(maker, systems) {
+  for (const f of systems) {
+    if (f.by === "script" || f.detail?.member_of) continue;
+    const name = `${f.detail?.system ?? ""} ${f.title ?? ""}`.toLowerCase();
+    if (!maker.aliases.some((w) => new RegExp(`\\b${esc(w)}\\b`).test(name))) continue;
+    f.detail = { ...(f.detail ?? {}), need: "required", need_by: "rule", need_why: "its own code calls a model, and this is the only provider it names" };
+    return f;
+  }
+  return null;
+}
+
 export function groupFindings(facts, { repoName = "" } = {}) {
   const out = [];
   for (const f of facts.filter((x) => x.kind === "one-of" && x.data?.on_start_path)) {
@@ -336,8 +389,12 @@ export function applyGroups(groups, systems, byId) {
       const mine = settingsOf(f, byId);
       const name = `${f.detail?.system ?? ""} ${f.title ?? ""}`.toLowerCase();
       const choice = g.detail.one_of.find((c) => c.settings.some((s) => mine.has(s)))
-        ?? g.detail.one_of.find((c) => { const w = firstWord(c.name); return w.length >= 3 && new RegExp(`\\b${esc(w)}\\b`).test(name); });
+        ?? g.detail.one_of.find((c) => [firstWord(c.name), ...(c.aliases ?? [])].some((w) => w.length >= 3 && new RegExp(`\\b${esc(w)}\\b`).test(name)));
       if (!choice) continue;
+      // The model provider's members: a system that cites a model the code
+      // names or calls, or says it is a model or a provider; never one that
+      // only makes images or speech with the same maker.
+      if (g.detail.of_models && !(f.based_on ?? []).some((id) => ["model", "model-client"].includes(byId.get(id)?.kind)) && !/\b(?:models?|llms?|provider)\b/.test(name)) continue;
       const others = g.detail.one_of.filter((c) => c !== choice).map((c) => c.name);
       const d = { ...(f.detail ?? {}) };
       d.member_of = g.title; d.member_as = choice.name;
@@ -345,11 +402,11 @@ export function applyGroups(groups, systems, byId) {
       const requiredBySetting = d.need === "required" && d.need_by === "rule" && (d.need_settings ?? []).some((s) => s?.need === "required");
       if (!own.length && !requiredBySetting) {
         d.need = "one-of"; d.need_by = "rule"; d.need_why = `it is one of the choices for ${noun === "one of these" ? "what the code needs" : `the ${noun}`}`;
-      } else if (d.need === "required" && d.need_by !== "rule") {
+      } else if ((d.need === "required" && d.need_by !== "rule") || d.need === "unclear") {
         d.need = "optional"; d.need_by = "rule"; d.need_why = `for the ${noun}, ${and(others, "or")} can take its place`;
       }
       // Its words never say it can be left out while the group says one of them is required.
-      if (!trim(d.without) || new RegExp(`\\b(${esc(noun)}|${esc(firstWord(choice.name))})`, "i").test(d.without)) d.without = noun === "one of these" ? `${and(others, "or")} must take its place` : `the ${noun} must come from ${and(others, "or")}`;
+      if (!trim(d.without) || new RegExp(`\\b${esc(noun)}|\\blocal runs\\b`, "i").test(d.without)) d.without = noun === "one of these" ? `${and(others, "or")} must take its place` : `the ${noun} must come from ${and(others, "or")}`;
       f.detail = d;
       marked.push(f);
     }

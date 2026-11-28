@@ -1,7 +1,7 @@
 {
   "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
   "name": "inspect",
-  "version": "0.7.2",
+  "version": "0.7.3",
   "description": "Inspect reads an outside agent's code, or a plugin or skill for a person's coding tool (Claude Code, Cursor, Codex and others), in a public GitHub repository, at its newest commit or one you name, without running any of it, and hands back an inspection report on what it does and how safe it is: a list of findings in eight sections, each citing a file and line at the commit. For a plugin it says what it adds to the person's tools, what each hook runs on their machine, what each MCP server reaches, and its risks. It also says how tied the agent is to its platform: what it uses of it, how open each part is, and, for each other platform, what moving it would take, what it would lose and what replaces each part, from AgentMesh's agent platforms database, with no recommendation. Scripts read the code by rule; a model writes only the judgments, and each judgment cites the lines it rests on. It gives no verdict on bringing it in and judges no fit with anyone's plan.",
   "author": {
     "name": "Agent Builder"
@@ -50,7 +50,7 @@
       },
       "descriptor": {
         "path": "agent-descriptor.json",
-        "sha256": "6fc8a03c2a23a6fc38750b4726b863e1c5ff568163c92c52d0d918aca1cd1a42"
+        "sha256": "945c7ff3f59b5d752405ef435011a3a3eefb0705521d9df3430e8d3123572510"
       },
       "runtime_requirements": {
         "path": "agent-runtime-requirements.json",
