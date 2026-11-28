@@ -50,7 +50,7 @@
       },
       "descriptor": {
         "path": "agent-descriptor.json",
-        "sha256": "cc9be1c1fcd83a3b25b1d9beaff338b325856874c3124f7808281bd8aaf809e2"
+        "sha256": "6fc8a03c2a23a6fc38750b4726b863e1c5ff568163c92c52d0d918aca1cd1a42"
       },
       "runtime_requirements": {
         "path": "agent-runtime-requirements.json",

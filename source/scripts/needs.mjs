@@ -311,7 +311,7 @@ export function groupFindings(facts, { repoName = "" } = {}) {
     const title = needs ? cap(needs) : "One of these";
     out.push({
       section: 5, kind: "system", by: "script", title,
-      says: `The code stops when none of these is there: ${and(names, "or")}.`,
+      says: "Without one of them, the agent stops before it runs.",
       based_on: [f.id], evidence: [{ file: f.file, line: f.line }],
       detail: { system: title, need: "required", need_by: "rule", need_why: "the code stops when none of them is there", one_of: choices, supply: choices.map((c, i) => (i ? c.supply.replace(/^(?:Your|Install|Set|Run|Start|Use|Build|A|An|The)(?= )/, (w) => w.toLowerCase()) : c.supply)).join(", or ") },
     });

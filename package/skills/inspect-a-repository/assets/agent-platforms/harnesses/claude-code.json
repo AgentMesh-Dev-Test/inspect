@@ -55,7 +55,7 @@
       "checked": "2026-11-27"
     },
     "scheduled-work": {
-      "support": "partial",
+      "support": "yes",
       "what": "Scheduled tasks: cloud scheduled tasks (formerly routines, research preview) run on a schedule, an API call or GitHub events; Desktop scheduled tasks run while the app is open; /loop and the cron tools repeat prompts within a session.",
       "sources": [
         { "url": "https://code.claude.com/docs/en/routines", "title": "Automate work with scheduled tasks" },

@@ -2,17 +2,17 @@
   "about": "A copy of AgentMesh's agent platforms database (data/agent-platforms), taken byte for byte at one AgentMesh commit. Inspect reads it to say how tied an agent is to its platform and what moving it would take. To take a newer copy: copy the folder again from the new commit, set commit, checked and every sha256 here, run the tests, release; that is a normal pull request.",
   "repository": "https://github.com/jeffrschneider/AgentMesh",
   "path": "data/agent-platforms",
-  "commit": "419be6ae2bd8006de9f68a6593b255a884d21fb3",
+  "commit": "3f024f06e4ea311bbace418807ddfa1a0358782f",
   "committed": "2026-11-27",
   "checked": "2026-11-27",
   "files": [
     {
       "file": "README.md",
-      "sha256": "46b391e5b118d3cce7a59a7c7f741a8ea0ee5426ff8bdd201b3973f39d794f6a"
+      "sha256": "75cda2fdcda97dbd31f637dad63af25b2ec33092bd907abf020819381ae543e3"
     },
     {
       "file": "harness.schema.json",
-      "sha256": "a562f22e0724d297d6790e98f7c4fe680ae2f78f39420288ef01e9faf39551f9"
+      "sha256": "66183010f29ffcd4ee215a31f20cceed949a71f73344360f839775db70a15f90"
     },
     {
       "file": "harnesses/bedrock-agentcore.json",
@@ -32,11 +32,11 @@
     },
     {
       "file": "harnesses/claude-code.json",
-      "sha256": "a9b0c307b728b1f96bfcf4f2346ecad3a0b9a3a3de1eba085b50496c9a13ae83"
+      "sha256": "63d4f07ac054da2e09230ba9f3a5fd7e1f07f59dbf591f6be58af3b9bf08ec4b"
     },
     {
       "file": "harnesses/claude-managed-agents.json",
-      "sha256": "627559c6a869b19e3bf61760639c4adabf241c7c0bbecf6afbdf768d7252c7b9"
+      "sha256": "ca0e58e3fa0b9a79a3e5ef4524c8847c07236776d9f4f39739afbbe00aed38ab"
     },
     {
       "file": "harnesses/codex.json",
@@ -52,11 +52,11 @@
     },
     {
       "file": "harnesses/foundry-agent-service.json",
-      "sha256": "957600d0dcfe0d25e60517ab1d72c87c6579180809c0190c156be4ca381190c4"
+      "sha256": "7c40ecad977cea5f01599ba0d49aeb5e60740b5ea329307c166e3684de41de7d"
     },
     {
       "file": "harnesses/gemini-agent-runtime.json",
-      "sha256": "e6692f8a0afacaf9862fcc62d327b25837429f3017d5c6bbc870f1291e405253"
+      "sha256": "8d91564c1f21ea842ccf4190168a15334125ab6004ed70806f571490ef974472"
     },
     {
       "file": "harnesses/gemini.json",
@@ -76,7 +76,7 @@
     },
     {
       "file": "harnesses/openai-agents-api.json",
-      "sha256": "fb227e001d508e651b39bc5187fe5e4ce012e8fd8cfc97abf8fd703a226fb987"
+      "sha256": "6b0890a7a8e957297a3853e1823db10316041dc7d22a3aa1c1d5b844df660b92"
     },
     {
       "file": "harnesses/opencode.json",

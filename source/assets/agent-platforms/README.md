@@ -83,7 +83,7 @@ An entry that groups several products rates the strongest provision across them,
 
 ## What a harness cell holds
 
-Each harness entry rates seven capabilities: `skills` (Agent Skills), `mcp` (tool servers), `plugins` (and `plugin_formats`, the formats it installs), `hooks`, `a2a`, `scheduled-work` and `sandboxes`. A cell holds `support` (yes, partial, no or unknown), `what` (one short sentence), `sources` (the maker's own documentation, each page opened on the date checked) and `checked`. `unknown` means not found in the documentation, never a guess; every other value cites a source under the entry's `documentation` prefixes.
+Each harness entry rates seven capabilities: `skills` (Agent Skills), `mcp` (tool servers), `plugins` (and `plugin_formats`, the formats it installs), `hooks`, `a2a`, `scheduled-work` and `sandboxes`. A cell holds `support` (yes, partial, no or unknown), `what` (one short sentence), `sources` (the maker's own documentation, each page opened on the date checked) and `checked`. `unknown` means not found in the documentation, never a guess; every other value cites a source under the entry's `documentation` prefixes. As for platforms, a maker's preview or beta label does not lower `support`; `what` says so, and `partial` is kept for a capability only part of which is offered.
 
 ## Adding or re-checking a platform
 

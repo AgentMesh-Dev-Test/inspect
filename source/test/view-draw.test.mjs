@@ -838,10 +838,10 @@ test("[F6.A9] 0.7.0: Run it in shows the organization's preferred harnesses, in 
 test("[F6.A12] 0.7.2: each harness card draws its maker's mark, never a letter; each item of the tie list keeps its comma on its line", () => {
   const reading = moveReading();
   const p = drawn(withReading(richReport(), reading));
-  hostData(p, withReading(richReport(), reading), { preferred_harnesses: ["opencode", "chatgpt", "codex", "claude-code"] });
+  hostData(p, withReading(richReport(), reading), { preferred_harnesses: ["opencode", "chatgpt", "codex", "claude-code", "cursor"] });
   tabNamed(p.app, "Portability").click();
   const cards = shownPanel(p.app).querySelectorAll("section.run");
-  assert.deepEqual(cards.map((c) => c.querySelector("h3").textContent), ["opencode", "ChatGPT", "Codex", "Claude Code"]);
+  assert.deepEqual(cards.map((c) => c.querySelector("h3").textContent), ["opencode", "ChatGPT", "Codex", "Claude Code", "Cursor"]);
   for (const c of cards) {
     const mark = c.querySelector(".run-head .sys-icon");
     assert.ok(!/\bletter\b/.test(mark.className), `${c.querySelector("h3").textContent} draws a mark, not a letter`);

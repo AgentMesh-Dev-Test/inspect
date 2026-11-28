@@ -330,3 +330,15 @@ test("[F6.A2] 0.6.3: a requirements file names frameworks; a type-only import is
   const man = plugin.uses.find((r) => r.category === "manifests");
   assert.equal(man.level, "proprietary"); assert.equal(man.sources[0].what, "Claude Code reads its own format.");
 });
+
+test("[F6.R13] 0.7.2: a maker's preview or beta label does not lower a harness capability, as the platforms data rules", () => {
+  const dir = join(ROOT, "assets", "agent-platforms");
+  const schema = JSON.parse(readFileSync(join(dir, "harness.schema.json"), "utf8"));
+  assert.match(schema.$defs.cell.properties.support.description, /preview or beta label does not lower it/);
+  const cell = (id, cap) => JSON.parse(readFileSync(join(dir, "harnesses", `${id}.json`), "utf8")).supports[cap];
+  for (const [id, cap] of [["claude-managed-agents", "sandboxes"], ["claude-managed-agents", "skills"], ["openai-agents-api", "skills"], ["gemini-agent-runtime", "a2a"]]) {
+    assert.match(cell(id, cap).what, /beta|preview/i, `${id} ${cap} is labelled beta or preview`);
+    assert.equal(cell(id, cap).support, "yes", `${id} ${cap} is not lowered for its label`);
+  }
+  assert.equal(cell("chatgpt", "mcp").support, "partial", "a real limit stays partial");
+});

@@ -16,7 +16,7 @@
   "checked": "2026-11-27",
   "supports": {
     "skills": {
-      "support": "partial",
+      "support": "yes",
       "what": "Foundry Skills (preview) are folders with a SKILL.md file in the Agent Skills format, stored as versioned skills that a prompt agent using the Microsoft Copilot harness (preview) references, a toolbox serves to MCP clients, or a hosted agent downloads.",
       "sources": [
         { "url": "https://learn.microsoft.com/en-us/azure/foundry/agents/how-to/tools/skills", "title": "Use skills with Microsoft Foundry agents (preview) - Microsoft Foundry" },
@@ -63,7 +63,7 @@
       "checked": "2026-11-27"
     },
     "sandboxes": {
-      "support": "partial",
+      "support": "yes",
       "what": "The Code Interpreter tool runs agent-written Python in a Microsoft-managed sandbox on Azure Container Apps dynamic sessions isolated by a Hyper-V boundary; hosted agents run each session in a VM-isolated sandbox, and the Microsoft Copilot harness (preview) runs shell commands in a service-managed sandbox.",
       "sources": [
         { "url": "https://learn.microsoft.com/en-us/azure/foundry/agents/how-to/tools/code-interpreter", "title": "Use Code Interpreter with Microsoft Foundry agents - Microsoft Foundry" },

@@ -19,7 +19,7 @@
   "checked": "2026-11-27",
   "supports": {
     "skills": {
-      "support": "partial",
+      "support": "yes",
       "what": "Agents API sessions discover Agent Skills (directories with a SKILL.md, compatible with the open Agent Skills standard) in the sandbox directories listed in environment.capability_directories; the Agents API is in beta.",
       "sources": [
         { "url": "https://developers.openai.com/api/docs/guides/tools-skills", "title": "Skills" },
