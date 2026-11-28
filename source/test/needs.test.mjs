@@ -130,3 +130,30 @@ test("[F4.R14] a probed system the code stops without on the shared path is requ
   assert.equal(ff.detail.need_by, "rule");
   assert.equal(ff.detail.need_why, "the code stops when it is not there");
 });
+
+test("[F4.R14] the model provider by rule: own code that calls a model needs one of the providers it names; one named is required on its own", async () => {
+  const withModels = (models) => agent({
+    "src/helper/models.py": `from langchain.chat_models import init_chat_model\n\nMODELS = [\n${models.map((m) => `    "${m}",`).join("\n")}\n]\n\n\ndef lead():\n    return init_chat_model(MODELS[0])\n`,
+  });
+  const ask = (prompt) => {
+    if (!prompt.includes("Section 5")) return { text: JSON.stringify({ findings: [] }) };
+    const m = idOf(prompt, "model", (t) => /anthropic/.test(t));
+    return { text: JSON.stringify({ findings: [
+      { section: 5, kind: "system", title: "Anthropic models for the lead", says: "The lead calls Claude.", based_on: [m], detail: { system: "Anthropic", need: "unclear", supply: "Your Anthropic key" } },
+      { section: 5, kind: "system", title: "OpenAI for generated images", says: "Images come from OpenAI.", based_on: [idOf(prompt, "setting", (t) => /ACME_TRACE_KEY/.test(t))], detail: { system: "OpenAI images", need: "optional", supply: "Your OpenAI key" } },
+    ] }) };
+  };
+  const inspectWith = (files) => inTemp(async (at) => inspect({ text: "repository: acme/helper\ncommit: 86d8f66", workDir: at, env: ENV, fetchImpl: world({ files }).fetchImpl, ask: model([ask]).ask }));
+  const two = await inspectWith(withModels(["anthropic:claude-sonnet-5-5", "openai:gpt-6-sol"]));
+  const five = two.report.findings.filter((f) => f.section === 5 && f.kind === "system");
+  const mp = five.find((f) => f.by === "script" && f.title === "Model provider");
+  assert.equal(mp.detail.need, "required");
+  assert.deepEqual(mp.detail.one_of.map((c) => [c.name, c.supply]), [["Anthropic", "Your Anthropic key"], ["OpenAI", "Your OpenAI key"]]);
+  assert.equal(five.find((f) => f.title === "Anthropic models for the lead").detail.need, "one-of", "said only in the group");
+  assert.equal(five.find((f) => f.title === "OpenAI for generated images").detail.member_of, undefined, "an image service of the same maker is no model provider");
+  const one = await inspectWith(withModels(["anthropic:claude-sonnet-5-5"]));
+  const five1 = one.report.findings.filter((f) => f.section === 5 && f.kind === "system");
+  assert.ok(!five1.some((f) => f.title === "Model provider"));
+  const a = five1.find((f) => f.title === "Anthropic models for the lead");
+  assert.deepEqual([a.detail.need, a.detail.need_by, a.detail.need_why], ["required", "rule", "its own code calls a model, and this is the only provider it names"]);
+});
